@@ -1,4 +1,4 @@
-import { LayoutDashboard, Tractor, Users, Wrench } from "lucide-react";
+import { LayoutDashboard, Tractor, Users, Wrench, Sparkles } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -18,6 +18,7 @@ const items = [
   { title: "기계관리", url: "/machines", icon: Tractor },
   { title: "고객관리", url: "/customers", icon: Users },
   { title: "수리이력", url: "/repairs", icon: Wrench },
+  { title: "AI 어시스턴트", url: "/chat", icon: Sparkles },
 ];
 
 export function AppSidebar() {
