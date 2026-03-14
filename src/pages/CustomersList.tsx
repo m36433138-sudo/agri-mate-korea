@@ -137,6 +137,34 @@ function BulkCustomerDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const removeRow = (i: number) => setRows((prev) => prev.filter((_, idx) => idx !== i));
   const addRow = () => setRows((prev) => [...prev, emptyCustomerRow()]);
 
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target?.result, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+        const mapped: BulkCustomerRow[] = json.map((row) => {
+          const raw = Object.values(row);
+          return {
+            name: String(raw[0] || ""),
+            phone: String(raw[1] || ""),
+            address: String(raw[2] || ""),
+            notes: String(raw[3] || ""),
+          };
+        });
+        setRows((prev) => [...prev.filter(r => r.name || r.phone), ...mapped]);
+        toast({ title: `엑셀에서 ${mapped.length}행을 불러왔습니다.` });
+      } catch {
+        toast({ title: "엑셀 파일을 읽을 수 없습니다.", variant: "destructive" });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
   const validRows = rows.filter((r) => r.name && r.phone);
 
   const mutation = useMutation({
