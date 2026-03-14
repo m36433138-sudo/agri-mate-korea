@@ -14,7 +14,127 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+        }
+        Relationships: []
+      }
+      machines: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          entry_date: string
+          id: string
+          machine_type: string
+          model_name: string
+          notes: string | null
+          purchase_price: number
+          sale_date: string | null
+          sale_price: number | null
+          serial_number: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          entry_date: string
+          id?: string
+          machine_type: string
+          model_name: string
+          notes?: string | null
+          purchase_price: number
+          sale_date?: string | null
+          sale_price?: number | null
+          serial_number: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          entry_date?: string
+          id?: string
+          machine_type?: string
+          model_name?: string
+          notes?: string | null
+          purchase_price?: number
+          sale_date?: string | null
+          sale_price?: number | null
+          serial_number?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machines_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_history: {
+        Row: {
+          cost: number | null
+          created_at: string
+          id: string
+          machine_id: string
+          parts_used: string | null
+          repair_content: string
+          repair_date: string
+          technician: string | null
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          id?: string
+          machine_id: string
+          parts_used?: string | null
+          repair_content: string
+          repair_date: string
+          technician?: string | null
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          id?: string
+          machine_id?: string
+          parts_used?: string | null
+          repair_content?: string
+          repair_date?: string
+          technician?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_history_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
