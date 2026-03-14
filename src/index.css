@@ -62,3 +62,48 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+@media print {
+  /* Hide non-essential UI */
+  .print\:hidden,
+  header,
+  nav,
+  [data-sidebar],
+  [data-radix-popper-content-wrapper],
+  .sonner-toast-container {
+    display: none !important;
+  }
+
+  /* Reset layout */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12px;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  .min-h-screen {
+    min-height: auto !important;
+  }
+
+  /* Cards */
+  .shadow-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Badges - ensure readable in print */
+  [class*="badge"] {
+    border: 1px solid #999 !important;
+    color: black !important;
+    background: #f5f5f5 !important;
+  }
+
+  /* Page break control */
+  .print\\:break-before {
+    page-break-before: always;
+  }
+}

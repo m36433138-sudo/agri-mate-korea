@@ -12,7 +12,7 @@ import { formatPrice, formatDate } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function MachineDetail() {
@@ -46,22 +46,33 @@ export default function MachineDetail() {
 
   return (
     <div>
-      <Link to="/machines" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="h-4 w-4 mr-1" /> 기계 목록
-      </Link>
+      <div className="flex items-center justify-between mb-4 print:hidden">
+        <Link to="/machines" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4 mr-1" /> 기계 목록
+        </Link>
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Printer className="h-4 w-4 mr-1" /> 인쇄
+        </Button>
+      </div>
+
+      {/* Print Header - only visible in print */}
+      <div className="hidden print:block mb-6">
+        <h1 className="text-xl font-bold">AgriManager — 기계 상세 정보</h1>
+        <p className="text-sm text-gray-500">출력일: {new Date().toLocaleDateString("ko-KR")}</p>
+      </div>
 
       {/* Machine Header Card */}
-      <Card className="shadow-card border-0 mb-6">
+      <Card className="shadow-card border-0 mb-6 print:shadow-none print:border">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
-              <h1 className="text-2xl font-bold">{machine.model_name}</h1>
+              <h1 className="text-2xl font-bold print:text-xl">{machine.model_name}</h1>
               <p className="text-sm text-muted-foreground font-mono mt-1">제조번호: {machine.serial_number}</p>
             </div>
             <div className="flex gap-2 items-center">
               <TypeBadge type={machine.machine_type} />
               <StatusBadge status={machine.status} />
-              <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} className="print:hidden"><Pencil className="h-4 w-4" /></Button>
             </div>
           </div>
 
@@ -74,7 +85,7 @@ export default function MachineDetail() {
                 <InfoItem label="판매일" value={machine.sale_date ? formatDate(machine.sale_date) : "-"} />
                 {machine.customers && (
                   <InfoItem label="고객" value={
-                    <Link to={`/customers/${(machine.customers as any).id}`} className="text-primary hover:underline">
+                    <Link to={`/customers/${(machine.customers as any).id}`} className="text-primary hover:underline print:text-black print:no-underline">
                       {(machine.customers as any).name}
                     </Link>
                   } />
@@ -85,7 +96,7 @@ export default function MachineDetail() {
           </div>
 
           {machine.status === "재고중" && (
-            <div className="mt-6 pt-4 border-t">
+            <div className="mt-6 pt-4 border-t print:hidden">
               <Button onClick={() => setSaleOpen(true)}>판매 처리</Button>
             </div>
           )}
@@ -93,10 +104,10 @@ export default function MachineDetail() {
       </Card>
 
       {/* Repair History */}
-      <Card className="shadow-card border-0">
+      <Card className="shadow-card border-0 print:shadow-none print:border">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base font-semibold">수리 이력</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setRepairOpen(true)}>
+          <Button size="sm" variant="outline" onClick={() => setRepairOpen(true)} className="print:hidden">
             <Plus className="h-4 w-4 mr-1" /> 수리 이력 추가
           </Button>
         </CardHeader>
@@ -106,23 +117,50 @@ export default function MachineDetail() {
           ) : repairs?.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">수리 이력이 없습니다.</p>
           ) : (
-            <div className="relative">
-              <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
-              <div className="space-y-6 pl-8">
-                {repairs?.map((r) => (
-                  <div key={r.id} className="relative">
-                    <div className="absolute -left-[22px] top-1 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-card" />
-                    <p className="text-sm font-semibold">{formatDate(r.repair_date)}</p>
-                    <p className="text-sm mt-1">{r.repair_content}</p>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
-                      {r.parts_used && <span>부품: {r.parts_used}</span>}
-                      {r.cost != null && <span>비용: {formatPrice(r.cost)}</span>}
-                      {r.technician && <span>담당: {r.technician}</span>}
+            <>
+              {/* Screen view - timeline */}
+              <div className="relative print:hidden">
+                <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+                <div className="space-y-6 pl-8">
+                  {repairs?.map((r) => (
+                    <div key={r.id} className="relative">
+                      <div className="absolute -left-[22px] top-1 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-card" />
+                      <p className="text-sm font-semibold">{formatDate(r.repair_date)}</p>
+                      <p className="text-sm mt-1">{r.repair_content}</p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
+                        {r.parts_used && <span>부품: {r.parts_used}</span>}
+                        {r.cost != null && <span>비용: {formatPrice(r.cost)}</span>}
+                        {r.technician && <span>담당: {r.technician}</span>}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+
+              {/* Print view - table */}
+              <table className="hidden print:table w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 pr-3 font-semibold">수리일</th>
+                    <th className="text-left py-2 pr-3 font-semibold">수리 내용</th>
+                    <th className="text-left py-2 pr-3 font-semibold">사용 부품</th>
+                    <th className="text-right py-2 pr-3 font-semibold">비용</th>
+                    <th className="text-left py-2 font-semibold">담당</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repairs?.map((r) => (
+                    <tr key={r.id} className="border-b">
+                      <td className="py-2 pr-3 whitespace-nowrap">{formatDate(r.repair_date)}</td>
+                      <td className="py-2 pr-3">{r.repair_content}</td>
+                      <td className="py-2 pr-3">{r.parts_used || "-"}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{r.cost != null ? formatPrice(r.cost) : "-"}</td>
+                      <td className="py-2">{r.technician || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           )}
         </CardContent>
       </Card>

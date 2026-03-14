@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Tractor, Users, Wrench } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -18,13 +18,19 @@ const CATEGORY_META = {
   repair: { label: "수리이력", icon: Wrench },
 } as const;
 
+const CATEGORIES = ["machine", "customer", "repair"] as const;
+
 export default function GlobalSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const navigate = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Flat ordered list for keyboard nav
+  const flatResults = CATEGORIES.flatMap((cat) => results.filter((r) => r.category === cat));
 
   // Close on outside click
   useEffect(() => {
@@ -35,12 +41,14 @@ export default function GlobalSearch() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Reset active index when results change
+  useEffect(() => { setActiveIndex(-1); }, [results]);
+
   useEffect(() => {
     const q = query.trim();
     if (!q) { setResults([]); setOpen(false); return; }
 
     const timer = setTimeout(async () => {
-      setLoading(true);
       const like = `%${q}%`;
 
       const [machinesRes, customersRes, repairsRes] = await Promise.all([
@@ -63,22 +71,48 @@ export default function GlobalSearch() {
 
       setResults(items);
       setOpen(items.length > 0);
-      setLoading(false);
     }, 250);
 
     return () => clearTimeout(timer);
   }, [query]);
+
+  const pick = useCallback((r: Result) => {
+    navigate(r.link);
+    setQuery("");
+    setOpen(false);
+  }, [navigate]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!open || flatResults.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev < flatResults.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : flatResults.length - 1));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      pick(flatResults[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }, [open, flatResults, activeIndex, pick]);
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (activeIndex >= 0 && listRef.current) {
+      const el = listRef.current.querySelector(`[data-index="${activeIndex}"]`);
+      el?.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeIndex]);
 
   const grouped = results.reduce<Record<string, Result[]>>((acc, r) => {
     (acc[r.category] ||= []).push(r);
     return acc;
   }, {});
 
-  const pick = (r: Result) => {
-    navigate(r.link);
-    setQuery("");
-    setOpen(false);
-  };
+  let flatIndex = 0;
 
   return (
     <div ref={ref} className="relative w-full max-w-sm">
@@ -87,13 +121,14 @@ export default function GlobalSearch() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
+        onKeyDown={handleKeyDown}
         placeholder="검색 (기계, 고객, 수리이력)"
         className="pl-9 h-9 bg-background border-border"
       />
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg z-50 overflow-hidden max-h-80 overflow-y-auto">
-          {(["machine", "customer", "repair"] as const).map((cat) => {
+        <div ref={listRef} className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg z-50 overflow-hidden max-h-80 overflow-y-auto">
+          {CATEGORIES.map((cat) => {
             const items = grouped[cat];
             if (!items?.length) return null;
             const meta = CATEGORY_META[cat];
@@ -103,16 +138,22 @@ export default function GlobalSearch() {
                 <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5 bg-muted/50">
                   <Icon className="h-3.5 w-3.5" /> {meta.label}
                 </div>
-                {items.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => pick(r)}
-                    className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex flex-col transition-colors"
-                  >
-                    <span className="font-medium text-foreground truncate">{r.label}</span>
-                    <span className="text-xs text-muted-foreground truncate">{r.sub}</span>
-                  </button>
-                ))}
+                {items.map((r) => {
+                  const idx = flatIndex++;
+                  return (
+                    <button
+                      key={r.id}
+                      data-index={idx}
+                      onClick={() => pick(r)}
+                      className={`w-full text-left px-3 py-2 text-sm flex flex-col transition-colors ${
+                        idx === activeIndex ? "bg-accent" : "hover:bg-accent"
+                      }`}
+                    >
+                      <span className="font-medium text-foreground truncate">{r.label}</span>
+                      <span className="text-xs text-muted-foreground truncate">{r.sub}</span>
+                    </button>
+                  );
+                })}
               </div>
             );
           })}
