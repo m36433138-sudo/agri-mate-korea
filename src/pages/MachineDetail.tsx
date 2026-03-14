@@ -127,7 +127,7 @@ export default function MachineDetail() {
         </CardContent>
       </Card>
 
-      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} />
+      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} entryDate={machine.entry_date} />
       <RepairDialog open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} />
       <EditMachineDialog open={editOpen} onOpenChange={setEditOpen} machine={machine} />
     </div>
