@@ -8,17 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Upload, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function MachinesList() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("전체");
   const [open, setOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -41,9 +43,14 @@ export default function MachinesList() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">기계관리</h1>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> 기계 등록
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" /> 일괄 등록
+          </Button>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> 기계 등록
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -98,6 +105,7 @@ export default function MachinesList() {
       )}
 
       <AddMachineDialog open={open} onOpenChange={setOpen} />
+      <BulkMachineDialog open={bulkOpen} onOpenChange={setBulkOpen} />
     </div>
   );
 }
@@ -153,6 +161,112 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>{mutation.isPending ? "등록 중..." : "등록"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type BulkMachineRow = {
+  model_name: string;
+  serial_number: string;
+  machine_type: string;
+  entry_date: string;
+  purchase_price: string;
+  notes: string;
+};
+
+const emptyMachineRow = (): BulkMachineRow => ({
+  model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "",
+});
+
+function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [rows, setRows] = useState<BulkMachineRow[]>([emptyMachineRow(), emptyMachineRow(), emptyMachineRow()]);
+
+  const updateRow = (i: number, field: keyof BulkMachineRow, value: string) => {
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  };
+
+  const removeRow = (i: number) => setRows((prev) => prev.filter((_, idx) => idx !== i));
+  const addRow = () => setRows((prev) => [...prev, emptyMachineRow()]);
+
+  const validRows = rows.filter((r) => r.model_name && r.serial_number && r.entry_date && r.purchase_price);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const inserts = validRows.map((r) => ({
+        model_name: r.model_name,
+        serial_number: r.serial_number,
+        machine_type: r.machine_type,
+        entry_date: r.entry_date,
+        purchase_price: parseInt(r.purchase_price),
+        notes: r.notes || null,
+      }));
+      const { error } = await supabase.from("machines").insert(inserts);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["machines"] });
+      toast({ title: `${validRows.length}대의 기계가 일괄 등록되었습니다.` });
+      onOpenChange(false);
+      setRows([emptyMachineRow(), emptyMachineRow(), emptyMachineRow()]);
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>기계 일괄 등록</DialogTitle>
+          <p className="text-sm text-muted-foreground">여러 기계를 한 번에 등록할 수 있습니다. 필수 항목(*)을 모두 입력해 주세요.</p>
+        </DialogHeader>
+
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-3">
+            {rows.map((row, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_100px_120px_130px_auto] gap-2 items-end">
+                {i === 0 && (
+                  <>
+                    <Label className="text-xs col-span-1">모델명 *</Label>
+                    <Label className="text-xs col-span-1">제조번호 *</Label>
+                    <Label className="text-xs col-span-1">구분 *</Label>
+                    <Label className="text-xs col-span-1">입고일 *</Label>
+                    <Label className="text-xs col-span-1">매입가 *</Label>
+                    <div />
+                  </>
+                )}
+                <Input value={row.model_name} onChange={(e) => updateRow(i, "model_name", e.target.value)} placeholder="모델명" className="h-9 text-sm" />
+                <Input value={row.serial_number} onChange={(e) => updateRow(i, "serial_number", e.target.value)} placeholder="제조번호" className="h-9 text-sm" />
+                <Select value={row.machine_type} onValueChange={(v) => updateRow(i, "machine_type", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="새기계">새기계</SelectItem>
+                    <SelectItem value="중고기계">중고</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input type="date" value={row.entry_date} onChange={(e) => updateRow(i, "entry_date", e.target.value)} className="h-9 text-sm" />
+                <Input type="number" value={row.purchase_price} onChange={(e) => updateRow(i, "purchase_price", e.target.value)} placeholder="매입가" className="h-9 text-sm" />
+                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(i)} disabled={rows.length <= 1}>
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <Button variant="outline" size="sm" className="mt-3" onClick={addRow}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> 행 추가
+          </Button>
+        </ScrollArea>
+
+        <DialogFooter className="pt-4 border-t">
+          <span className="text-sm text-muted-foreground mr-auto">유효한 행: {validRows.length} / {rows.length}</span>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={validRows.length === 0 || mutation.isPending}>
+            {mutation.isPending ? "등록 중..." : `${validRows.length}대 일괄 등록`}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
