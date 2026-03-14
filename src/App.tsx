@@ -9,6 +9,8 @@ import MachineDetail from "@/pages/MachineDetail";
 import CustomersList from "@/pages/CustomersList";
 import CustomerDetail from "@/pages/CustomerDetail";
 import RepairsList from "@/pages/RepairsList";
+import PartsList from "@/pages/PartsList";
+import RepairTemplates from "@/pages/RepairTemplates";
 import ChatBot from "@/pages/ChatBot";
 import NotFound from "@/pages/NotFound";
 
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/customers" element={<CustomersList />} />
             <Route path="/customers/:id" element={<CustomerDetail />} />
             <Route path="/repairs" element={<RepairsList />} />
+            <Route path="/parts" element={<PartsList />} />
+            <Route path="/repair-templates" element={<RepairTemplates />} />
             <Route path="/chat" element={<ChatBot />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

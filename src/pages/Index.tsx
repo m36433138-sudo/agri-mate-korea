@@ -21,7 +21,7 @@ export default function Dashboard() {
     queryKey: ["repairs-recent"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("repair_history")
+        .from("repairs")
         .select("*, machines(model_name, serial_number)")
         .order("repair_date", { ascending: false })
         .limit(5);
@@ -40,23 +40,21 @@ export default function Dashboard() {
   const salesThisMonth = machines?.filter((m) => m.sale_date?.startsWith(thisMonth)).length ?? 0;
   const repairsThisMonth = repairs?.filter((r) => r.repair_date.startsWith(thisMonth)).length ?? 0;
 
-  const recentSales = machines
-    ?.filter((m) => m.status === "판매완료" && m.sale_date)
-    .sort((a, b) => (b.sale_date! > a.sale_date! ? 1 : -1))
+  const recentEntries = machines
+    ?.filter((m) => m.status === "재고중")
+    .sort((a, b) => (b.entry_date > a.entry_date ? 1 : -1))
     .slice(0, 5) ?? [];
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">대시보드</h1>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <SummaryCard icon={Tractor} label="전체 재고" value={loading ? null : `${inStock.length}대`} sub={`새기계 ${newMachines.length} / 중고 ${usedMachines.length}`} />
         <SummaryCard icon={ShoppingCart} label="이번 달 판매" value={loading ? null : `${salesThisMonth}건`} />
         <SummaryCard icon={Wrench} label="이번 달 수리" value={loading ? null : `${repairsThisMonth}건`} />
       </div>
 
-      {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="shadow-card border-0">
           <CardHeader className="pb-3">
@@ -69,13 +67,13 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">수리 이력이 없습니다.</p>
             ) : (
               <div className="space-y-3">
-                {repairs?.map((r) => (
+                {repairs?.map((r: any) => (
                   <Link key={r.id} to={`/machines/${r.machine_id}`} className="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{r.repair_content}</p>
-                      <p className="text-xs text-muted-foreground">{(r.machines as any)?.model_name} · {formatDate(r.repair_date)}</p>
+                      <p className="text-xs text-muted-foreground">{r.machines?.model_name} · {formatDate(r.repair_date)}</p>
                     </div>
-                    {r.cost && <span className="text-sm font-medium tabular-nums ml-2 shrink-0">{formatPrice(r.cost)}</span>}
+                    {r.total_cost > 0 && <span className="text-sm font-medium tabular-nums ml-2 shrink-0">{formatPrice(r.total_cost)}</span>}
                   </Link>
                 ))}
               </div>
@@ -85,22 +83,24 @@ export default function Dashboard() {
 
         <Card className="shadow-card border-0">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">최근 판매</CardTitle>
+            <CardTitle className="text-base font-semibold">최근 입고 기계</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
               <LoadingSkeleton />
-            ) : recentSales.length === 0 ? (
-              <p className="text-sm text-muted-foreground">판매 이력이 없습니다.</p>
+            ) : recentEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">입고 기계가 없습니다.</p>
             ) : (
               <div className="space-y-3">
-                {recentSales.map((m) => (
+                {recentEntries.map((m) => (
                   <Link key={m.id} to={`/machines/${m.id}`} className="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{m.model_name}</p>
-                      <p className="text-xs text-muted-foreground">{m.serial_number} · {formatDate(m.sale_date!)}</p>
+                      <p className="text-xs text-muted-foreground">{m.serial_number} · {formatDate(m.entry_date)}</p>
                     </div>
-                    {m.sale_price && <span className="text-sm font-bold tabular-nums ml-2 shrink-0 text-primary">{formatPrice(m.sale_price)}</span>}
+                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                      <TypeBadge type={m.machine_type} />
+                    </div>
                   </Link>
                 ))}
               </div>

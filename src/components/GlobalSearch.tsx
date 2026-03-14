@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Tractor, Users, Wrench } from "lucide-react";
+import { Search, Tractor, Users, Wrench, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -8,7 +8,7 @@ type Result = {
   id: string;
   label: string;
   sub: string;
-  category: "machine" | "customer" | "repair";
+  category: "machine" | "customer" | "repair" | "part";
   link: string;
 };
 
@@ -16,9 +16,10 @@ const CATEGORY_META = {
   machine: { label: "기계", icon: Tractor },
   customer: { label: "고객", icon: Users },
   repair: { label: "수리이력", icon: Wrench },
+  part: { label: "부품", icon: Package },
 } as const;
 
-const CATEGORIES = ["machine", "customer", "repair"] as const;
+const CATEGORIES = ["machine", "customer", "repair", "part"] as const;
 
 export default function GlobalSearch() {
   const [query, setQuery] = useState("");
@@ -29,10 +30,8 @@ export default function GlobalSearch() {
   const ref = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Flat ordered list for keyboard nav
   const flatResults = CATEGORIES.flatMap((cat) => results.filter((r) => r.category === cat));
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -41,7 +40,6 @@ export default function GlobalSearch() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Reset active index when results change
   useEffect(() => { setActiveIndex(-1); }, [results]);
 
   useEffect(() => {
@@ -51,10 +49,11 @@ export default function GlobalSearch() {
     const timer = setTimeout(async () => {
       const like = `%${q}%`;
 
-      const [machinesRes, customersRes, repairsRes] = await Promise.all([
+      const [machinesRes, customersRes, repairsRes, partsRes] = await Promise.all([
         supabase.from("machines").select("id, model_name, serial_number").or(`model_name.ilike.${like},serial_number.ilike.${like}`).limit(5),
         supabase.from("customers").select("id, name, phone").or(`name.ilike.${like},phone.ilike.${like}`).limit(5),
-        supabase.from("repair_history").select("id, machine_id, repair_content, repair_date, machines(model_name)").ilike("repair_content", like).limit(5),
+        supabase.from("repairs").select("id, machine_id, repair_content, repair_date, machines(model_name)").ilike("repair_content", like).limit(5),
+        supabase.from("parts").select("id, part_name, part_number").or(`part_name.ilike.${like},part_number.ilike.${like}`).limit(5),
       ]);
 
       const items: Result[] = [
@@ -66,6 +65,9 @@ export default function GlobalSearch() {
         })),
         ...(repairsRes.data || []).map((r: any) => ({
           id: r.id, label: r.repair_content, sub: `${r.repair_date} · ${r.machines?.model_name || ""}`, category: "repair" as const, link: `/machines/${r.machine_id}`,
+        })),
+        ...(partsRes.data || []).map((p) => ({
+          id: p.id, label: p.part_name, sub: p.part_number, category: "part" as const, link: `/parts`,
         })),
       ];
 
@@ -84,7 +86,6 @@ export default function GlobalSearch() {
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!open || flatResults.length === 0) return;
-
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIndex((prev) => (prev < flatResults.length - 1 ? prev + 1 : 0));
@@ -99,7 +100,6 @@ export default function GlobalSearch() {
     }
   }, [open, flatResults, activeIndex, pick]);
 
-  // Scroll active item into view
   useEffect(() => {
     if (activeIndex >= 0 && listRef.current) {
       const el = listRef.current.querySelector(`[data-index="${activeIndex}"]`);
@@ -122,7 +122,7 @@ export default function GlobalSearch() {
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder="검색 (기계, 고객, 수리이력)"
+        placeholder="검색 (기계, 고객, 수리, 부품)"
         className="pl-9 h-9 bg-background border-border"
       />
 

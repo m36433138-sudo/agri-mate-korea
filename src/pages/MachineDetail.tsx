@@ -12,8 +12,9 @@ import { formatPrice, formatDate } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Pencil, Printer } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import RepairInputModal from "@/components/RepairInputModal";
 
 export default function MachineDetail() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,7 @@ export default function MachineDetail() {
   const [saleOpen, setSaleOpen] = useState(false);
   const [repairOpen, setRepairOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [expandedRepair, setExpandedRepair] = useState<string | null>(null);
 
   const { data: machine, isLoading } = useQuery({
     queryKey: ["machine", id],
@@ -35,7 +37,11 @@ export default function MachineDetail() {
   const { data: repairs, isLoading: repairsLoading } = useQuery({
     queryKey: ["repairs", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("repair_history").select("*").eq("machine_id", id!).order("repair_date", { ascending: false });
+      const { data, error } = await supabase
+        .from("repairs")
+        .select("*, repair_parts(*, parts(part_name, part_number, unit))")
+        .eq("machine_id", id!)
+        .order("repair_date", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -55,13 +61,11 @@ export default function MachineDetail() {
         </Button>
       </div>
 
-      {/* Print Header - only visible in print */}
       <div className="hidden print:block mb-6">
-        <h1 className="text-xl font-bold">AgriManager — 기계 상세 정보</h1>
+        <h1 className="text-xl font-bold">얀마 관리 시스템 — 기계 상세 정보</h1>
         <p className="text-sm text-gray-500">출력일: {new Date().toLocaleDateString("ko-KR")}</p>
       </div>
 
-      {/* Machine Header Card */}
       <Card className="shadow-card border-0 mb-6 print:shadow-none print:border">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
@@ -103,7 +107,6 @@ export default function MachineDetail() {
         </CardContent>
       </Card>
 
-      {/* Repair History */}
       <Card className="shadow-card border-0 print:shadow-none print:border">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base font-semibold">수리 이력</CardTitle>
@@ -115,46 +118,73 @@ export default function MachineDetail() {
           {repairsLoading ? (
             <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
           ) : repairs?.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">수리 이력이 없습니다.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">수리 이력이 없습니다. 첫 수리를 등록해보세요.</p>
           ) : (
             <>
-              {/* Screen view - timeline */}
+              {/* Screen view */}
               <div className="relative print:hidden">
                 <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
                 <div className="space-y-6 pl-8">
-                  {repairs?.map((r) => (
+                  {repairs?.map((r: any) => (
                     <div key={r.id} className="relative">
                       <div className="absolute -left-[22px] top-1 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-card" />
-                      <p className="text-sm font-semibold">{formatDate(r.repair_date)}</p>
-                      <p className="text-sm mt-1">{r.repair_content}</p>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{formatDate(r.repair_date)}</p>
+                          <p className="text-sm mt-1">{r.repair_content}</p>
+                        </div>
+                        {(r.repair_parts?.length > 0) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 h-7 px-2"
+                            onClick={() => setExpandedRepair(expandedRepair === r.id ? null : r.id)}
+                          >
+                            {expandedRepair === r.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        )}
+                      </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
-                        {r.parts_used && <span>부품: {r.parts_used}</span>}
-                        {r.cost != null && <span>비용: {formatPrice(r.cost)}</span>}
+                        {r.labor_cost > 0 && <span>공임비: {formatPrice(r.labor_cost)}</span>}
+                        {r.total_cost > 0 && <span>총비용: {formatPrice(r.total_cost)}</span>}
                         {r.technician && <span>담당: {r.technician}</span>}
                       </div>
+                      {expandedRepair === r.id && r.repair_parts?.length > 0 && (
+                        <div className="mt-2 rounded-md bg-muted/50 p-2">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">사용 부품</p>
+                          {r.repair_parts.map((rp: any) => (
+                            <div key={rp.id} className="flex justify-between text-xs py-0.5">
+                              <span>{rp.parts?.part_name} <span className="text-muted-foreground font-mono">({rp.parts?.part_number})</span></span>
+                              <span>{rp.quantity} {rp.parts?.unit || "개"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Print view - table */}
+              {/* Print view */}
               <table className="hidden print:table w-full text-sm border-collapse">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2 pr-3 font-semibold">수리일</th>
                     <th className="text-left py-2 pr-3 font-semibold">수리 내용</th>
                     <th className="text-left py-2 pr-3 font-semibold">사용 부품</th>
-                    <th className="text-right py-2 pr-3 font-semibold">비용</th>
+                    <th className="text-right py-2 pr-3 font-semibold">공임비</th>
+                    <th className="text-right py-2 pr-3 font-semibold">총비용</th>
                     <th className="text-left py-2 font-semibold">담당</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {repairs?.map((r) => (
+                  {repairs?.map((r: any) => (
                     <tr key={r.id} className="border-b">
                       <td className="py-2 pr-3 whitespace-nowrap">{formatDate(r.repair_date)}</td>
                       <td className="py-2 pr-3">{r.repair_content}</td>
-                      <td className="py-2 pr-3">{r.parts_used || "-"}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{r.cost != null ? formatPrice(r.cost) : "-"}</td>
+                      <td className="py-2 pr-3">{r.repair_parts?.map((rp: any) => `${rp.parts?.part_name} x${rp.quantity}`).join(", ") || "-"}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{r.labor_cost > 0 ? formatPrice(r.labor_cost) : "-"}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{r.total_cost > 0 ? formatPrice(r.total_cost) : "-"}</td>
                       <td className="py-2">{r.technician || "-"}</td>
                     </tr>
                   ))}
@@ -166,7 +196,7 @@ export default function MachineDetail() {
       </Card>
 
       <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} entryDate={machine.entry_date} />
-      <RepairDialog open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} />
+      <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} machineName={`${machine.model_name} (${machine.serial_number})`} />
       <EditMachineDialog open={editOpen} onOpenChange={setEditOpen} machine={machine} />
     </div>
   );
@@ -188,7 +218,6 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [form, setForm] = useState({ customer_id: "", sale_price: "", sale_date: "" });
   const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
-  const [createdCustomerId, setCreatedCustomerId] = useState<string | null>(null);
 
   const { data: customers } = useQuery({
     queryKey: ["customers"],
@@ -199,12 +228,9 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
     },
   });
 
-  // Calculate inventory duration
   const daysInStock = Math.floor((new Date().getTime() - new Date(entryDate).getTime()) / (1000 * 60 * 60 * 24));
 
-  const selectedCustomer = mode === "existing"
-    ? customers?.find((c) => c.id === form.customer_id)
-    : null;
+  const selectedCustomer = mode === "existing" ? customers?.find((c) => c.id === form.customer_id) : null;
 
   const formValid = mode === "existing"
     ? form.customer_id && form.sale_price && form.sale_date
@@ -213,23 +239,16 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
   const createCustomerAndSell = useMutation({
     mutationFn: async () => {
       let customerId = form.customer_id;
-
       if (mode === "new") {
         const { data, error } = await supabase.from("customers").insert({
-          name: newCustomer.name,
-          phone: newCustomer.phone,
-          address: newCustomer.address || null,
+          name: newCustomer.name, phone: newCustomer.phone, address: newCustomer.address || null,
         }).select("id").single();
         if (error) throw error;
         customerId = data.id;
-        setCreatedCustomerId(customerId);
       }
-
       const { error } = await supabase.from("machines").update({
-        status: "판매완료",
-        customer_id: customerId,
-        sale_price: parseInt(form.sale_price),
-        sale_date: form.sale_date,
+        status: "판매완료", customer_id: customerId,
+        sale_price: parseInt(form.sale_price), sale_date: form.sale_date,
       }).eq("id", machineId);
       if (error) throw error;
     },
@@ -244,11 +263,9 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
   });
 
   const handleClose = () => {
-    setStep("form");
-    setMode("existing");
+    setStep("form"); setMode("existing");
     setForm({ customer_id: "", sale_price: "", sale_date: "" });
     setNewCustomer({ name: "", phone: "", address: "" });
-    setCreatedCustomerId(null);
     onOpenChange(false);
   };
 
@@ -260,17 +277,13 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle>판매 처리</DialogTitle></DialogHeader>
-
-        {/* Inventory duration banner */}
         <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
           <span className="text-muted-foreground">재고 보유 기간:</span>
           <span className="font-semibold text-foreground">{daysInStock}일</span>
-          <span className="text-muted-foreground text-xs">({formatDate(entryDate)} ~ 오늘)</span>
         </div>
 
         {step === "form" ? (
           <div className="space-y-4">
-            {/* Customer mode toggle */}
             <div>
               <Label className="mb-2 block">고객 선택 *</Label>
               <div className="flex gap-2 mb-3">
@@ -279,7 +292,6 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
                   <Plus className="h-3.5 w-3.5 mr-1" /> 신규 고객
                 </Button>
               </div>
-
               {mode === "existing" ? (
                 <Select value={form.customer_id} onValueChange={(v) => setForm((f) => ({ ...f, customer_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="고객을 선택하세요" /></SelectTrigger>
@@ -291,31 +303,22 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
                 </Select>
               ) : (
                 <div className="space-y-3 rounded-md border p-3 bg-background">
-                  <div><Label className="text-xs">이름 *</Label><Input value={newCustomer.name} onChange={(e) => setNewCustomer((p) => ({ ...p, name: e.target.value }))} placeholder="고객명" /></div>
+                  <div><Label className="text-xs">이름 *</Label><Input value={newCustomer.name} onChange={(e) => setNewCustomer((p) => ({ ...p, name: e.target.value }))} /></div>
                   <div><Label className="text-xs">연락처 *</Label><Input value={newCustomer.phone} onChange={(e) => setNewCustomer((p) => ({ ...p, phone: e.target.value }))} placeholder="010-0000-0000" /></div>
-                  <div><Label className="text-xs">주소</Label><Input value={newCustomer.address} onChange={(e) => setNewCustomer((p) => ({ ...p, address: e.target.value }))} placeholder="주소 (선택)" /></div>
+                  <div><Label className="text-xs">주소</Label><Input value={newCustomer.address} onChange={(e) => setNewCustomer((p) => ({ ...p, address: e.target.value }))} /></div>
                 </div>
               )}
             </div>
-
-            <div>
-              <Label>판매가 (원) *</Label>
-              <Input type="number" value={form.sale_price} onChange={(e) => setForm((f) => ({ ...f, sale_price: e.target.value }))} />
-            </div>
-            <div>
-              <Label>판매일 *</Label>
-              <Input type="date" value={form.sale_date} onChange={(e) => setForm((f) => ({ ...f, sale_date: e.target.value }))} />
-            </div>
+            <div><Label>판매가 (원) *</Label><Input type="number" value={form.sale_price} onChange={(e) => setForm((f) => ({ ...f, sale_price: e.target.value }))} /></div>
+            <div><Label>판매일 *</Label><Input type="date" value={form.sale_date} onChange={(e) => setForm((f) => ({ ...f, sale_date: e.target.value }))} /></div>
           </div>
         ) : (
-          /* Confirmation step */
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">아래 내용으로 판매를 처리합니다. 확인해 주세요.</p>
+            <p className="text-sm text-muted-foreground">아래 내용으로 판매를 처리합니다.</p>
             <div className="rounded-md border bg-muted/50 p-4 space-y-2 text-sm">
               <ConfirmRow label="고객" value={customerDisplayName} />
               <ConfirmRow label="판매가" value={formatPrice(parseInt(form.sale_price))} />
               <ConfirmRow label="판매일" value={formatDate(form.sale_date)} />
-              <ConfirmRow label="재고 기간" value={`${daysInStock}일`} />
             </div>
           </div>
         )}
@@ -349,76 +352,21 @@ function ConfirmRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RepairDialog({ open, onOpenChange, machineId }: { open: boolean; onOpenChange: (v: boolean) => void; machineId: string }) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const [form, setForm] = useState({ repair_date: "", repair_content: "", parts_used: "", cost: "", technician: "" });
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("repair_history").insert({
-        machine_id: machineId,
-        repair_date: form.repair_date,
-        repair_content: form.repair_content,
-        parts_used: form.parts_used || null,
-        cost: form.cost ? parseInt(form.cost) : null,
-        technician: form.technician || null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["repairs", machineId] });
-      qc.invalidateQueries({ queryKey: ["repairs-recent"] });
-      toast({ title: "수리 이력이 성공적으로 저장되었습니다." });
-      onOpenChange(false);
-      setForm({ repair_date: "", repair_content: "", parts_used: "", cost: "", technician: "" });
-    },
-    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
-  });
-
-  const valid = form.repair_date && form.repair_content;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>수리 이력 추가</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div><Label>수리일 *</Label><Input type="date" value={form.repair_date} onChange={e => setForm(f => ({...f, repair_date: e.target.value}))} /></div>
-          <div><Label>수리 내용 *</Label><Textarea value={form.repair_content} onChange={e => setForm(f => ({...f, repair_content: e.target.value}))} placeholder="수리 내용을 입력하세요" /></div>
-          <div><Label>사용 부품</Label><Input value={form.parts_used} onChange={e => setForm(f => ({...f, parts_used: e.target.value}))} /></div>
-          <div><Label>수리 비용 (원)</Label><Input type="number" value={form.cost} onChange={e => setForm(f => ({...f, cost: e.target.value}))} /></div>
-          <div><Label>담당 기사</Label><Input value={form.technician} onChange={e => setForm(f => ({...f, technician: e.target.value}))} /></div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>{mutation.isPending ? "저장 중..." : "저장"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onOpenChange: (v: boolean) => void; machine: any }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    model_name: machine.model_name,
-    serial_number: machine.serial_number,
-    machine_type: machine.machine_type,
-    entry_date: machine.entry_date,
-    purchase_price: String(machine.purchase_price),
-    notes: machine.notes || "",
+    model_name: machine.model_name, serial_number: machine.serial_number,
+    machine_type: machine.machine_type, entry_date: machine.entry_date,
+    purchase_price: String(machine.purchase_price), notes: machine.notes || "",
   });
 
   const mutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("machines").update({
-        model_name: form.model_name,
-        serial_number: form.serial_number,
-        machine_type: form.machine_type,
-        entry_date: form.entry_date,
-        purchase_price: parseInt(form.purchase_price),
-        notes: form.notes || null,
+        model_name: form.model_name, serial_number: form.serial_number,
+        machine_type: form.machine_type, entry_date: form.entry_date,
+        purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
       }).eq("id", machine.id);
       if (error) throw error;
     },

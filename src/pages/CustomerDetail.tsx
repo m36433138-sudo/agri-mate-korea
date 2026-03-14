@@ -1,14 +1,21 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", id],
@@ -34,7 +41,11 @@ export default function CustomerDetail() {
     queryKey: ["customer-repairs", id],
     enabled: machineIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase.from("repair_history").select("*, machines(model_name)").in("machine_id", machineIds).order("repair_date", { ascending: false });
+      const { data, error } = await supabase
+        .from("repairs")
+        .select("*, machines(model_name)")
+        .in("machine_id", machineIds)
+        .order("repair_date", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -42,6 +53,16 @@ export default function CustomerDetail() {
 
   if (isLoading) return <div className="space-y-4"><Skeleton className="h-32 w-full" /></div>;
   if (!customer) return <p className="text-muted-foreground">고객을 찾을 수 없습니다.</p>;
+
+  // Group repairs by machine
+  const repairsByMachine: Record<string, { machineName: string; items: any[] }> = {};
+  repairs?.forEach((r: any) => {
+    const mid = r.machine_id;
+    if (!repairsByMachine[mid]) {
+      repairsByMachine[mid] = { machineName: r.machines?.model_name || "알 수 없음", items: [] };
+    }
+    repairsByMachine[mid].items.push(r);
+  });
 
   return (
     <div>
@@ -51,7 +72,12 @@ export default function CustomerDetail() {
 
       <Card className="shadow-card border-0 mb-6">
         <CardContent className="p-6">
-          <h1 className="text-2xl font-bold">{customer.name}</h1>
+          <div className="flex items-start justify-between">
+            <h1 className="text-2xl font-bold">{customer.name}</h1>
+            <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t">
             <div><p className="text-xs text-muted-foreground">연락처</p><p className="font-medium">{customer.phone}</p></div>
             <div><p className="text-xs text-muted-foreground">주소</p><p className="font-medium">{customer.address || "-"}</p></div>
@@ -85,25 +111,79 @@ export default function CustomerDetail() {
       </Card>
 
       <Card className="shadow-card border-0">
-        <CardHeader className="pb-3"><CardTitle className="text-base font-semibold">수리 이력</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base font-semibold">전체 수리 이력</CardTitle></CardHeader>
         <CardContent>
           {!repairs || repairs.length === 0 ? (
             <p className="text-sm text-muted-foreground">수리 이력이 없습니다.</p>
           ) : (
-            <div className="space-y-3">
-              {repairs.map(r => (
-                <div key={r.id} className="p-3 rounded-lg bg-muted/30">
-                  <div className="flex justify-between">
-                    <p className="text-sm font-medium">{r.repair_content}</p>
-                    {r.cost != null && <span className="text-sm tabular-nums font-medium">{formatPrice(r.cost)}</span>}
+            <div className="space-y-6">
+              {Object.entries(repairsByMachine).map(([mid, group]) => (
+                <div key={mid}>
+                  <h4 className="text-sm font-semibold mb-2">{group.machineName}</h4>
+                  <div className="space-y-2">
+                    {group.items.map((r: any) => (
+                      <div key={r.id} className="p-3 rounded-lg bg-muted/30">
+                        <div className="flex justify-between">
+                          <p className="text-sm font-medium">{r.repair_content}</p>
+                          {r.total_cost > 0 && <span className="text-sm tabular-nums font-medium">{formatPrice(r.total_cost)}</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDate(r.repair_date)}{r.technician ? ` · ${r.technician}` : ""}
+                          {r.labor_cost > 0 ? ` · 공임비 ${formatPrice(r.labor_cost)}` : ""}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{(r.machines as any)?.model_name} · {formatDate(r.repair_date)}{r.technician ? ` · ${r.technician}` : ""}</p>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {customer && <EditCustomerDialog open={editOpen} onOpenChange={setEditOpen} customer={customer} />}
     </div>
+  );
+}
+
+function EditCustomerDialog({ open, onOpenChange, customer }: { open: boolean; onOpenChange: (v: boolean) => void; customer: any }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    name: customer.name, phone: customer.phone, address: customer.address || "", notes: customer.notes || "",
+  });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("customers").update({
+        name: form.name, phone: form.phone, address: form.address || null, notes: form.notes || null,
+      }).eq("id", customer.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer", customer.id] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      toast({ title: "고객 정보가 수정되었습니다." });
+      onOpenChange(false);
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>고객 정보 수정</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div><Label>고객명</Label><Input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} /></div>
+          <div><Label>연락처</Label><Input value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} /></div>
+          <div><Label>주소</Label><Input value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} /></div>
+          <div><Label>비고</Label><Input value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>{mutation.isPending ? "저장 중..." : "저장"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
