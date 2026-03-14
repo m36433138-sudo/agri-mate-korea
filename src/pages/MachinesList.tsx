@@ -252,8 +252,17 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>기계 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">여러 기계를 한 번에 등록할 수 있습니다. 필수 항목(*)을 모두 입력해 주세요.</p>
+          <p className="text-sm text-muted-foreground">여러 기계를 한 번에 등록할 수 있습니다. 엑셀 파일을 업로드하거나 직접 입력하세요.</p>
+          <p className="text-xs text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 구분(새기계/중고기계), 입고일, 매입가, 특이사항</p>
         </DialogHeader>
+
+        <div>
+          <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium text-primary hover:underline">
+            <FileSpreadsheet className="h-4 w-4" />
+            엑셀 파일 불러오기
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+          </label>
+        </div>
 
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-3">

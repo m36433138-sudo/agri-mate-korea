@@ -192,8 +192,17 @@ function BulkCustomerDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>고객 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">여러 고객을 한 번에 등록할 수 있습니다.</p>
+          <p className="text-sm text-muted-foreground">여러 고객을 한 번에 등록할 수 있습니다. 엑셀 파일을 업로드하거나 직접 입력하세요.</p>
+          <p className="text-xs text-muted-foreground">엑셀 열 순서: 고객명, 연락처, 주소, 비고</p>
         </DialogHeader>
+
+        <div>
+          <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium text-primary hover:underline">
+            <FileSpreadsheet className="h-4 w-4" />
+            엑셀 파일 불러오기
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+          </label>
+        </div>
 
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-3">
