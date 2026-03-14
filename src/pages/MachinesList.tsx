@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Plus, Search, Upload, Trash2 } from "lucide-react";
+import { Plus, Search, Upload, Trash2, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -176,6 +177,15 @@ type BulkMachineRow = {
   notes: string;
 };
 
+const formatExcelDate = (v: any): string => {
+  if (!v) return "";
+  if (typeof v === "number") {
+    const d = XLSX.SSF.parse_date_code(v);
+    return `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
+  }
+  return String(v);
+};
+
 const emptyMachineRow = (): BulkMachineRow => ({
   model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "",
 });
@@ -191,6 +201,36 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   const removeRow = (i: number) => setRows((prev) => prev.filter((_, idx) => idx !== i));
   const addRow = () => setRows((prev) => [...prev, emptyMachineRow()]);
+
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target?.result, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+        const mapped: BulkMachineRow[] = json.map((row) => {
+          const raw = Object.values(row);
+          return {
+            model_name: String(raw[0] || ""),
+            serial_number: String(raw[1] || ""),
+            machine_type: String(raw[2] || "새기계"),
+            entry_date: formatExcelDate(raw[3]),
+            purchase_price: String(raw[4] || ""),
+            notes: String(raw[5] || ""),
+          };
+        });
+        setRows((prev) => [...prev.filter(r => r.model_name || r.serial_number), ...mapped]);
+        toast({ title: `엑셀에서 ${mapped.length}행을 불러왔습니다.` });
+      } catch {
+        toast({ title: "엑셀 파일을 읽을 수 없습니다.", variant: "destructive" });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
 
   const validRows = rows.filter((r) => r.model_name && r.serial_number && r.entry_date && r.purchase_price);
 
@@ -221,8 +261,17 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>기계 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">여러 기계를 한 번에 등록할 수 있습니다. 필수 항목(*)을 모두 입력해 주세요.</p>
+          <p className="text-sm text-muted-foreground">여러 기계를 한 번에 등록할 수 있습니다. 엑셀 파일을 업로드하거나 직접 입력하세요.</p>
+          <p className="text-xs text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 구분(새기계/중고기계), 입고일, 매입가, 특이사항</p>
         </DialogHeader>
+
+        <div>
+          <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium text-primary hover:underline">
+            <FileSpreadsheet className="h-4 w-4" />
+            엑셀 파일 불러오기
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+          </label>
+        </div>
 
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-3">

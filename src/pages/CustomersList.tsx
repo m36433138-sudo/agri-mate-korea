@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Upload, Trash2 } from "lucide-react";
+import { Plus, Search, Upload, Trash2, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -136,6 +137,34 @@ function BulkCustomerDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const removeRow = (i: number) => setRows((prev) => prev.filter((_, idx) => idx !== i));
   const addRow = () => setRows((prev) => [...prev, emptyCustomerRow()]);
 
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target?.result, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+        const mapped: BulkCustomerRow[] = json.map((row) => {
+          const raw = Object.values(row);
+          return {
+            name: String(raw[0] || ""),
+            phone: String(raw[1] || ""),
+            address: String(raw[2] || ""),
+            notes: String(raw[3] || ""),
+          };
+        });
+        setRows((prev) => [...prev.filter(r => r.name || r.phone), ...mapped]);
+        toast({ title: `엑셀에서 ${mapped.length}행을 불러왔습니다.` });
+      } catch {
+        toast({ title: "엑셀 파일을 읽을 수 없습니다.", variant: "destructive" });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
   const validRows = rows.filter((r) => r.name && r.phone);
 
   const mutation = useMutation({
@@ -163,8 +192,17 @@ function BulkCustomerDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>고객 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">여러 고객을 한 번에 등록할 수 있습니다.</p>
+          <p className="text-sm text-muted-foreground">여러 고객을 한 번에 등록할 수 있습니다. 엑셀 파일을 업로드하거나 직접 입력하세요.</p>
+          <p className="text-xs text-muted-foreground">엑셀 열 순서: 고객명, 연락처, 주소, 비고</p>
         </DialogHeader>
+
+        <div>
+          <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium text-primary hover:underline">
+            <FileSpreadsheet className="h-4 w-4" />
+            엑셀 파일 불러오기
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+          </label>
+        </div>
 
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-3">
