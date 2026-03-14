@@ -1,4 +1,4 @@
-import { LayoutDashboard, Tractor, Users, Wrench } from "lucide-react";
+import { LayoutDashboard, Tractor, Users, Wrench, Sparkles } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
