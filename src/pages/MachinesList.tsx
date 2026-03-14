@@ -177,6 +177,15 @@ type BulkMachineRow = {
   notes: string;
 };
 
+const formatExcelDate = (v: any): string => {
+  if (!v) return "";
+  if (typeof v === "number") {
+    const d = XLSX.SSF.parse_date_code(v);
+    return `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
+  }
+  return String(v);
+};
+
 const emptyMachineRow = (): BulkMachineRow => ({
   model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "",
 });
