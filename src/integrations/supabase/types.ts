@@ -94,6 +94,33 @@ export type Database = {
           },
         ]
       }
+      parts: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          part_name: string
+          part_number: string
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          part_name: string
+          part_number: string
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          part_name?: string
+          part_number?: string
+          unit?: string | null
+        }
+        Relationships: []
+      }
       repair_history: {
         Row: {
           cost: number | null
@@ -128,6 +155,149 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "repair_history_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_parts: {
+        Row: {
+          id: string
+          notes: string | null
+          part_id: string
+          quantity: number
+          repair_id: string
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          part_id: string
+          quantity?: number
+          repair_id: string
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          part_id?: string
+          quantity?: number
+          repair_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_parts_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_parts_repair_id_fkey"
+            columns: ["repair_id"]
+            isOneToOne: false
+            referencedRelation: "repairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_template_items: {
+        Row: {
+          id: string
+          notes: string | null
+          part_id: string
+          quantity: number
+          template_id: string
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          part_id: string
+          quantity?: number
+          template_id: string
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          part_id?: string
+          quantity?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_template_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "repair_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          template_name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          template_name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
+      repairs: {
+        Row: {
+          created_at: string
+          id: string
+          labor_cost: number | null
+          machine_id: string
+          notes: string | null
+          repair_content: string
+          repair_date: string
+          technician: string | null
+          total_cost: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          labor_cost?: number | null
+          machine_id: string
+          notes?: string | null
+          repair_content: string
+          repair_date: string
+          technician?: string | null
+          total_cost?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          labor_cost?: number | null
+          machine_id?: string
+          notes?: string | null
+          repair_content?: string
+          repair_date?: string
+          technician?: string | null
+          total_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repairs_machine_id_fkey"
             columns: ["machine_id"]
             isOneToOne: false
             referencedRelation: "machines"
