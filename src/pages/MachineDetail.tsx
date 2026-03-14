@@ -12,7 +12,7 @@ import { formatPrice, formatDate } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function MachineDetail() {
