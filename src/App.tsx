@@ -9,6 +9,7 @@ import MachineDetail from "@/pages/MachineDetail";
 import CustomersList from "@/pages/CustomersList";
 import CustomerDetail from "@/pages/CustomerDetail";
 import RepairsList from "@/pages/RepairsList";
+import ChatBot from "@/pages/ChatBot";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
