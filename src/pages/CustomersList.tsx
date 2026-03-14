@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Upload, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function CustomersList() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers"],
@@ -30,7 +32,12 @@ export default function CustomersList() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">고객관리</h1>
-        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> 고객 등록</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" /> 일괄 등록
+          </Button>
+          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> 고객 등록</Button>
+        </div>
       </div>
 
       <div className="relative max-w-xs mb-4">
@@ -66,6 +73,7 @@ export default function CustomersList() {
       )}
 
       <AddCustomerDialog open={open} onOpenChange={setOpen} />
+      <BulkCustomerDialog open={bulkOpen} onOpenChange={setBulkOpen} />
     </div>
   );
 }
@@ -107,6 +115,90 @@ function AddCustomerDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => mutation.mutate()} disabled={!(form.name && form.phone) || mutation.isPending}>{mutation.isPending ? "등록 중..." : "등록"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type BulkCustomerRow = { name: string; phone: string; address: string; notes: string };
+const emptyCustomerRow = (): BulkCustomerRow => ({ name: "", phone: "", address: "", notes: "" });
+
+function BulkCustomerDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [rows, setRows] = useState<BulkCustomerRow[]>([emptyCustomerRow(), emptyCustomerRow(), emptyCustomerRow()]);
+
+  const updateRow = (i: number, field: keyof BulkCustomerRow, value: string) => {
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  };
+
+  const removeRow = (i: number) => setRows((prev) => prev.filter((_, idx) => idx !== i));
+  const addRow = () => setRows((prev) => [...prev, emptyCustomerRow()]);
+
+  const validRows = rows.filter((r) => r.name && r.phone);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const inserts = validRows.map((r) => ({
+        name: r.name,
+        phone: r.phone,
+        address: r.address || null,
+        notes: r.notes || null,
+      }));
+      const { error } = await supabase.from("customers").insert(inserts);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      toast({ title: `${validRows.length}명의 고객이 일괄 등록되었습니다.` });
+      onOpenChange(false);
+      setRows([emptyCustomerRow(), emptyCustomerRow(), emptyCustomerRow()]);
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>고객 일괄 등록</DialogTitle>
+          <p className="text-sm text-muted-foreground">여러 고객을 한 번에 등록할 수 있습니다.</p>
+        </DialogHeader>
+
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-3">
+            {rows.map((row, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                {i === 0 && (
+                  <>
+                    <Label className="text-xs">고객명 *</Label>
+                    <Label className="text-xs">연락처 *</Label>
+                    <Label className="text-xs">주소</Label>
+                    <div />
+                  </>
+                )}
+                <Input value={row.name} onChange={(e) => updateRow(i, "name", e.target.value)} placeholder="고객명" className="h-9 text-sm" />
+                <Input value={row.phone} onChange={(e) => updateRow(i, "phone", e.target.value)} placeholder="010-0000-0000" className="h-9 text-sm" />
+                <Input value={row.address} onChange={(e) => updateRow(i, "address", e.target.value)} placeholder="주소 (선택)" className="h-9 text-sm" />
+                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(i)} disabled={rows.length <= 1}>
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <Button variant="outline" size="sm" className="mt-3" onClick={addRow}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> 행 추가
+          </Button>
+        </ScrollArea>
+
+        <DialogFooter className="pt-4 border-t">
+          <span className="text-sm text-muted-foreground mr-auto">유효한 행: {validRows.length} / {rows.length}</span>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={validRows.length === 0 || mutation.isPending}>
+            {mutation.isPending ? "등록 중..." : `${validRows.length}명 일괄 등록`}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
