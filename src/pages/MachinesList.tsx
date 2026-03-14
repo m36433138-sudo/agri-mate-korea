@@ -193,6 +193,36 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const removeRow = (i: number) => setRows((prev) => prev.filter((_, idx) => idx !== i));
   const addRow = () => setRows((prev) => [...prev, emptyMachineRow()]);
 
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target?.result, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+        const mapped: BulkMachineRow[] = json.map((row) => {
+          const raw = Object.values(row);
+          return {
+            model_name: String(raw[0] || ""),
+            serial_number: String(raw[1] || ""),
+            machine_type: String(raw[2] || "새기계"),
+            entry_date: formatExcelDate(raw[3]),
+            purchase_price: String(raw[4] || ""),
+            notes: String(raw[5] || ""),
+          };
+        });
+        setRows((prev) => [...prev.filter(r => r.model_name || r.serial_number), ...mapped]);
+        toast({ title: `엑셀에서 ${mapped.length}행을 불러왔습니다.` });
+      } catch {
+        toast({ title: "엑셀 파일을 읽을 수 없습니다.", variant: "destructive" });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
   const validRows = rows.filter((r) => r.model_name && r.serial_number && r.entry_date && r.purchase_price);
 
   const mutation = useMutation({
