@@ -19,7 +19,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function MachinesList() {
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("전체");
+  const [typeTab, setTypeTab] = useState("전체");
+  const [statusTab, setStatusTab] = useState("전체");
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const { toast } = useToast();
@@ -28,16 +29,20 @@ export default function MachinesList() {
   const { data: machines, isLoading } = useQuery({
     queryKey: ["machines"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("machines").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("machines")
+        .select("*, customers(name)")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
 
-  const filtered = machines?.filter((m) => {
-    const matchesSearch = m.model_name.includes(search) || m.serial_number.includes(search);
-    const matchesTab = tab === "전체" || m.machine_type === tab;
-    return matchesSearch && matchesTab;
+  const filtered = machines?.filter((m: any) => {
+    const matchesSearch = m.model_name.toLowerCase().includes(search.toLowerCase()) || m.serial_number.toLowerCase().includes(search.toLowerCase());
+    const matchesType = typeTab === "전체" || m.machine_type === typeTab;
+    const matchesStatus = statusTab === "전체" || m.status === statusTab;
+    return matchesSearch && matchesType && matchesStatus;
   });
 
   return (
@@ -55,11 +60,18 @@ export default function MachinesList() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={typeTab} onValueChange={setTypeTab}>
           <TabsList>
             <TabsTrigger value="전체">전체</TabsTrigger>
             <TabsTrigger value="새기계">새기계</TabsTrigger>
             <TabsTrigger value="중고기계">중고기계</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Tabs value={statusTab} onValueChange={setStatusTab}>
+          <TabsList>
+            <TabsTrigger value="전체">전체</TabsTrigger>
+            <TabsTrigger value="재고중">재고중</TabsTrigger>
+            <TabsTrigger value="판매완료">판매완료</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="relative flex-1 max-w-xs">
@@ -83,11 +95,13 @@ export default function MachinesList() {
                   <th className="text-left p-3 font-medium text-muted-foreground">구분</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">상태</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">입고일</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">판매일</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">고객명</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">매입가</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered?.map((m) => (
+                {filtered?.map((m: any) => (
                   <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
                     <td className="p-3">
                       <Link to={`/machines/${m.id}`} className="font-medium text-foreground hover:text-primary">{m.model_name}</Link>
@@ -96,6 +110,8 @@ export default function MachinesList() {
                     <td className="p-3"><TypeBadge type={m.machine_type} /></td>
                     <td className="p-3"><StatusBadge status={m.status} /></td>
                     <td className="p-3 text-muted-foreground">{formatDate(m.entry_date)}</td>
+                    <td className="p-3 text-muted-foreground">{m.sale_date ? formatDate(m.sale_date) : "-"}</td>
+                    <td className="p-3 text-muted-foreground">{m.customers?.name || "-"}</td>
                     <td className="p-3 text-right tabular-nums font-medium">{formatPrice(m.purchase_price)}</td>
                   </tr>
                 ))}
@@ -119,12 +135,9 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   const mutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("machines").insert({
-        model_name: form.model_name,
-        serial_number: form.serial_number,
-        machine_type: form.machine_type,
-        entry_date: form.entry_date,
-        purchase_price: parseInt(form.purchase_price),
-        notes: form.notes || null,
+        model_name: form.model_name, serial_number: form.serial_number,
+        machine_type: form.machine_type, entry_date: form.entry_date,
+        purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
       });
       if (error) throw error;
     },
@@ -134,9 +147,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       onOpenChange(false);
       setForm({ model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
     },
-    onError: (e: any) => {
-      toast({ title: "오류 발생", description: e.message, variant: "destructive" });
-    },
+    onError: (e: any) => toast({ title: "오류 발생", description: e.message, variant: "destructive" }),
   });
 
   const valid = form.model_name && form.serial_number && form.entry_date && form.purchase_price;
@@ -168,14 +179,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
-type BulkMachineRow = {
-  model_name: string;
-  serial_number: string;
-  machine_type: string;
-  entry_date: string;
-  purchase_price: string;
-  notes: string;
-};
+type BulkMachineRow = { model_name: string; serial_number: string; machine_type: string; entry_date: string; purchase_price: string; notes: string };
 
 const formatExcelDate = (v: any): string => {
   if (!v) return "";
@@ -186,9 +190,7 @@ const formatExcelDate = (v: any): string => {
   return String(v);
 };
 
-const emptyMachineRow = (): BulkMachineRow => ({
-  model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "",
-});
+const emptyMachineRow = (): BulkMachineRow => ({ model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
 
 function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { toast } = useToast();
@@ -198,7 +200,6 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const updateRow = (i: number, field: keyof BulkMachineRow, value: string) => {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
   };
-
   const removeRow = (i: number) => setRows((prev) => prev.filter((_, idx) => idx !== i));
   const addRow = () => setRows((prev) => [...prev, emptyMachineRow()]);
 
@@ -214,12 +215,9 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         const mapped: BulkMachineRow[] = json.map((row) => {
           const raw = Object.values(row);
           return {
-            model_name: String(raw[0] || ""),
-            serial_number: String(raw[1] || ""),
-            machine_type: String(raw[2] || "새기계"),
-            entry_date: formatExcelDate(raw[3]),
-            purchase_price: String(raw[4] || ""),
-            notes: String(raw[5] || ""),
+            model_name: String(raw[0] || ""), serial_number: String(raw[1] || ""),
+            machine_type: String(raw[2] || "새기계"), entry_date: formatExcelDate(raw[3]),
+            purchase_price: String(raw[4] || ""), notes: String(raw[5] || ""),
           };
         });
         setRows((prev) => [...prev.filter(r => r.model_name || r.serial_number), ...mapped]);
@@ -237,12 +235,8 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const mutation = useMutation({
     mutationFn: async () => {
       const inserts = validRows.map((r) => ({
-        model_name: r.model_name,
-        serial_number: r.serial_number,
-        machine_type: r.machine_type,
-        entry_date: r.entry_date,
-        purchase_price: parseInt(r.purchase_price),
-        notes: r.notes || null,
+        model_name: r.model_name, serial_number: r.serial_number, machine_type: r.machine_type,
+        entry_date: r.entry_date, purchase_price: parseInt(r.purchase_price), notes: r.notes || null,
       }));
       const { error } = await supabase.from("machines").insert(inserts);
       if (error) throw error;
@@ -261,40 +255,30 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>기계 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">여러 기계를 한 번에 등록할 수 있습니다. 엑셀 파일을 업로드하거나 직접 입력하세요.</p>
-          <p className="text-xs text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 구분(새기계/중고기계), 입고일, 매입가, 특이사항</p>
+          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 구분, 입고일, 매입가, 특이사항</p>
         </DialogHeader>
-
         <div>
           <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium text-primary hover:underline">
-            <FileSpreadsheet className="h-4 w-4" />
-            엑셀 파일 불러오기
+            <FileSpreadsheet className="h-4 w-4" /> 엑셀 파일 불러오기
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
           </label>
         </div>
-
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-3">
             {rows.map((row, i) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_100px_120px_130px_auto] gap-2 items-end">
                 {i === 0 && (
                   <>
-                    <Label className="text-xs col-span-1">모델명 *</Label>
-                    <Label className="text-xs col-span-1">제조번호 *</Label>
-                    <Label className="text-xs col-span-1">구분 *</Label>
-                    <Label className="text-xs col-span-1">입고일 *</Label>
-                    <Label className="text-xs col-span-1">매입가 *</Label>
-                    <div />
+                    <Label className="text-xs">모델명 *</Label><Label className="text-xs">제조번호 *</Label>
+                    <Label className="text-xs">구분 *</Label><Label className="text-xs">입고일 *</Label>
+                    <Label className="text-xs">매입가 *</Label><div />
                   </>
                 )}
                 <Input value={row.model_name} onChange={(e) => updateRow(i, "model_name", e.target.value)} placeholder="모델명" className="h-9 text-sm" />
                 <Input value={row.serial_number} onChange={(e) => updateRow(i, "serial_number", e.target.value)} placeholder="제조번호" className="h-9 text-sm" />
                 <Select value={row.machine_type} onValueChange={(v) => updateRow(i, "machine_type", v)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="새기계">새기계</SelectItem>
-                    <SelectItem value="중고기계">중고</SelectItem>
-                  </SelectContent>
+                  <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고</SelectItem></SelectContent>
                 </Select>
                 <Input type="date" value={row.entry_date} onChange={(e) => updateRow(i, "entry_date", e.target.value)} className="h-9 text-sm" />
                 <Input type="number" value={row.purchase_price} onChange={(e) => updateRow(i, "purchase_price", e.target.value)} placeholder="매입가" className="h-9 text-sm" />
@@ -304,14 +288,10 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
               </div>
             ))}
           </div>
-
-          <Button variant="outline" size="sm" className="mt-3" onClick={addRow}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> 행 추가
-          </Button>
+          <Button variant="outline" size="sm" className="mt-3" onClick={addRow}><Plus className="h-3.5 w-3.5 mr-1" /> 행 추가</Button>
         </ScrollArea>
-
         <DialogFooter className="pt-4 border-t">
-          <span className="text-sm text-muted-foreground mr-auto">유효한 행: {validRows.length} / {rows.length}</span>
+          <span className="text-sm text-muted-foreground mr-auto">유효: {validRows.length} / {rows.length}</span>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => mutation.mutate()} disabled={validRows.length === 0 || mutation.isPending}>
             {mutation.isPending ? "등록 중..." : `${validRows.length}대 일괄 등록`}
