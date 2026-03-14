@@ -127,7 +127,7 @@ export default function MachineDetail() {
         </CardContent>
       </Card>
 
-      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} />
+      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} entryDate={machine.entry_date} />
       <RepairDialog open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} />
       <EditMachineDialog open={editOpen} onOpenChange={setEditOpen} machine={machine} />
     </div>
@@ -143,10 +143,14 @@ function InfoItem({ label, value, bold, primary }: { label: string; value: any; 
   );
 }
 
-function SaleDialog({ open, onOpenChange, machineId }: { open: boolean; onOpenChange: (v: boolean) => void; machineId: string }) {
+function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolean; onOpenChange: (v: boolean) => void; machineId: string; entryDate: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [step, setStep] = useState<"form" | "confirm">("form");
+  const [mode, setMode] = useState<"existing" | "new">("existing");
   const [form, setForm] = useState({ customer_id: "", sale_price: "", sale_date: "" });
+  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
+  const [createdCustomerId, setCreatedCustomerId] = useState<string | null>(null);
 
   const { data: customers } = useQuery({
     queryKey: ["customers"],
@@ -157,11 +161,35 @@ function SaleDialog({ open, onOpenChange, machineId }: { open: boolean; onOpenCh
     },
   });
 
-  const mutation = useMutation({
+  // Calculate inventory duration
+  const daysInStock = Math.floor((new Date().getTime() - new Date(entryDate).getTime()) / (1000 * 60 * 60 * 24));
+
+  const selectedCustomer = mode === "existing"
+    ? customers?.find((c) => c.id === form.customer_id)
+    : null;
+
+  const formValid = mode === "existing"
+    ? form.customer_id && form.sale_price && form.sale_date
+    : newCustomer.name && newCustomer.phone && form.sale_price && form.sale_date;
+
+  const createCustomerAndSell = useMutation({
     mutationFn: async () => {
+      let customerId = form.customer_id;
+
+      if (mode === "new") {
+        const { data, error } = await supabase.from("customers").insert({
+          name: newCustomer.name,
+          phone: newCustomer.phone,
+          address: newCustomer.address || null,
+        }).select("id").single();
+        if (error) throw error;
+        customerId = data.id;
+        setCreatedCustomerId(customerId);
+      }
+
       const { error } = await supabase.from("machines").update({
         status: "판매완료",
-        customer_id: form.customer_id,
+        customer_id: customerId,
         sale_price: parseInt(form.sale_price),
         sale_date: form.sale_date,
       }).eq("id", machineId);
@@ -170,37 +198,116 @@ function SaleDialog({ open, onOpenChange, machineId }: { open: boolean; onOpenCh
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machine", machineId] });
       qc.invalidateQueries({ queryKey: ["machines"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
       toast({ title: "판매 처리가 완료되었습니다." });
-      onOpenChange(false);
+      handleClose();
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
 
-  const valid = form.customer_id && form.sale_price && form.sale_date;
+  const handleClose = () => {
+    setStep("form");
+    setMode("existing");
+    setForm({ customer_id: "", sale_price: "", sale_date: "" });
+    setNewCustomer({ name: "", phone: "", address: "" });
+    setCreatedCustomerId(null);
+    onOpenChange(false);
+  };
+
+  const customerDisplayName = mode === "existing"
+    ? selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.phone})` : ""
+    : `${newCustomer.name} (${newCustomer.phone}) — 신규`;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle>판매 처리</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label>고객 선택 *</Label>
-            <Select value={form.customer_id} onValueChange={v => setForm(f => ({...f, customer_id: v}))}>
-              <SelectTrigger><SelectValue placeholder="고객을 선택하세요" /></SelectTrigger>
-              <SelectContent>
-                {customers?.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.phone})</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div><Label>판매가 (원) *</Label><Input type="number" value={form.sale_price} onChange={e => setForm(f => ({...f, sale_price: e.target.value}))} /></div>
-          <div><Label>판매일 *</Label><Input type="date" value={form.sale_date} onChange={e => setForm(f => ({...f, sale_date: e.target.value}))} /></div>
+
+        {/* Inventory duration banner */}
+        <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+          <span className="text-muted-foreground">재고 보유 기간:</span>
+          <span className="font-semibold text-foreground">{daysInStock}일</span>
+          <span className="text-muted-foreground text-xs">({formatDate(entryDate)} ~ 오늘)</span>
         </div>
+
+        {step === "form" ? (
+          <div className="space-y-4">
+            {/* Customer mode toggle */}
+            <div>
+              <Label className="mb-2 block">고객 선택 *</Label>
+              <div className="flex gap-2 mb-3">
+                <Button type="button" size="sm" variant={mode === "existing" ? "default" : "outline"} onClick={() => setMode("existing")}>기존 고객</Button>
+                <Button type="button" size="sm" variant={mode === "new" ? "default" : "outline"} onClick={() => setMode("new")}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> 신규 고객
+                </Button>
+              </div>
+
+              {mode === "existing" ? (
+                <Select value={form.customer_id} onValueChange={(v) => setForm((f) => ({ ...f, customer_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="고객을 선택하세요" /></SelectTrigger>
+                  <SelectContent>
+                    {customers?.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name} ({c.phone})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="space-y-3 rounded-md border p-3 bg-background">
+                  <div><Label className="text-xs">이름 *</Label><Input value={newCustomer.name} onChange={(e) => setNewCustomer((p) => ({ ...p, name: e.target.value }))} placeholder="고객명" /></div>
+                  <div><Label className="text-xs">연락처 *</Label><Input value={newCustomer.phone} onChange={(e) => setNewCustomer((p) => ({ ...p, phone: e.target.value }))} placeholder="010-0000-0000" /></div>
+                  <div><Label className="text-xs">주소</Label><Input value={newCustomer.address} onChange={(e) => setNewCustomer((p) => ({ ...p, address: e.target.value }))} placeholder="주소 (선택)" /></div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label>판매가 (원) *</Label>
+              <Input type="number" value={form.sale_price} onChange={(e) => setForm((f) => ({ ...f, sale_price: e.target.value }))} />
+            </div>
+            <div>
+              <Label>판매일 *</Label>
+              <Input type="date" value={form.sale_date} onChange={(e) => setForm((f) => ({ ...f, sale_date: e.target.value }))} />
+            </div>
+          </div>
+        ) : (
+          /* Confirmation step */
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">아래 내용으로 판매를 처리합니다. 확인해 주세요.</p>
+            <div className="rounded-md border bg-muted/50 p-4 space-y-2 text-sm">
+              <ConfirmRow label="고객" value={customerDisplayName} />
+              <ConfirmRow label="판매가" value={formatPrice(parseInt(form.sale_price))} />
+              <ConfirmRow label="판매일" value={formatDate(form.sale_date)} />
+              <ConfirmRow label="재고 기간" value={`${daysInStock}일`} />
+            </div>
+          </div>
+        )}
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>{mutation.isPending ? "처리 중..." : "판매 완료"}</Button>
+          {step === "form" ? (
+            <>
+              <Button variant="outline" onClick={handleClose}>취소</Button>
+              <Button onClick={() => setStep("confirm")} disabled={!formValid}>다음</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setStep("form")}>이전</Button>
+              <Button onClick={() => createCustomerAndSell.mutate()} disabled={createCustomerAndSell.isPending}>
+                {createCustomerAndSell.isPending ? "처리 중..." : "판매 완료"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ConfirmRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground">{value}</span>
+    </div>
   );
 }
 
