@@ -3,6 +3,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/Layout";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Index";
 import MachinesList from "@/pages/MachinesList";
 import MachineDetail from "@/pages/MachineDetail";
@@ -21,20 +23,30 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/machines" element={<MachinesList />} />
-            <Route path="/machines/:id" element={<MachineDetail />} />
-            <Route path="/customers" element={<CustomersList />} />
-            <Route path="/customers/:id" element={<CustomerDetail />} />
-            <Route path="/repairs" element={<RepairsList />} />
-            <Route path="/parts" element={<PartsList />} />
-            <Route path="/repair-templates" element={<RepairTemplates />} />
-            <Route path="/chat" element={<ChatBot />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/machines" element={<MachinesList />} />
+                    <Route path="/machines/:id" element={<MachineDetail />} />
+                    <Route path="/customers" element={<CustomersList />} />
+                    <Route path="/customers/:id" element={<CustomerDetail />} />
+                    <Route path="/repairs" element={<RepairsList />} />
+                    <Route path="/parts" element={<PartsList />} />
+                    <Route path="/repair-templates" element={<RepairTemplates />} />
+                    <Route path="/chat" element={<ChatBot />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
