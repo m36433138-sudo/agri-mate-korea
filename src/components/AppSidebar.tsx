@@ -1,6 +1,7 @@
-import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks } from "lucide-react";
+import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
   SidebarContent,
@@ -10,6 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 
