@@ -14,6 +14,8 @@ import RepairsList from "@/pages/RepairsList";
 import PartsList from "@/pages/PartsList";
 import RepairTemplates from "@/pages/RepairTemplates";
 import ChatBot from "@/pages/ChatBot";
+import UserManagement from "@/pages/UserManagement";
+import MyPage from "@/pages/MyPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +42,12 @@ const App = () => (
                     <Route path="/parts" element={<PartsList />} />
                     <Route path="/repair-templates" element={<RepairTemplates />} />
                     <Route path="/chat" element={<ChatBot />} />
+                    <Route path="/users" element={
+                      <ProtectedRoute allowedRoles={["admin"]}>
+                        <UserManagement />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/my-page" element={<MyPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Layout>
