@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Tractor } from "lucide-react";
 
 export default function Auth() {
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -20,13 +20,17 @@ export default function Auth() {
     setLoading(true);
 
     try {
+      // If input looks like email, use as-is; otherwise append @ym.local
+      const email = loginId.includes("@") ? loginId : `${loginId}@ym.local`;
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       navigate("/");
     } catch (error: any) {
       toast({
-        title: "오류",
-        description: error.message,
+        title: "로그인 실패",
+        description: error.message === "Invalid login credentials"
+          ? "아이디 또는 비밀번호가 올바르지 않습니다."
+          : error.message,
         variant: "destructive",
       });
     } finally {
@@ -49,13 +53,12 @@ export default function Auth() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">이메일 *</Label>
+              <Label htmlFor="loginId">아이디 *</Label>
               <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@email.com"
+                id="loginId"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                placeholder="ym1234 또는 이메일"
                 required
               />
             </div>
