@@ -230,8 +230,20 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         <DialogHeader><DialogTitle>계정 생성</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div><Label>이름 *</Label><Input value={form.display_name} onChange={(e) => setForm(f => ({...f, display_name: e.target.value}))} /></div>
-          <div><Label>이메일 *</Label><Input type="email" value={form.email} onChange={(e) => setForm(f => ({...f, email: e.target.value}))} /></div>
-          <div><Label>비밀번호 *</Label><Input type="password" value={form.password} onChange={(e) => setForm(f => ({...f, password: e.target.value}))} minLength={6} /></div>
+          <div>
+            <Label>이메일 *</Label>
+            <Input type="email" value={form.email} onChange={(e) => setForm(f => ({...f, email: e.target.value}))} placeholder="example@email.com" />
+            {form.email && !/\S+@\S+\.\S+/.test(form.email) && (
+              <p className="text-xs text-destructive mt-1">올바른 이메일 형식을 입력하세요.</p>
+            )}
+          </div>
+          <div>
+            <Label>비밀번호 * (6자 이상)</Label>
+            <Input type="password" value={form.password} onChange={(e) => setForm(f => ({...f, password: e.target.value}))} minLength={6} />
+            {form.password && form.password.length < 6 && (
+              <p className="text-xs text-destructive mt-1">비밀번호는 6자 이상이어야 합니다.</p>
+            )}
+          </div>
           <div><Label>연락처</Label><Input value={form.phone} onChange={(e) => setForm(f => ({...f, phone: e.target.value}))} placeholder="010-0000-0000" /></div>
           <div>
             <Label>역할</Label>
