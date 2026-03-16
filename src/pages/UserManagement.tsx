@@ -259,7 +259,7 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!(form.email && form.password && form.display_name) || mutation.isPending}>
+          <Button onClick={() => mutation.mutate()} disabled={!(form.email && /\S+@\S+\.\S+/.test(form.email) && form.password && form.password.length >= 6 && form.display_name) || mutation.isPending}>
             {mutation.isPending ? "생성 중..." : "생성"}
           </Button>
         </DialogFooter>
