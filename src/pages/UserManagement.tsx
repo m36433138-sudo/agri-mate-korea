@@ -199,42 +199,25 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
   const mutation = useMutation({
     mutationFn: async () => {
-      // Sign up the user
-      const { data, error } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: {
-          data: { display_name: form.display_name },
-          emailRedirectTo: window.location.origin,
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("로그인이 필요합니다.");
+
+      const res = await supabase.functions.invoke("create-user", {
+        body: {
+          email: form.email,
+          password: form.password,
+          display_name: form.display_name,
+          phone: form.phone || null,
+          role: form.role,
         },
       });
-      if (error) throw error;
-      if (!data.user) throw new Error("사용자 생성 실패");
 
-      // Update phone on profile
-      if (form.phone) {
-        await supabase.from("profiles").update({ phone: form.phone }).eq("id", data.user.id);
-      }
-
-      // Update role if not customer (trigger creates as customer by default for subsequent users)
-      if (form.role !== "customer") {
-        await supabase.from("user_roles").delete().eq("user_id", data.user.id);
-        await supabase.from("user_roles").insert({ user_id: data.user.id, role: form.role });
-
-        if (form.role === "employee") {
-          await supabase.from("employee_permissions").insert(
-            Object.keys(PERMISSION_LABELS).map((key) => ({
-              employee_id: data.user!.id,
-              permission_key: key,
-              is_allowed: false,
-            }))
-          );
-        }
-      }
+      if (res.error) throw new Error(res.error.message || "사용자 생성 실패");
+      if (res.data?.error) throw new Error(res.data.error);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-users"] });
-      toast({ title: "계정이 생성되었습니다.", description: "이메일 인증 후 로그인 가능합니다." });
+      toast({ title: "계정이 생성되었습니다.", description: "바로 로그인 가능합니다." });
       onOpenChange(false);
       setForm({ email: "", password: "", display_name: "", phone: "", role: "customer" });
     },
