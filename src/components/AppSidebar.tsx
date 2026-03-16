@@ -1,4 +1,4 @@
-import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut, UserCog, User } from "lucide-react";
+import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut, UserCog, User, Cpu } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,7 +28,6 @@ export function AppSidebar() {
     navigate("/auth");
   };
 
-  // Build menu items based on role
   const items: { title: string; url: string; icon: any }[] = [];
 
   if (isCustomer) {
@@ -61,19 +60,28 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className={`px-4 py-6 ${collapsed ? "px-2" : ""}`}>
-          {!collapsed && (
-            <h1 className="text-lg font-bold text-sidebar-foreground">
-              얀마 관리 시스템
-            </h1>
-          )}
-          {collapsed && (
+          {!collapsed ? (
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground shrink-0">
+                <Cpu className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="text-base font-bold text-sidebar-foreground leading-none">
+                  AgriMate
+                </h1>
+                <span className="text-[10px] text-sidebar-foreground/40 font-medium tracking-wider uppercase">PRO</span>
+              </div>
+            </div>
+          ) : (
             <div className="flex justify-center">
-              <Tractor className="h-6 w-6 text-sidebar-primary" />
+              <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground">
+                <Cpu className="h-5 w-5" />
+              </div>
             </div>
           )}
         </div>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/50">메뉴</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider font-semibold">메뉴</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -82,11 +90,11 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/" || item.url === "/my-page"}
-                      className="hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      className="hover:bg-sidebar-accent rounded-xl transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                     >
-                      <item.icon className="mr-2 h-5 w-5" style={{ strokeWidth: 1.5 }} />
-                      {!collapsed && <span>{item.title}</span>}
+                      <item.icon className="mr-2 h-[18px] w-[18px]" style={{ strokeWidth: 1.8 }} />
+                      {!collapsed && <span className="text-sm">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -99,16 +107,18 @@ export function AppSidebar() {
         <SidebarMenu>
           {!collapsed && profile && (
             <SidebarMenuItem>
-              <div className="px-3 py-2 text-xs text-sidebar-foreground/50">
-                <p className="font-medium text-sidebar-foreground/70">{profile.display_name}</p>
-                <p>{role === "admin" ? "관리자" : role === "employee" ? "직원" : "고객"}</p>
+              <div className="px-3 py-3 mx-2 mb-2 rounded-xl bg-sidebar-accent/50">
+                <p className="font-semibold text-sm text-sidebar-foreground/90">{profile.display_name}</p>
+                <p className="text-[11px] text-sidebar-primary font-medium">
+                  {role === "admin" ? "관리자" : role === "employee" ? "직원" : "고객"}
+                </p>
               </div>
             </SidebarMenuItem>
           )}
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={handleLogout} className="hover:bg-sidebar-accent text-sidebar-foreground/70">
-              <LogOut className="mr-2 h-5 w-5" style={{ strokeWidth: 1.5 }} />
-              {!collapsed && <span>로그아웃</span>}
+            <SidebarMenuButton onClick={handleLogout} className="hover:bg-sidebar-accent text-sidebar-foreground/60 rounded-xl">
+              <LogOut className="mr-2 h-[18px] w-[18px]" style={{ strokeWidth: 1.8 }} />
+              {!collapsed && <span className="text-sm">로그아웃</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
