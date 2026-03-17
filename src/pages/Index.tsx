@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -12,6 +13,11 @@ import { TypeBadge } from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
+  useRealtimeSync("machines", [["machines"]]);
+  useRealtimeSync("repairs", [["repairs-recent"]]);
+  useRealtimeSync("customers", [["customers-count"]]);
+  useRealtimeSync("parts", [["parts-count"]]);
+
   const { data: machines, isLoading: ml } = useQuery({
     queryKey: ["machines"],
     queryFn: async () => {
