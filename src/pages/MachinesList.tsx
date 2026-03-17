@@ -27,6 +27,8 @@ export default function MachinesList() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  useRealtimeSync("machines", [["machines"]]);
+
   const { data: machines, isLoading } = useQuery({
     queryKey: ["machines"],
     queryFn: async () => {

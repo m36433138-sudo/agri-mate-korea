@@ -15,6 +15,7 @@ export default function RepairsList() {
   const [search, setSearch] = useState("");
   const [repairOpen, setRepairOpen] = useState(false);
 
+  useRealtimeSync("repairs", [["all-repairs"]]);
   const { data: repairs, isLoading } = useQuery({
     queryKey: ["all-repairs"],
     queryFn: async () => {

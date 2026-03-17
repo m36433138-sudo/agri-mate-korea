@@ -22,6 +22,8 @@ export default function PartsList() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  useRealtimeSync("parts", [["parts"]]);
+
   const { data: parts, isLoading } = useQuery({
     queryKey: ["parts"],
     queryFn: async () => {
