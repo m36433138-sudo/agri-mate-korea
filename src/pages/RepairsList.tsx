@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useListFilter } from "@/hooks/useListFilter";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,12 +11,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice, formatDate } from "@/lib/formatters";
 import { Search, Plus } from "lucide-react";
 import RepairInputModal from "@/components/RepairInputModal";
+import type { RepairWithMachine } from "@/types/database";
 
 export default function RepairsList() {
-  const [search, setSearch] = useState("");
   const [repairOpen, setRepairOpen] = useState(false);
 
   useRealtimeSync("repairs", [["all-repairs"]]);
+
   const { data: repairs, isLoading } = useQuery({
     queryKey: ["all-repairs"],
     queryFn: async () => {
@@ -24,18 +26,13 @@ export default function RepairsList() {
         .select("*, machines(id, model_name, serial_number)")
         .order("repair_date", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as RepairWithMachine[];
     },
   });
 
-  const filtered = repairs?.filter((r: any) => {
-    const s = search.toLowerCase();
-    return (
-      r.repair_content.toLowerCase().includes(s) ||
-      r.machines?.serial_number?.toLowerCase().includes(s) ||
-      r.machines?.model_name?.toLowerCase().includes(s) ||
-      (r.technician?.toLowerCase().includes(s) ?? false)
-    );
+  const { search, setSearch, filtered } = useListFilter<RepairWithMachine>({
+    data: repairs,
+    searchFields: ["repair_content", "technician", "machines.serial_number", "machines.model_name"],
   });
 
   return (

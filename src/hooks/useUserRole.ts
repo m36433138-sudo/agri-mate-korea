@@ -1,17 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import type { Profile } from "@/types/database";
 
 export type AppRole = "admin" | "employee" | "customer";
 
-export interface UserProfile {
-  id: string;
-  display_name: string | null;
-  email: string | null;
-  phone: string | null;
-  memo: string | null;
-  created_at: string;
-}
+// Re-export for backward compatibility
+export type UserProfile = Profile;
 
 export function useUserRole() {
   const [userId, setUserId] = useState<string | null>(null);

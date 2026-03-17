@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useListFilter } from "@/hooks/useListFilter";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { MachineWithCustomer } from "@/types/database";
 
 export default function MachinesList() {
-  const [search, setSearch] = useState("");
   const [typeTab, setTypeTab] = useState("전체");
   const [statusTab, setStatusTab] = useState("전체");
   const [open, setOpen] = useState(false);
@@ -37,15 +38,14 @@ export default function MachinesList() {
         .select("*, customers(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as MachineWithCustomer[];
     },
   });
 
-  const filtered = machines?.filter((m: any) => {
-    const matchesSearch = m.model_name.toLowerCase().includes(search.toLowerCase()) || m.serial_number.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeTab === "전체" || m.machine_type === typeTab;
-    const matchesStatus = statusTab === "전체" || m.status === statusTab;
-    return matchesSearch && matchesType && matchesStatus;
+  const { search, setSearch, filtered } = useListFilter<MachineWithCustomer>({
+    data: machines,
+    searchFields: ["model_name", "serial_number"],
+    tabFilters: { machine_type: typeTab, status: statusTab },
   });
 
   return (
