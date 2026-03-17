@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useListFilter } from "@/hooks/useListFilter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Part } from "@/types/database";
 
 export default function PartsList() {
-  const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export default function PartsList() {
     queryFn: async () => {
       const { data, error } = await supabase.from("parts").select("*").order("part_name");
       if (error) throw error;
-      return data;
+      return data as Part[];
     },
   });
 
@@ -46,11 +47,10 @@ export default function PartsList() {
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
 
-  const filtered = parts?.filter(
-    (p) =>
-      p.part_name.toLowerCase().includes(search.toLowerCase()) ||
-      p.part_number.toLowerCase().includes(search.toLowerCase())
-  );
+  const { search, setSearch, filtered } = useListFilter<Part>({
+    data: parts,
+    searchFields: ["part_name", "part_number"],
+  });
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([

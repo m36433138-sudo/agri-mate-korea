@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useListFilter } from "@/hooks/useListFilter";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,22 +14,27 @@ import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Customer } from "@/types/database";
 
 export default function CustomersList() {
-  const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+
+  useRealtimeSync("customers", [["customers"]]);
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
       const { data, error } = await supabase.from("customers").select("*").order("name");
       if (error) throw error;
-      return data;
+      return data as Customer[];
     },
   });
 
-  const filtered = customers?.filter(c => c.name.includes(search) || c.phone.includes(search));
+  const { search, setSearch, filtered } = useListFilter<Customer>({
+    data: customers,
+    searchFields: ["name", "phone"],
+  });
 
   return (
     <div>
