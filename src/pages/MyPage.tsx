@@ -2,33 +2,50 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Tractor, Wrench, User } from "lucide-react";
+import type { Customer, Machine, Repair } from "@/types/database";
 
 export default function MyPage() {
   const { userId, profile } = useUserRole();
 
-  const { data: machines, isLoading: ml } = useQuery({
-    queryKey: ["my-machines", userId],
+  // First find the customer record linked to this user
+  const { data: customer, isLoading: customerLoading } = useQuery({
+    queryKey: ["my-customer", userId],
     enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("user_id", userId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as Customer | null;
+    },
+  });
+
+  const customerId = customer?.id;
+
+  const { data: machines, isLoading: ml } = useQuery({
+    queryKey: ["my-machines", customerId],
+    enabled: !!customerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("machines")
         .select("*")
-        .eq("customer_id", userId!)
+        .eq("customer_id", customerId!)
         .order("sale_date", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as Machine[];
     },
   });
 
   const machineIds = machines?.map((m) => m.id) ?? [];
 
   const { data: repairs, isLoading: rl } = useQuery({
-    queryKey: ["my-repairs", userId],
+    queryKey: ["my-repairs", customerId],
     enabled: machineIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -40,6 +57,8 @@ export default function MyPage() {
       return data;
     },
   });
+
+  const isLoading = customerLoading || ml;
 
   return (
     <div>
@@ -53,9 +72,14 @@ export default function MyPage() {
               <User className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">{profile?.display_name || "사용자"}</h2>
+              <h2 className="text-xl font-bold">{profile?.display_name || customer?.name || "사용자"}</h2>
               <p className="text-sm text-muted-foreground">{profile?.email}</p>
-              {profile?.phone && <p className="text-sm text-muted-foreground">{profile.phone}</p>}
+              {(profile?.phone || customer?.phone) && (
+                <p className="text-sm text-muted-foreground">{profile?.phone || customer?.phone}</p>
+              )}
+              {customer?.address && (
+                <p className="text-sm text-muted-foreground">{customer.address}</p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -69,8 +93,10 @@ export default function MyPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {ml ? (
+          {isLoading ? (
             <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+          ) : !customer ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">연결된 고객 정보가 없습니다. 관리자에게 문의해주세요.</p>
           ) : !machines || machines.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">등록된 기계가 없습니다.</p>
           ) : (

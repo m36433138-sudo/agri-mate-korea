@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, display_name, phone, role } = await req.json();
+    const { email, password, display_name, phone, role, customer_id } = await req.json();
 
     if (!email || !password || !display_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -96,6 +96,21 @@ Deno.serve(async (req) => {
             is_allowed: false,
           }))
         );
+      }
+    }
+
+    // If customer role, link to existing customer record or create one
+    if (role === "customer") {
+      if (customer_id) {
+        // Link existing customer record to this user account
+        await adminClient.from("customers").update({ user_id: userId }).eq("id", customer_id);
+      } else {
+        // Create a new customer record linked to this user
+        await adminClient.from("customers").insert({
+          name: display_name,
+          phone: phone || "미입력",
+          user_id: userId,
+        });
       }
     }
 

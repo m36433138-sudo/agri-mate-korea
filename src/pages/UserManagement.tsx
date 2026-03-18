@@ -34,6 +34,8 @@ const PERMISSION_LABELS: Record<string, string> = {
   add_machines: "기계 등록",
 };
 
+import type { Customer } from "@/types/database";
+
 export default function UserManagement() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
