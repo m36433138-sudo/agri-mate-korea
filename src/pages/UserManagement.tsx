@@ -197,6 +197,188 @@ export default function UserManagement() {
 function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [form, setForm] = useState({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "customer" as AppRole, customer_id: "" });
+
+  const isCustomerRole = form.role === "customer";
+
+  // Fetch unlinked customers for linking
+  const { data: unlinkedCustomers } = useQuery({
+    queryKey: ["unlinked-customers"],
+    enabled: open && isCustomerRole,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .is("user_id", null)
+        .order("name");
+      if (error) throw error;
+      return data as Customer[];
+    },
+  });
+
+  const autoGenerateId = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    const last4 = digits.slice(-4);
+    return last4 ? `ym${last4}` : "";
+  };
+
+  const handlePhoneChange = (phone: string) => {
+    const updates: any = { phone };
+    if (isCustomerRole) {
+      updates.loginId = autoGenerateId(phone);
+      updates.password = autoGenerateId(phone);
+    }
+    setForm(f => ({ ...f, ...updates }));
+  };
+
+  const handleRoleChange = (role: AppRole) => {
+    const updates: any = { role, customer_id: "" };
+    if (role === "customer") {
+      updates.loginId = autoGenerateId(form.phone);
+      updates.password = autoGenerateId(form.phone);
+      updates.email = "";
+    } else {
+      updates.loginId = "";
+    }
+    setForm(f => ({ ...f, ...updates }));
+  };
+
+  const handleCustomerSelect = (customerId: string) => {
+    if (customerId === "__new__") {
+      setForm(f => ({ ...f, customer_id: "" }));
+      return;
+    }
+    const customer = unlinkedCustomers?.find(c => c.id === customerId);
+    if (customer) {
+      setForm(f => ({
+        ...f,
+        customer_id: customerId,
+        display_name: f.display_name || customer.name,
+        phone: f.phone || customer.phone,
+        loginId: autoGenerateId(f.phone || customer.phone),
+        password: autoGenerateId(f.phone || customer.phone),
+      }));
+    } else {
+      setForm(f => ({ ...f, customer_id: customerId }));
+    }
+  };
+
+  const getEmail = () => {
+    if (isCustomerRole) return `${form.loginId}@ym.local`;
+    return form.email;
+  };
+
+  const isValid = () => {
+    if (!form.display_name || !form.password || form.password.length < 6) return false;
+    if (isCustomerRole) return !!form.loginId && /^[a-zA-Z0-9]+$/.test(form.loginId);
+    return !!form.email && /\S+@\S+\.\S+/.test(form.email);
+  };
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("로그인이 필요합니다.");
+
+      const res = await supabase.functions.invoke("create-user", {
+        body: {
+          email: getEmail(),
+          password: form.password,
+          display_name: form.display_name,
+          phone: form.phone || null,
+          role: form.role,
+          customer_id: form.customer_id || null,
+        },
+      });
+
+      if (res.error) throw new Error(res.error.message || "사용자 생성 실패");
+      if (res.data?.error) throw new Error(res.data.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["all-users"] });
+      qc.invalidateQueries({ queryKey: ["unlinked-customers"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      const desc = isCustomerRole
+        ? `로그인 ID: ${form.loginId} / 비밀번호: ${form.password}`
+        : "바로 로그인 가능합니다.";
+      toast({ title: "계정이 생성되었습니다.", description: desc });
+      onOpenChange(false);
+      setForm({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "customer", customer_id: "" });
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>계정 생성</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>역할</Label>
+            <Select value={form.role} onValueChange={(v) => handleRoleChange(v as AppRole)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">관리자</SelectItem>
+                <SelectItem value="employee">직원</SelectItem>
+                <SelectItem value="customer">고객</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isCustomerRole && unlinkedCustomers && unlinkedCustomers.length > 0 && (
+            <div>
+              <Label>기존 고객 연동 (선택)</Label>
+              <Select value={form.customer_id || "__new__"} onValueChange={handleCustomerSelect}>
+                <SelectTrigger><SelectValue placeholder="새 고객으로 생성" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__new__">새 고객으로 생성</SelectItem>
+                  {unlinkedCustomers.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name} ({c.phone})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">기존 고객과 연동하면 해당 고객의 기계/수리 이력을 마이페이지에서 볼 수 있습니다.</p>
+            </div>
+          )}
+
+          <div><Label>이름 *</Label><Input value={form.display_name} onChange={(e) => setForm(f => ({...f, display_name: e.target.value}))} placeholder="홍길동" /></div>
+          <div>
+            <Label>연락처 {isCustomerRole ? "*" : ""}</Label>
+            <Input value={form.phone} onChange={(e) => handlePhoneChange(e.target.value)} placeholder="010-0000-0000" />
+          </div>
+          {isCustomerRole ? (
+            <div>
+              <Label>로그인 ID *</Label>
+              <Input value={form.loginId} onChange={(e) => setForm(f => ({...f, loginId: e.target.value}))} placeholder="ym1234" />
+              <p className="text-xs text-muted-foreground mt-1">연락처 입력 시 자동 생성됩니다 (ym + 뒷자리 4자리)</p>
+            </div>
+          ) : (
+            <div>
+              <Label>이메일 *</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm(f => ({...f, email: e.target.value}))} placeholder="example@email.com" />
+              {form.email && !/\S+@\S+\.\S+/.test(form.email) && (
+                <p className="text-xs text-destructive mt-1">올바른 이메일 형식을 입력하세요.</p>
+              )}
+            </div>
+          )}
+          <div>
+            <Label>비밀번호 * (6자 이상)</Label>
+            <Input type="password" value={form.password} onChange={(e) => setForm(f => ({...f, password: e.target.value}))} minLength={6} />
+            {isCustomerRole && <p className="text-xs text-muted-foreground mt-1">기본값: 로그인 ID와 동일</p>}
+            {form.password && form.password.length < 6 && (
+              <p className="text-xs text-destructive mt-1">비밀번호는 6자 이상이어야 합니다.</p>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!isValid() || mutation.isPending}>
+            {mutation.isPending ? "생성 중..." : "생성"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
   const [form, setForm] = useState({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "customer" as AppRole });
 
   const isCustomerRole = form.role === "customer";
