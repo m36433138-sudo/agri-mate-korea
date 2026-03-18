@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
+import type { Machine, Customer, Repair } from "@/types/database";
 
 export default function MachineDetail() {
   const { id } = useParams<{ id: string }>();
