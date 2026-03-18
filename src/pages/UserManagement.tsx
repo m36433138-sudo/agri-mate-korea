@@ -34,6 +34,8 @@ const PERMISSION_LABELS: Record<string, string> = {
   add_machines: "기계 등록",
 };
 
+import type { Customer } from "@/types/database";
+
 export default function UserManagement() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -195,11 +197,25 @@ export default function UserManagement() {
 function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [form, setForm] = useState({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "customer" as AppRole });
+  const [form, setForm] = useState({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "customer" as AppRole, customer_id: "" });
 
   const isCustomerRole = form.role === "customer";
 
-  // Auto-generate login ID from phone for customers
+  // Fetch unlinked customers for linking
+  const { data: unlinkedCustomers } = useQuery({
+    queryKey: ["unlinked-customers"],
+    enabled: open && isCustomerRole,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .is("user_id", null)
+        .order("name");
+      if (error) throw error;
+      return data as Customer[];
+    },
+  });
+
   const autoGenerateId = (phone: string) => {
     const digits = phone.replace(/\D/g, "");
     const last4 = digits.slice(-4);
@@ -210,13 +226,13 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     const updates: any = { phone };
     if (isCustomerRole) {
       updates.loginId = autoGenerateId(phone);
-      updates.password = autoGenerateId(phone); // default password = login ID
+      updates.password = autoGenerateId(phone);
     }
     setForm(f => ({ ...f, ...updates }));
   };
 
   const handleRoleChange = (role: AppRole) => {
-    const updates: any = { role };
+    const updates: any = { role, customer_id: "" };
     if (role === "customer") {
       updates.loginId = autoGenerateId(form.phone);
       updates.password = autoGenerateId(form.phone);
@@ -227,7 +243,26 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     setForm(f => ({ ...f, ...updates }));
   };
 
-  // For customers: loginId@ym.local, for others: real email
+  const handleCustomerSelect = (customerId: string) => {
+    if (customerId === "__new__") {
+      setForm(f => ({ ...f, customer_id: "" }));
+      return;
+    }
+    const customer = unlinkedCustomers?.find(c => c.id === customerId);
+    if (customer) {
+      setForm(f => ({
+        ...f,
+        customer_id: customerId,
+        display_name: f.display_name || customer.name,
+        phone: f.phone || customer.phone,
+        loginId: autoGenerateId(f.phone || customer.phone),
+        password: autoGenerateId(f.phone || customer.phone),
+      }));
+    } else {
+      setForm(f => ({ ...f, customer_id: customerId }));
+    }
+  };
+
   const getEmail = () => {
     if (isCustomerRole) return `${form.loginId}@ym.local`;
     return form.email;
@@ -251,6 +286,7 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           display_name: form.display_name,
           phone: form.phone || null,
           role: form.role,
+          customer_id: form.customer_id || null,
         },
       });
 
@@ -259,12 +295,14 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-users"] });
+      qc.invalidateQueries({ queryKey: ["unlinked-customers"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
       const desc = isCustomerRole
         ? `로그인 ID: ${form.loginId} / 비밀번호: ${form.password}`
         : "바로 로그인 가능합니다.";
       toast({ title: "계정이 생성되었습니다.", description: desc });
       onOpenChange(false);
-      setForm({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "customer" });
+      setForm({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "customer", customer_id: "" });
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
@@ -285,6 +323,23 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               </SelectContent>
             </Select>
           </div>
+
+          {isCustomerRole && unlinkedCustomers && unlinkedCustomers.length > 0 && (
+            <div>
+              <Label>기존 고객 연동 (선택)</Label>
+              <Select value={form.customer_id || "__new__"} onValueChange={handleCustomerSelect}>
+                <SelectTrigger><SelectValue placeholder="새 고객으로 생성" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__new__">새 고객으로 생성</SelectItem>
+                  {unlinkedCustomers.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name} ({c.phone})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">기존 고객과 연동하면 해당 고객의 기계/수리 이력을 마이페이지에서 볼 수 있습니다.</p>
+            </div>
+          )}
+
           <div><Label>이름 *</Label><Input value={form.display_name} onChange={(e) => setForm(f => ({...f, display_name: e.target.value}))} placeholder="홍길동" /></div>
           <div>
             <Label>연락처 {isCustomerRole ? "*" : ""}</Label>
@@ -324,7 +379,6 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     </Dialog>
   );
 }
-
 function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();

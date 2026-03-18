@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, UserCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import type { Customer, Machine, Repair } from "@/types/database";
 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +24,7 @@ export default function CustomerDetail() {
     queryFn: async () => {
       const { data, error } = await supabase.from("customers").select("*").eq("id", id!).single();
       if (error) throw error;
-      return data;
+      return data as Customer & { user_id: string | null };
     },
   });
 
@@ -31,7 +33,7 @@ export default function CustomerDetail() {
     queryFn: async () => {
       const { data, error } = await supabase.from("machines").select("*").eq("customer_id", id!).order("sale_date", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as Machine[];
     },
   });
 
@@ -73,7 +75,14 @@ export default function CustomerDetail() {
       <Card className="shadow-card border-0 mb-6">
         <CardContent className="p-6">
           <div className="flex items-start justify-between">
-            <h1 className="text-2xl font-bold">{customer.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">{customer.name}</h1>
+              {customer.user_id && (
+                <Badge variant="secondary" className="gap-1">
+                  <UserCheck className="h-3 w-3" /> 계정 연동됨
+                </Badge>
+              )}
+            </div>
             <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" />
             </Button>
@@ -146,7 +155,7 @@ export default function CustomerDetail() {
   );
 }
 
-function EditCustomerDialog({ open, onOpenChange, customer }: { open: boolean; onOpenChange: (v: boolean) => void; customer: any }) {
+function EditCustomerDialog({ open, onOpenChange, customer }: { open: boolean; onOpenChange: (v: boolean) => void; customer: Customer }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({
