@@ -17,6 +17,8 @@ import RepairTemplates from "@/pages/RepairTemplates";
 import ChatBot from "@/pages/ChatBot";
 import UserManagement from "@/pages/UserManagement";
 import MyPage from "@/pages/MyPage";
+import OperationsDashboard from "@/pages/OperationsDashboard";
+import RepairStats from "@/pages/RepairStats";
 import NotFound from "@/pages/NotFound";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -42,6 +44,8 @@ const App = () => (
                 <Layout>
                   <Routes>
                     <Route path="/" element={<HomePage />} />
+                    <Route path="/dashboard/operations" element={<OperationsDashboard />} />
+                    <Route path="/dashboard/stats" element={<RepairStats />} />
                     <Route path="/machines" element={<MachinesList />} />
                     <Route path="/machines/:id" element={<MachineDetail />} />
                     <Route path="/customers" element={<CustomersList />} />

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare, ClipboardList, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,7 @@ export function AppSidebar() {
     items.push({ title: "AI 정비 상담", url: "/chat", icon: MessageSquare });
   } else {
     items.push({ title: "대시보드", url: "/", icon: LayoutDashboard });
+    items.push({ title: "작업현황판", url: "/dashboard/operations", icon: ClipboardList });
 
     if (isAdmin || hasPermission("view_machines")) {
       items.push({ title: "기계관리", url: "/machines", icon: Tractor });
@@ -52,6 +53,7 @@ export function AppSidebar() {
     }
     if (isAdmin || isEmployee) {
       items.push({ title: "AI 어시스턴트", url: "/chat", icon: Sparkles });
+      items.push({ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 });
     }
     if (isAdmin) {
       items.push({ title: "사용자 관리", url: "/users", icon: UserCog });
