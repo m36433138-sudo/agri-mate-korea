@@ -1,4 +1,4 @@
-import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut, UserCog, User, Cpu } from "lucide-react";
+import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +31,9 @@ export function AppSidebar() {
   const items: { title: string; url: string; icon: any }[] = [];
 
   if (isCustomer) {
+    items.push({ title: "홈", url: "/", icon: Home });
     items.push({ title: "마이페이지", url: "/my-page", icon: User });
+    items.push({ title: "AI 정비 상담", url: "/chat", icon: MessageSquare });
   } else {
     items.push({ title: "대시보드", url: "/", icon: LayoutDashboard });
 
