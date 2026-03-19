@@ -31,7 +31,9 @@ export function AppSidebar() {
   const items: { title: string; url: string; icon: any }[] = [];
 
   if (isCustomer) {
+    items.push({ title: "홈", url: "/", icon: Home });
     items.push({ title: "마이페이지", url: "/my-page", icon: User });
+    items.push({ title: "AI 정비 상담", url: "/chat", icon: MessageSquare });
   } else {
     items.push({ title: "대시보드", url: "/", icon: LayoutDashboard });
 

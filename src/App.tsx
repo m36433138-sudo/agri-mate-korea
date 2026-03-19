@@ -6,6 +6,7 @@ import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Index";
+import CustomerHome from "@/pages/CustomerHome";
 import MachinesList from "@/pages/MachinesList";
 import MachineDetail from "@/pages/MachineDetail";
 import CustomersList from "@/pages/CustomersList";
@@ -17,8 +18,15 @@ import ChatBot from "@/pages/ChatBot";
 import UserManagement from "@/pages/UserManagement";
 import MyPage from "@/pages/MyPage";
 import NotFound from "@/pages/NotFound";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const queryClient = new QueryClient();
+
+function HomePage() {
+  const { isCustomer, isLoading } = useUserRole();
+  if (isLoading) return null;
+  return isCustomer ? <CustomerHome /> : <Dashboard />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -33,7 +41,7 @@ const App = () => (
               <ProtectedRoute>
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/" element={<HomePage />} />
                     <Route path="/machines" element={<MachinesList />} />
                     <Route path="/machines/:id" element={<MachineDetail />} />
                     <Route path="/customers" element={<CustomersList />} />
