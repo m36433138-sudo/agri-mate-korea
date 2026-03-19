@@ -53,6 +53,7 @@ export function AppSidebar() {
     }
     if (isAdmin || isEmployee) {
       items.push({ title: "AI 어시스턴트", url: "/chat", icon: Sparkles });
+      items.push({ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 });
     }
     if (isAdmin) {
       items.push({ title: "사용자 관리", url: "/users", icon: UserCog });
