@@ -36,6 +36,7 @@ export function AppSidebar() {
     items.push({ title: "AI 정비 상담", url: "/chat", icon: MessageSquare });
   } else {
     items.push({ title: "대시보드", url: "/", icon: LayoutDashboard });
+    items.push({ title: "작업현황판", url: "/dashboard/operations", icon: ClipboardList });
 
     if (isAdmin || hasPermission("view_machines")) {
       items.push({ title: "기계관리", url: "/machines", icon: Tractor });
