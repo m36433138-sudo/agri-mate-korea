@@ -29,7 +29,7 @@ export function useGoogleSheets() {
   const { data: gangjinData, isLoading: gLoading, error: gError } = useQuery({
     queryKey: ["sheets", "강진"],
     queryFn: async () => {
-      const rows = await fetchTab("강진(입출고)", "강진");
+      const rows = await fetchTab("강진(입출수)", "강진");
       setLastUpdated(new Date());
       return rows;
     },
