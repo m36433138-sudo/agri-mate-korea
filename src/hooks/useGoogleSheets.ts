@@ -19,7 +19,7 @@ export function useGoogleSheets() {
   const { data: jangheungData, isLoading: jLoading, error: jError } = useQuery({
     queryKey: ["sheets", "장흥"],
     queryFn: async () => {
-      const rows = await fetchTab("장흥(입출고)", "장흥");
+      const rows = await fetchTab("장흥(입출수)", "장흥");
       setLastUpdated(new Date());
       return rows;
     },
