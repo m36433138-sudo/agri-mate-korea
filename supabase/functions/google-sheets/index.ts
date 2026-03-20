@@ -22,7 +22,8 @@ serve(async (req) => {
     const { tab } = await req.json();
     if (!tab) throw new Error("Tab name is required");
 
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A:R?key=${apiKey}`;
+    const range = encodeURIComponent(`'${tab}'`) + "!A:R";
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
     console.log("Fetching URL:", url.replace(apiKey, "REDACTED"));
 
     const response = await fetch(url);
