@@ -23,6 +23,7 @@ serve(async (req) => {
     if (!tab) throw new Error("Tab name is required");
 
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A:R?key=${apiKey}`;
+    console.log("Fetching URL:", url.replace(apiKey, "REDACTED"));
 
     const response = await fetch(url);
     if (!response.ok) {
