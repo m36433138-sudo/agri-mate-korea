@@ -11,7 +11,9 @@ serve(async (req) => {
   }
 
   try {
-    const sheetId = Deno.env.get("GOOGLE_SHEETS_ID");
+    // Strip any accidental /d/ prefix or trailing slashes from the sheet ID
+    const rawId = Deno.env.get("GOOGLE_SHEETS_ID") || "";
+    const sheetId = rawId.replace(/^\/d\//, "").replace(/\/$/, "").trim();
     const apiKey = Deno.env.get("GOOGLE_SHEETS_API_KEY");
 
     if (!sheetId) throw new Error("GOOGLE_SHEETS_ID is not configured");
@@ -21,6 +23,7 @@ serve(async (req) => {
     if (!tab) throw new Error("Tab name is required");
 
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A:R?key=${apiKey}`;
+    console.log("Fetching URL:", url.replace(apiKey, "REDACTED"));
 
     const response = await fetch(url);
     if (!response.ok) {
