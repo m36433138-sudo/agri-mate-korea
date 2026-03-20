@@ -11,7 +11,9 @@ serve(async (req) => {
   }
 
   try {
-    const sheetId = Deno.env.get("GOOGLE_SHEETS_ID");
+    // Strip any accidental /d/ prefix or trailing slashes from the sheet ID
+    const rawId = Deno.env.get("GOOGLE_SHEETS_ID") || "";
+    const sheetId = rawId.replace(/^\/d\//, "").replace(/\/$/, "").trim();
     const apiKey = Deno.env.get("GOOGLE_SHEETS_API_KEY");
 
     if (!sheetId) throw new Error("GOOGLE_SHEETS_ID is not configured");
