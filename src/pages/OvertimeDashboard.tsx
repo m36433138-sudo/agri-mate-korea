@@ -39,11 +39,17 @@ function TechnicianCard({
   isLoading,
   isError,
   onRetry,
+  onClockIn,
+  onClockOut,
+  isClocking,
 }: {
   data?: TechnicianData;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
+  onClockIn: () => void;
+  onClockOut: () => void;
+  isClocking: boolean;
 }) {
   const name = data?.name || "";
   const colors = TECH_COLORS[name] || TECH_COLORS["유호상"];
