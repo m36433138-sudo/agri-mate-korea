@@ -18,7 +18,8 @@ export interface SheetRow {
   전체완료: string;
   비고: string;
   _branch: "장흥" | "강진";
-  _rowIndex: number; // 1-based row index in the sheet (for write-back)
+  _rowIndex: number;
+  _doneCol: string; // Column letter for 전체완료 (for write-back)
 }
 
 export type OperationStatus = "입고대기" | "수리중" | "출고대기" | "완료";
@@ -85,28 +86,53 @@ export function getMachineTypeColor(type: string): { bg: string; text: string } 
 
 export function parseRows(values: string[][], branch: "장흥" | "강진"): SheetRow[] {
   if (!values || values.length < 2) return [];
+  // Use header-based mapping for robustness
+  const headers = values[0].map(h => (h || "").trim());
+  const colIdx = (name: string) => headers.findIndex(h => h.includes(name));
+
+  const iName = colIdx("성함") >= 0 ? colIdx("성함") : colIdx("성명") >= 0 ? colIdx("성명") : 1;
+  const iMachine = colIdx("기계") >= 0 ? colIdx("기계") : 2;
+  const iModel = colIdx("품목") >= 0 ? colIdx("품목") : 3;
+  const iPhone = colIdx("전화") >= 0 ? colIdx("전화") : 4;
+  const iAddr = colIdx("주소") >= 0 ? colIdx("주소") : 5;
+  const iLoc = colIdx("위치") >= 0 ? colIdx("위치") : 6;
+  const iTech = colIdx("수리기사") >= 0 ? colIdx("수리기사") : 7;
+  const iReq = colIdx("요구사항") >= 0 ? colIdx("요구사항") : 8;
+  const iEntry = colIdx("입고일") >= 0 ? colIdx("입고일") : 9;
+  const iRepStart = colIdx("수리시작") >= 0 ? colIdx("수리시작") : 10;
+  const iRepDone = colIdx("수리완료") >= 0 ? colIdx("수리완료") : 11;
+  const iExit = colIdx("출고일") >= 0 ? colIdx("출고일") : 12;
+  const iContact = colIdx("통화") >= 0 ? colIdx("통화") : colIdx("연락여부") >= 0 ? colIdx("연락여부") : 13;
+  const iContactNote = colIdx("견적") >= 0 ? colIdx("견적") : colIdx("연락사항") >= 0 ? colIdx("연락사항") : 14;
+  const iDone = colIdx("전체") >= 0 ? colIdx("전체") : colIdx("완료") >= 0 ? colIdx("완료") : 15;
+  const iNote = colIdx("비고") >= 0 ? colIdx("비고") : 16;
+
+  // Store the actual column letter for the "전체완료" field (for write-back)
+  const doneColLetter = String.fromCharCode(65 + iDone); // A=65
+
   return values.slice(1)
     .map((row, idx) => ({
       status_label: (row[0] || "").trim(),
-      손님성명: (row[1] || "").trim(),
-      기계: (row[2] || "").trim(),
-      품목: (row[3] || "").trim(),
-      전화번호: (row[4] || "").trim(),
-      주소: (row[5] || "").trim(),
-      위치: (row[6] || "").trim(),
-      수리기사: (row[7] || "").trim(),
-      손님요구사항: (row[8] || "").trim(),
-      입고일: (row[9] || "").trim(),
-      수리시작일: (row[10] || "").trim(),
-      수리완료일: (row[11] || "").trim(),
-      수리관료일: (row[12] || "").trim(),
-      출고일: (row[13] || "").trim(),
-      연락여부: (row[14] || "").trim(),
-      연락사항: (row[15] || "").trim(),
-      전체완료: (row[16] || "").trim(),
-      비고: (row[17] || "").trim(),
+      손님성명: (row[iName] || "").trim(),
+      기계: (row[iMachine] || "").trim(),
+      품목: (row[iModel] || "").trim(),
+      전화번호: (row[iPhone] || "").trim(),
+      주소: (row[iAddr] || "").trim(),
+      위치: (row[iLoc] || "").trim(),
+      수리기사: (row[iTech] || "").trim(),
+      손님요구사항: (row[iReq] || "").trim(),
+      입고일: (row[iEntry] || "").trim(),
+      수리시작일: (row[iRepStart] || "").trim(),
+      수리완료일: (row[iRepDone] || "").trim(),
+      수리관료일: "",
+      출고일: (row[iExit] || "").trim(),
+      연락여부: (row[iContact] || "").trim(),
+      연락사항: (row[iContactNote] || "").trim(),
+      전체완료: (row[iDone] || "").trim(),
+      비고: (row[iNote] || "").trim(),
       _branch: branch,
-      _rowIndex: idx + 2, // +2 because row 1 is header, idx is 0-based
+      _rowIndex: idx + 2,
+      _doneCol: doneColLetter,
     }))
-    .filter(row => row.손님성명?.trim()); // CRITICAL: filter empty rows
+    .filter(row => row.손님성명?.trim());
 }
