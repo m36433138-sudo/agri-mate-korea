@@ -91,9 +91,9 @@ serve(async (req) => {
     // WRITE operation — mark row as complete
     if (action === "markComplete") {
       if (!rowIndex || !sheetName) throw new Error("rowIndex and sheetName are required for markComplete");
-
+      const col = body.col || "P"; // Default to column P for 전체완료
       const accessToken = await getAccessToken();
-      const range = encodeURIComponent(`'${sheetName}'!Q${rowIndex}`);
+      const range = encodeURIComponent(`'${sheetName}'!${col}${rowIndex}`);
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=USER_ENTERED`;
 
       console.log("Writing to:", url.replace(accessToken, "REDACTED"));
