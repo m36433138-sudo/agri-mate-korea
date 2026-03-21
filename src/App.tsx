@@ -18,6 +18,7 @@ import ChatBot from "@/pages/ChatBot";
 import UserManagement from "@/pages/UserManagement";
 import MyPage from "@/pages/MyPage";
 import OperationsDashboard from "@/pages/OperationsDashboard";
+import OvertimeDashboard from "@/pages/OvertimeDashboard";
 import RepairStats from "@/pages/RepairStats";
 import NotFound from "@/pages/NotFound";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -46,6 +47,7 @@ const App = () => (
                     <Route path="/" element={<HomePage />} />
                     <Route path="/dashboard/operations" element={<OperationsDashboard />} />
                     <Route path="/dashboard/stats" element={<RepairStats />} />
+                    <Route path="/dashboard/overtime" element={<OvertimeDashboard />} />
                     <Route path="/machines" element={<MachinesList />} />
                     <Route path="/machines/:id" element={<MachineDetail />} />
                     <Route path="/customers" element={<CustomersList />} />
