@@ -1,11 +1,22 @@
 import { useState } from "react";
-import { RefreshCw, Clock, User, AlertTriangle } from "lucide-react";
+import { RefreshCw, Clock, User, AlertTriangle, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   useOvertimeData,
   TECHNICIANS,
@@ -28,11 +39,17 @@ function TechnicianCard({
   isLoading,
   isError,
   onRetry,
+  onClockIn,
+  onClockOut,
+  isClocking,
 }: {
   data?: TechnicianData;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
+  onClockIn: () => void;
+  onClockOut: () => void;
+  isClocking: boolean;
 }) {
   const name = data?.name || "";
   const colors = TECH_COLORS[name] || TECH_COLORS["유호상"];
@@ -115,6 +132,30 @@ function TechnicianCard({
             ))}
           </div>
         )}
+
+        {/* Clock In / Out Buttons */}
+        <div className="flex gap-2 mt-4 pt-3 border-t">
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+            onClick={onClockIn}
+            disabled={isClocking}
+          >
+            <LogIn className="h-4 w-4 mr-1" />
+            출근
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 text-rose-600 border-rose-300 hover:bg-rose-50"
+            onClick={onClockOut}
+            disabled={isClocking}
+          >
+            <LogOut className="h-4 w-4 mr-1" />
+            퇴근
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -241,8 +282,24 @@ function DailyTable({ data }: { data: TechnicianData }) {
 }
 
 export default function OvertimeDashboard() {
-  const { queries, allData, isLoading, lastUpdated, refresh } = useOvertimeData();
+  const { queries, allData, isLoading, lastUpdated, refresh, clockInMutation, clockOutMutation } = useOvertimeData();
   const [selectedTab, setSelectedTab] = useState<string>(TECHNICIANS[0]);
+  const [confirmAction, setConfirmAction] = useState<{ type: "in" | "out"; name: TechnicianName } | null>(null);
+  const { toast } = useToast();
+
+  const handleConfirm = async () => {
+    if (!confirmAction) return;
+    const mutation = confirmAction.type === "in" ? clockInMutation : clockOutMutation;
+    const label = confirmAction.type === "in" ? "출근" : "퇴근";
+    try {
+      await mutation.mutateAsync(confirmAction.name);
+      toast({ title: `${confirmAction.name} ${label} 완료`, description: `${label} 시간이 기록되었습니다.` });
+    } catch (err: any) {
+      toast({ title: "오류", description: err.message || `${label} 기록에 실패했습니다.`, variant: "destructive" });
+    } finally {
+      setConfirmAction(null);
+    }
+  };
 
   // Summary totals
   const totalCurrentMonth = allData.reduce(
@@ -250,6 +307,7 @@ export default function OvertimeDashboard() {
     0
   );
   const totalYearAccum = allData.reduce((sum, d) => sum + (d.totals?.y2026Minutes || 0), 0);
+  const isMutating = clockInMutation.isPending || clockOutMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -281,9 +339,32 @@ export default function OvertimeDashboard() {
             isLoading={queries[i].isLoading}
             isError={queries[i].isError}
             onRetry={() => queries[i].refetch()}
+            onClockIn={() => setConfirmAction({ type: "in", name })}
+            onClockOut={() => setConfirmAction({ type: "out", name })}
+            isClocking={isMutating}
           />
         ))}
       </div>
+
+      {/* Confirm Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.name} {confirmAction?.type === "in" ? "출근" : "퇴근"} 기록
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              현재 시간으로 {confirmAction?.type === "in" ? "출근" : "퇴근"}을 기록하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMutating}>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} disabled={isMutating}>
+              {isMutating ? "처리 중..." : "확인"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Summary Bar */}
       <Card>

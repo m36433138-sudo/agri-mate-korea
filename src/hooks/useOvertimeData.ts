@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCallback } from "react";
 
@@ -111,6 +111,37 @@ async function fetchTechnicianData(name: TechnicianName): Promise<TechnicianData
   return { name, dailyRecords, monthlySummary, totals, currentMonthSummary };
 }
 
+function formatNow() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const date = `${month}-${day}`;
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const time = `${hours}:${minutes}`;
+  return { date, time };
+}
+
+export async function clockIn(techName: TechnicianName) {
+  const { date, time } = formatNow();
+  const { data, error } = await supabase.functions.invoke("google-sheets", {
+    body: { action: "clockIn", techName, date, time },
+  });
+  if (error) throw new Error(error.message || "출근 기록 실패");
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function clockOut(techName: TechnicianName) {
+  const { date, time } = formatNow();
+  const { data, error } = await supabase.functions.invoke("google-sheets", {
+    body: { action: "clockOut", techName, date, time },
+  });
+  if (error) throw new Error(error.message || "퇴근 기록 실패");
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 export function useOvertimeData() {
   const queryClient = useQueryClient();
 
@@ -127,9 +158,19 @@ export function useOvertimeData() {
     queryClient.invalidateQueries({ queryKey: ["overtime"] });
   }, [queryClient]);
 
+  const clockInMutation = useMutation({
+    mutationFn: (techName: TechnicianName) => clockIn(techName),
+    onSuccess: () => refresh(),
+  });
+
+  const clockOutMutation = useMutation({
+    mutationFn: (techName: TechnicianName) => clockOut(techName),
+    onSuccess: () => refresh(),
+  });
+
   const allData = queries.map((q) => q.data).filter(Boolean) as TechnicianData[];
   const isLoading = queries.some((q) => q.isLoading);
   const lastUpdated = queries.some((q) => q.data) ? new Date() : null;
 
-  return { queries, allData, isLoading, lastUpdated, refresh, TECHNICIANS };
+  return { queries, allData, isLoading, lastUpdated, refresh, TECHNICIANS, clockInMutation, clockOutMutation };
 }

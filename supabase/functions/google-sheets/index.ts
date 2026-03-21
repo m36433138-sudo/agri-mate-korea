@@ -91,19 +91,14 @@ serve(async (req) => {
     // WRITE operation — mark row as complete
     if (action === "markComplete") {
       if (!rowIndex || !sheetName) throw new Error("rowIndex and sheetName are required for markComplete");
-      const col = body.col || "P"; // Default to column P for 전체완료
+      const col = body.col || "P";
       const accessToken = await getAccessToken();
       const range = encodeURIComponent(`'${sheetName}'!${col}${rowIndex}`);
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=USER_ENTERED`;
 
-      console.log("Writing to:", url.replace(accessToken, "REDACTED"));
-
       const writeRes = await fetch(url, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ values: [["TRUE"]] }),
       });
 
@@ -114,6 +109,79 @@ serve(async (req) => {
 
       const result = await writeRes.json();
       return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // WRITE operation — clock in (출근)
+    if (action === "clockIn") {
+      const techName = body.techName;
+      if (!techName) throw new Error("techName is required for clockIn");
+      const accessToken = await getAccessToken();
+
+      // First, read column A to find the next empty row
+      const readRange = encodeURIComponent(`'${techName}'!A:A`);
+      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}?key=${Deno.env.get("GOOGLE_SHEETS_API_KEY")}`;
+      const readRes = await fetch(readUrl);
+      if (!readRes.ok) throw new Error(`Failed to read sheet: ${await readRes.text()}`);
+      const readData = await readRes.json();
+      const lastRow = (readData.values?.length || 0) + 1;
+
+      const dateStr = body.date; // e.g. "2026-03-21"
+      const timeStr = body.time; // e.g. "08:30"
+
+      // Write date to A and time to B
+      const writeRange = encodeURIComponent(`'${techName}'!A${lastRow}:B${lastRow}`);
+      const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`;
+      const writeRes = await fetch(writeUrl, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[dateStr, timeStr]] }),
+      });
+
+      if (!writeRes.ok) throw new Error(`Clock-in write error: ${await writeRes.text()}`);
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, row: lastRow, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // WRITE operation — clock out (퇴근)
+    if (action === "clockOut") {
+      const techName = body.techName;
+      if (!techName) throw new Error("techName is required for clockOut");
+      const accessToken = await getAccessToken();
+
+      // Read column A to find the last row with today's date
+      const readRange = encodeURIComponent(`'${techName}'!A:C`);
+      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}?key=${Deno.env.get("GOOGLE_SHEETS_API_KEY")}`;
+      const readRes = await fetch(readUrl);
+      if (!readRes.ok) throw new Error(`Failed to read sheet: ${await readRes.text()}`);
+      const readData = await readRes.json();
+      const rows = readData.values || [];
+
+      const todayDate = body.date; // e.g. "3-21" or "2026-03-21"
+      // Find the last row matching today's date
+      let targetRow = -1;
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const cellA = (rows[i][0] || "").trim();
+        if (cellA === todayDate) { targetRow = i + 1; break; }
+      }
+
+      if (targetRow === -1) throw new Error(`오늘(${todayDate}) 출근 기록을 찾을 수 없습니다. 먼저 출근을 눌러주세요.`);
+
+      const timeStr = body.time;
+      const writeRange = encodeURIComponent(`'${techName}'!C${targetRow}`);
+      const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`;
+      const writeRes = await fetch(writeUrl, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[timeStr]] }),
+      });
+
+      if (!writeRes.ok) throw new Error(`Clock-out write error: ${await writeRes.text()}`);
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, row: targetRow, result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
