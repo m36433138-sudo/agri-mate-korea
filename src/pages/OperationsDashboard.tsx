@@ -66,7 +66,7 @@ export default function OperationsDashboard() {
     setIsMarking(true);
     try {
       const sheetName = confirmRow._branch === "장흥" ? "장흥(입출수)" : "강진(입출수)";
-      await markRowComplete(sheetName, confirmRow._rowIndex);
+      await markRowComplete(sheetName, confirmRow._rowIndex, confirmRow._doneCol);
       toast({ title: "완료 처리되었습니다", description: `${confirmRow.손님성명}님의 작업이 완료 처리되었습니다.` });
       refresh();
     } catch (err: any) {
