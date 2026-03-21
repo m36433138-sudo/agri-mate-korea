@@ -12,6 +12,14 @@ async function fetchTab(tab: string, branch: "장흥" | "강진"): Promise<Sheet
   return parseRows(data?.values || [], branch);
 }
 
+export async function markRowComplete(sheetName: string, rowIndex: number): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("google-sheets", {
+    body: { action: "markComplete", sheetName, rowIndex },
+  });
+  if (error) throw new Error(error.message || "Failed to update sheet");
+  if (data?.error) throw new Error(data.error);
+}
+
 export function useGoogleSheets() {
   const queryClient = useQueryClient();
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -36,13 +44,47 @@ export function useGoogleSheets() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: completedArchive, isLoading: cLoading } = useQuery({
+    queryKey: ["sheets", "완료된항목"],
+    queryFn: async () => {
+      // Try fetching the completed archive sheet - it may contain rows from both branches
+      try {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: { tab: "완료된항목" },
+        });
+        if (error || data?.error) return [];
+        // Parse as 장흥 by default, override with 위치 field later
+        const rows = parseRows(data?.values || [], "장흥");
+        // Fix branch based on 위치 column
+        return rows.map(r => ({
+          ...r,
+          _branch: (r.위치?.includes("강진") ? "강진" : "장흥") as "장흥" | "강진",
+        }));
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["sheets"] });
   }, [queryClient]);
 
   const allData = [...(jangheungData || []), ...(gangjinData || [])];
-  const isLoading = jLoading || gLoading;
+  const allWithArchive = [...allData, ...(completedArchive || [])];
+  const isLoading = jLoading || gLoading || cLoading;
   const error = jError || gError;
 
-  return { allData, jangheungData: jangheungData || [], gangjinData: gangjinData || [], isLoading, error, lastUpdated, refresh };
+  return {
+    allData,
+    allWithArchive,
+    jangheungData: jangheungData || [],
+    gangjinData: gangjinData || [],
+    completedArchive: completedArchive || [],
+    isLoading,
+    error,
+    lastUpdated,
+    refresh,
+  };
 }

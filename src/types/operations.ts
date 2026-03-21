@@ -1,5 +1,5 @@
 export interface SheetRow {
-  L: string;
+  status_label: string;
   손님성명: string;
   기계: string;
   품목: string;
@@ -8,7 +8,6 @@ export interface SheetRow {
   위치: string;
   수리기사: string;
   손님요구사항: string;
-  수리대기기간: string;
   입고일: string;
   수리시작일: string;
   수리완료일: string;
@@ -17,14 +16,15 @@ export interface SheetRow {
   연락여부: string;
   연락사항: string;
   전체완료: string;
+  비고: string;
   _branch: "장흥" | "강진";
+  _rowIndex: number; // 1-based row index in the sheet (for write-back)
 }
 
 export type OperationStatus = "입고대기" | "수리중" | "출고대기" | "완료";
 
 export function getStatus(row: SheetRow): OperationStatus {
-  const completed = isCompleted(row.전체완료);
-  if (completed) return "완료";
+  if (isCompleted(row.전체완료)) return "완료";
   if (row.수리완료일 && !row.출고일) return "출고대기";
   if (row.입고일 && !row.수리완료일) return "수리중";
   return "입고대기";
@@ -32,19 +32,24 @@ export function getStatus(row: SheetRow): OperationStatus {
 
 export function isCompleted(val: string): boolean {
   if (!val) return false;
-  const v = val.trim().toUpperCase();
-  return v === "TRUE" || v === "1" || v === "✓" || v === "O" || v === "완료";
+  const v = String(val).trim();
+  return ["TRUE", "true", "1", "✓"].includes(v);
 }
 
 export function parseSheetDate(dateStr: string): Date | null {
   if (!dateStr) return null;
-  // Handle formats: "2026. 3. 9", "2026.3.9", "2026-03-09", "2026. 03. 09"
   const cleaned = dateStr.replace(/\s/g, "").replace(/\./g, "-").replace(/-+$/, "");
   const d = new Date(cleaned);
   return isNaN(d.getTime()) ? null : d;
 }
 
 export function formatSheetDate(dateStr: string): string {
+  const d = parseSheetDate(dateStr);
+  if (!d) return "";
+  return `${d.getMonth() + 1}.${d.getDate()}`;
+}
+
+export function formatSheetDateFull(dateStr: string): string {
   const d = parseSheetDate(dateStr);
   if (!d) return "";
   return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
@@ -57,7 +62,6 @@ export function daysBetween(from: string, to: string): number | null {
   return Math.max(0, Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
-// Consistent color for technician names
 const TECH_COLORS = [
   "#16a34a", "#2563eb", "#d97706", "#dc2626", "#7c3aed",
   "#0891b2", "#be185d", "#65a30d", "#ea580c", "#6366f1",
@@ -72,34 +76,37 @@ export function getTechnicianColor(name: string): string {
   return TECH_COLORS[Math.abs(hash) % TECH_COLORS.length];
 }
 
+export function getMachineTypeColor(type: string): { bg: string; text: string } {
+  if (type?.includes("트랙터")) return { bg: "bg-green-100", text: "text-green-700" };
+  if (type?.includes("콤바인")) return { bg: "bg-blue-100", text: "text-blue-700" };
+  if (type?.includes("이앙기")) return { bg: "bg-orange-100", text: "text-orange-700" };
+  return { bg: "bg-gray-100", text: "text-gray-600" };
+}
+
 export function parseRows(values: string[][], branch: "장흥" | "강진"): SheetRow[] {
   if (!values || values.length < 2) return [];
-  const headers = values[0];
-  return values.slice(1).filter(row => row.some(cell => cell?.trim())).map(row => {
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => {
-      obj[h?.trim() || `col${i}`] = (row[i] || "").trim();
-    });
-    return {
-      L: obj["L"] || obj["l"] || row[0] || "",
-      손님성명: obj["손님 성명"] || obj["손님성명"] || row[1] || "",
-      기계: obj["기계"] || row[2] || "",
-      품목: obj["품목"] || row[3] || "",
-      전화번호: obj["전화번호"] || row[4] || "",
-      주소: obj["주소"] || row[5] || "",
-      위치: obj["위치"] || row[6] || "",
-      수리기사: obj["수리기사"] || row[7] || "",
-      손님요구사항: obj["손님 요구사항"] || obj["손님요구사항"] || row[8] || "",
-      수리대기기간: obj["수리대기기간"] || obj["수리대기기간"] || row[9] || "",
-      입고일: obj["입고일"] || row[10] || "",
-      수리시작일: obj["수리시작일"] || row[11] || "",
-      수리완료일: obj["수리완료일"] || row[12] || "",
-      수리관료일: obj["수리관료일"] || row[13] || "",
-      출고일: obj["출고일"] || row[14] || "",
-      연락여부: obj["연락여부"] || row[15] || "",
-      연락사항: obj["연락 사항/특번"] || obj["연락사항"] || row[16] || "",
-      전체완료: obj["전체 완료"] || obj["전체완료"] || row[17] || "",
+  return values.slice(1)
+    .map((row, idx) => ({
+      status_label: (row[0] || "").trim(),
+      손님성명: (row[1] || "").trim(),
+      기계: (row[2] || "").trim(),
+      품목: (row[3] || "").trim(),
+      전화번호: (row[4] || "").trim(),
+      주소: (row[5] || "").trim(),
+      위치: (row[6] || "").trim(),
+      수리기사: (row[7] || "").trim(),
+      손님요구사항: (row[8] || "").trim(),
+      입고일: (row[9] || "").trim(),
+      수리시작일: (row[10] || "").trim(),
+      수리완료일: (row[11] || "").trim(),
+      수리관료일: (row[12] || "").trim(),
+      출고일: (row[13] || "").trim(),
+      연락여부: (row[14] || "").trim(),
+      연락사항: (row[15] || "").trim(),
+      전체완료: (row[16] || "").trim(),
+      비고: (row[17] || "").trim(),
       _branch: branch,
-    };
-  });
+      _rowIndex: idx + 2, // +2 because row 1 is header, idx is 0-based
+    }))
+    .filter(row => row.손님성명?.trim()); // CRITICAL: filter empty rows
 }
