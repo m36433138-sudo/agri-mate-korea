@@ -45,11 +45,11 @@ export function useGoogleSheets() {
   });
 
   const { data: completedArchive, isLoading: cLoading } = useQuery({
-    queryKey: ["sheets", "완료된항목"],
+    queryKey: ["sheets", "완료된 항목"],
     queryFn: async () => {
       try {
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { tab: "완료된항목" },
+          body: { tab: "완료된 항목" },
         });
         if (error || data?.error) return [];
         const rows = parseRows(data?.values || [], "장흥");
