@@ -12,9 +12,9 @@ async function fetchTab(tab: string, branch: "장흥" | "강진"): Promise<Sheet
   return parseRows(data?.values || [], branch);
 }
 
-export async function markRowComplete(sheetName: string, rowIndex: number): Promise<void> {
+export async function markRowComplete(sheetName: string, rowIndex: number, col: string = "P"): Promise<void> {
   const { data, error } = await supabase.functions.invoke("google-sheets", {
-    body: { action: "markComplete", sheetName, rowIndex },
+    body: { action: "markComplete", sheetName, rowIndex, col },
   });
   if (error) throw new Error(error.message || "Failed to update sheet");
   if (data?.error) throw new Error(data.error);
