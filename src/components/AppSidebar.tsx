@@ -1,4 +1,4 @@
-import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare, ClipboardList, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare, ClipboardList, BarChart3, Clock } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +54,7 @@ export function AppSidebar() {
     if (isAdmin || isEmployee) {
       items.push({ title: "AI 어시스턴트", url: "/chat", icon: Sparkles });
       items.push({ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 });
+      items.push({ title: "초과근무 현황", url: "/dashboard/overtime", icon: Clock });
     }
     if (isAdmin) {
       items.push({ title: "사용자 관리", url: "/users", icon: UserCog });
