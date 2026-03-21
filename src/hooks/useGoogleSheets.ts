@@ -47,15 +47,12 @@ export function useGoogleSheets() {
   const { data: completedArchive, isLoading: cLoading } = useQuery({
     queryKey: ["sheets", "완료된항목"],
     queryFn: async () => {
-      // Try fetching the completed archive sheet - it may contain rows from both branches
       try {
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: { tab: "완료된항목" },
         });
         if (error || data?.error) return [];
-        // Parse as 장흥 by default, override with 위치 field later
         const rows = parseRows(data?.values || [], "장흥");
-        // Fix branch based on 위치 column
         return rows.map(r => ({
           ...r,
           _branch: (r.위치?.includes("강진") ? "강진" : "장흥") as "장흥" | "강진",
@@ -65,6 +62,7 @@ export function useGoogleSheets() {
       }
     },
     staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 
   const refresh = useCallback(() => {
