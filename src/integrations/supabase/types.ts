@@ -65,6 +65,45 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory: {
+        Row: {
+          branch: string
+          created_at: string
+          id: string
+          location_main: string | null
+          location_sub: string | null
+          part_code: string
+          part_name: string
+          purchase_price: number | null
+          quantity: number | null
+          sales_price: number | null
+        }
+        Insert: {
+          branch?: string
+          created_at?: string
+          id?: string
+          location_main?: string | null
+          location_sub?: string | null
+          part_code: string
+          part_name: string
+          purchase_price?: number | null
+          quantity?: number | null
+          sales_price?: number | null
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          id?: string
+          location_main?: string | null
+          location_sub?: string | null
+          part_code?: string
+          part_name?: string
+          purchase_price?: number | null
+          quantity?: number | null
+          sales_price?: number | null
+        }
+        Relationships: []
+      }
       machines: {
         Row: {
           created_at: string
@@ -147,6 +186,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          branch: string | null
           created_at: string
           display_name: string | null
           email: string | null
@@ -155,6 +195,7 @@ export type Database = {
           phone: string | null
         }
         Insert: {
+          branch?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
@@ -163,6 +204,7 @@ export type Database = {
           phone?: string | null
         }
         Update: {
+          branch?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
@@ -206,6 +248,89 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "repair_history_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_log_parts: {
+        Row: {
+          created_at: string
+          id: string
+          part_code: string
+          quantity_used: number
+          repair_log_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          part_code: string
+          quantity_used?: number
+          repair_log_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          part_code?: string
+          quantity_used?: number
+          repair_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_log_parts_repair_log_id_fkey"
+            columns: ["repair_log_id"]
+            isOneToOne: false
+            referencedRelation: "repair_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_logs: {
+        Row: {
+          branch: string | null
+          created_at: string
+          customer_id: string | null
+          description: string | null
+          id: string
+          machine_id: string | null
+          mechanic_name: string
+          operating_hours: number | null
+          repair_date: string | null
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          machine_id?: string | null
+          mechanic_name: string
+          operating_hours?: number | null
+          repair_date?: string | null
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          machine_id?: string | null
+          mechanic_name?: string
+          operating_hours?: number | null
+          repair_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_logs_machine_id_fkey"
             columns: ["machine_id"]
             isOneToOne: false
             referencedRelation: "machines"
