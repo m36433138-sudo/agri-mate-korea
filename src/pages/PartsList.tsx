@@ -71,88 +71,95 @@ export default function PartsList() {
           <TabsTrigger value="parts">부품 목록</TabsTrigger>
           <TabsTrigger value="inventory">재고 관리</TabsTrigger>
         </TabsList>
+
         <TabsContent value="parts">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setBulkOpen(true)}>
-            <FileSpreadsheet className="h-4 w-4 mr-1" /> 엑셀 일괄등록
-          </Button>
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> 부품 등록
-          </Button>
-        </div>
-      </div>
-
-      <div className="relative max-w-xs mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="품명 또는 부품번호 검색..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      ) : filtered?.length === 0 ? (
-        <Card className="shadow-card border-0">
-          <CardContent className="py-12 text-center text-muted-foreground">
-            등록된 부품이 없습니다. 부품을 등록하여 수리 시 활용하세요.
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">품명</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">부품번호</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">단위</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">메모</th>
-                  <th className="w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered?.map((p) => (
-                  <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="p-3 font-medium">{p.part_name}</td>
-                    <td className="p-3 font-mono text-xs text-muted-foreground">{p.part_number}</td>
-                    <td className="p-3 text-muted-foreground">{p.unit}</td>
-                    <td className="p-3 text-muted-foreground">{p.notes || "-"}</td>
-                    <td className="p-3">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(p.id)}>
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 mb-6">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setBulkOpen(true)}>
+                <FileSpreadsheet className="h-4 w-4 mr-1" /> 엑셀 일괄등록
+              </Button>
+              <Button onClick={() => setAddOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> 부품 등록
+              </Button>
+            </div>
           </div>
-        </Card>
-      )}
 
-      <AddPartDialog open={addOpen} onOpenChange={setAddOpen} />
-      <BulkPartDialog open={bulkOpen} onOpenChange={setBulkOpen} onDownloadTemplate={downloadTemplate} />
+          <div className="relative max-w-xs mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="품명 또는 부품번호 검색..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>부품 삭제</AlertDialogTitle>
-            <AlertDialogDescription>이 부품을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>삭제</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : filtered?.length === 0 ? (
+            <Card className="shadow-card border-0">
+              <CardContent className="py-12 text-center text-muted-foreground">
+                등록된 부품이 없습니다. 부품을 등록하여 수리 시 활용하세요.
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="shadow-card border-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left p-3 font-medium text-muted-foreground">품명</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">부품번호</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">단위</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">메모</th>
+                      <th className="w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered?.map((p) => (
+                      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="p-3 font-medium">{p.part_name}</td>
+                        <td className="p-3 font-mono text-xs text-muted-foreground">{p.part_number}</td>
+                        <td className="p-3 text-muted-foreground">{p.unit}</td>
+                        <td className="p-3 text-muted-foreground">{p.notes || "-"}</td>
+                        <td className="p-3">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(p.id)}>
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          <AddPartDialog open={addOpen} onOpenChange={setAddOpen} />
+          <BulkPartDialog open={bulkOpen} onOpenChange={setBulkOpen} onDownloadTemplate={downloadTemplate} />
+
+          <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>부품 삭제</AlertDialogTitle>
+                <AlertDialogDescription>이 부품을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>취소</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>삭제</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </TabsContent>
+
+        <TabsContent value="inventory">
+          <InventoryManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
