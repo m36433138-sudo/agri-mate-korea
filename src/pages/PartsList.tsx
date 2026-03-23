@@ -65,8 +65,14 @@ export default function PartsList() {
 
   return (
     <div>
+      <h1 className="text-2xl font-bold mb-4">부품관리</h1>
+      <Tabs defaultValue="parts">
+        <TabsList className="mb-4">
+          <TabsTrigger value="parts">부품 목록</TabsTrigger>
+          <TabsTrigger value="inventory">재고 관리</TabsTrigger>
+        </TabsList>
+        <TabsContent value="parts">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold">부품관리</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setBulkOpen(true)}>
             <FileSpreadsheet className="h-4 w-4 mr-1" /> 엑셀 일괄등록
