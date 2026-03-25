@@ -399,11 +399,17 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
           <p className="text-sm text-muted-foreground font-mono">{item.part_code} — {item.part_name}</p>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>수량</Label>
               <Input type="number" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} />
             </div>
+            <div>
+              <Label>적정재고량</Label>
+              <Input type="number" value={form.min_stock} onChange={(e) => setForm((f) => ({ ...f, min_stock: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>매입가</Label>
               <Input type="number" value={form.purchase_price} onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))} />
