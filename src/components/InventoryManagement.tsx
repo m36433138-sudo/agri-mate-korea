@@ -274,7 +274,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    part_code: "", part_name: "", quantity: "0",
+    part_code: "", part_name: "", quantity: "0", min_stock: "5",
     purchase_price: "", sales_price: "", location_main: "", location_sub: "",
   });
 
@@ -285,6 +285,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
         part_code: form.part_code,
         part_name: form.part_name,
         quantity: parseInt(form.quantity) || 0,
+        min_stock: parseInt(form.min_stock) || 5,
         purchase_price: form.purchase_price ? parseInt(form.purchase_price) : null,
         sales_price: form.sales_price ? parseInt(form.sales_price) : null,
         location_main: form.location_main || null,
@@ -296,7 +297,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
       qc.invalidateQueries({ queryKey: ["inventory"] });
       toast({ title: "재고가 등록되었습니다." });
       onOpenChange(false);
-      setForm({ part_code: "", part_name: "", quantity: "0", purchase_price: "", sales_price: "", location_main: "", location_sub: "" });
+      setForm({ part_code: "", part_name: "", quantity: "0", min_stock: "5", purchase_price: "", sales_price: "", location_main: "", location_sub: "" });
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
