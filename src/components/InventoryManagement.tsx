@@ -317,11 +317,17 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
             <Label>부품명 *</Label>
             <Input value={form.part_name} onChange={(e) => setForm((f) => ({ ...f, part_name: e.target.value }))} placeholder="엔진오일 필터" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>수량</Label>
               <Input type="number" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} />
             </div>
+            <div>
+              <Label>적정재고량</Label>
+              <Input type="number" value={form.min_stock} onChange={(e) => setForm((f) => ({ ...f, min_stock: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>매입가</Label>
               <Input type="number" value={form.purchase_price} onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))} />
@@ -358,6 +364,7 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
   const qc = useQueryClient();
   const [form, setForm] = useState({
     quantity: String(item.quantity ?? 0),
+    min_stock: String(item.min_stock ?? 5),
     purchase_price: String(item.purchase_price ?? ""),
     sales_price: String(item.sales_price ?? ""),
     location_main: item.location_main ?? "",
@@ -368,6 +375,7 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
     mutationFn: async () => {
       const { error } = await supabase.from("inventory").update({
         quantity: parseInt(form.quantity) || 0,
+        min_stock: parseInt(form.min_stock) || 5,
         purchase_price: form.purchase_price ? parseInt(form.purchase_price) : null,
         sales_price: form.sales_price ? parseInt(form.sales_price) : null,
         location_main: form.location_main || null,
