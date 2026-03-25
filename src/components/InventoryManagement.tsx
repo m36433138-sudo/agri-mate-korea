@@ -147,6 +147,19 @@ export default function InventoryManagement() {
         </Card>
       </div>
 
+      {/* Low stock alert */}
+      {lowStockItems.length > 0 && (
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-destructive">재고 부족 알림 ({lowStockItems.length}건)</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {lowStockItems.map((i) => `${i.part_name}(${i.quantity ?? 0}/${i.min_stock ?? 5})`).join(", ")}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -178,6 +191,7 @@ export default function InventoryManagement() {
                   <th className="text-left p-3 font-medium text-muted-foreground">부품코드</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">부품명</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">수량</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">적정재고</th>
                   <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">매입가</th>
                   <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">매출가</th>
                   <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">위치</th>
@@ -185,17 +199,19 @@ export default function InventoryManagement() {
                 </tr>
               </thead>
               <tbody>
-                {filtered?.map((item) => (
+                {filtered?.map((item) => {
+                  const isLow = (item.quantity ?? 0) <= (item.min_stock ?? 5);
+                  return (
                   <tr
                     key={item.id}
                     className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${
-                      (item.quantity ?? 0) <= 5 ? "bg-destructive/5" : ""
+                      isLow ? "bg-destructive/5" : ""
                     }`}
                   >
                     <td className="p-3 font-mono text-xs">{item.part_code}</td>
                     <td className="p-3 font-medium">{item.part_name}</td>
                     <td className="p-3 text-right">
-                      {(item.quantity ?? 0) <= 5 ? (
+                      {isLow ? (
                         <Badge variant="destructive" className="text-xs">{item.quantity ?? 0}</Badge>
                       ) : (
                         <span className="font-medium">{item.quantity ?? 0}</span>
