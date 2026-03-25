@@ -73,7 +73,8 @@ export default function InventoryManagement() {
 
   const totalItems = inventory?.length ?? 0;
   const totalQty = inventory?.reduce((s, i) => s + (i.quantity ?? 0), 0) ?? 0;
-  const lowStock = inventory?.filter((i) => (i.quantity ?? 0) <= 5).length ?? 0;
+  const lowStock = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 5)).length ?? 0;
+  const lowStockItems = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 5)) ?? [];
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
