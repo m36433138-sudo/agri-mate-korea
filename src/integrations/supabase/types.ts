@@ -72,6 +72,7 @@ export type Database = {
           id: string
           location_main: string | null
           location_sub: string | null
+          min_stock: number | null
           part_code: string
           part_name: string
           purchase_price: number | null
@@ -84,6 +85,7 @@ export type Database = {
           id?: string
           location_main?: string | null
           location_sub?: string | null
+          min_stock?: number | null
           part_code: string
           part_name: string
           purchase_price?: number | null
@@ -96,6 +98,7 @@ export type Database = {
           id?: string
           location_main?: string | null
           location_sub?: string | null
+          min_stock?: number | null
           part_code?: string
           part_name?: string
           purchase_price?: number | null
