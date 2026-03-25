@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, MapPin } from "lucide-react";
+import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, MapPin, AlertTriangle } from "lucide-react";
 import * as XLSX from "xlsx";
 
 type InventoryItem = {
@@ -26,6 +26,7 @@ type InventoryItem = {
   sales_price: number | null;
   location_main: string | null;
   location_sub: string | null;
+  min_stock: number | null;
 };
 
 export default function InventoryManagement() {
