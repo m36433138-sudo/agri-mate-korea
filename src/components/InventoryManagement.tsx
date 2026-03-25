@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, MapPin } from "lucide-react";
+import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, MapPin, AlertTriangle } from "lucide-react";
 import * as XLSX from "xlsx";
 
 type InventoryItem = {
@@ -26,6 +26,7 @@ type InventoryItem = {
   sales_price: number | null;
   location_main: string | null;
   location_sub: string | null;
+  min_stock: number | null;
 };
 
 export default function InventoryManagement() {
@@ -72,7 +73,8 @@ export default function InventoryManagement() {
 
   const totalItems = inventory?.length ?? 0;
   const totalQty = inventory?.reduce((s, i) => s + (i.quantity ?? 0), 0) ?? 0;
-  const lowStock = inventory?.filter((i) => (i.quantity ?? 0) <= 5).length ?? 0;
+  const lowStock = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 5)).length ?? 0;
+  const lowStockItems = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 5)) ?? [];
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
@@ -145,6 +147,19 @@ export default function InventoryManagement() {
         </Card>
       </div>
 
+      {/* Low stock alert */}
+      {lowStockItems.length > 0 && (
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-destructive">재고 부족 알림 ({lowStockItems.length}건)</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {lowStockItems.map((i) => `${i.part_name}(${i.quantity ?? 0}/${i.min_stock ?? 5})`).join(", ")}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -176,6 +191,7 @@ export default function InventoryManagement() {
                   <th className="text-left p-3 font-medium text-muted-foreground">부품코드</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">부품명</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">수량</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">적정재고</th>
                   <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">매입가</th>
                   <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">매출가</th>
                   <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">위치</th>
@@ -183,21 +199,26 @@ export default function InventoryManagement() {
                 </tr>
               </thead>
               <tbody>
-                {filtered?.map((item) => (
+                {filtered?.map((item) => {
+                  const isLow = (item.quantity ?? 0) <= (item.min_stock ?? 5);
+                  return (
                   <tr
                     key={item.id}
                     className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${
-                      (item.quantity ?? 0) <= 5 ? "bg-destructive/5" : ""
+                      isLow ? "bg-destructive/5" : ""
                     }`}
                   >
                     <td className="p-3 font-mono text-xs">{item.part_code}</td>
                     <td className="p-3 font-medium">{item.part_name}</td>
                     <td className="p-3 text-right">
-                      {(item.quantity ?? 0) <= 5 ? (
+                      {isLow ? (
                         <Badge variant="destructive" className="text-xs">{item.quantity ?? 0}</Badge>
                       ) : (
                         <span className="font-medium">{item.quantity ?? 0}</span>
                       )}
+                    </td>
+                    <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
+                      {item.min_stock ?? 5}
                     </td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
                       {item.purchase_price?.toLocaleString() ?? "-"}
@@ -219,7 +240,8 @@ export default function InventoryManagement() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -252,7 +274,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    part_code: "", part_name: "", quantity: "0",
+    part_code: "", part_name: "", quantity: "0", min_stock: "5",
     purchase_price: "", sales_price: "", location_main: "", location_sub: "",
   });
 
@@ -263,6 +285,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
         part_code: form.part_code,
         part_name: form.part_name,
         quantity: parseInt(form.quantity) || 0,
+        min_stock: parseInt(form.min_stock) || 5,
         purchase_price: form.purchase_price ? parseInt(form.purchase_price) : null,
         sales_price: form.sales_price ? parseInt(form.sales_price) : null,
         location_main: form.location_main || null,
@@ -274,7 +297,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
       qc.invalidateQueries({ queryKey: ["inventory"] });
       toast({ title: "재고가 등록되었습니다." });
       onOpenChange(false);
-      setForm({ part_code: "", part_name: "", quantity: "0", purchase_price: "", sales_price: "", location_main: "", location_sub: "" });
+      setForm({ part_code: "", part_name: "", quantity: "0", min_stock: "5", purchase_price: "", sales_price: "", location_main: "", location_sub: "" });
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
@@ -294,11 +317,17 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
             <Label>부품명 *</Label>
             <Input value={form.part_name} onChange={(e) => setForm((f) => ({ ...f, part_name: e.target.value }))} placeholder="엔진오일 필터" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>수량</Label>
               <Input type="number" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} />
             </div>
+            <div>
+              <Label>적정재고량</Label>
+              <Input type="number" value={form.min_stock} onChange={(e) => setForm((f) => ({ ...f, min_stock: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>매입가</Label>
               <Input type="number" value={form.purchase_price} onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))} />
@@ -335,6 +364,7 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
   const qc = useQueryClient();
   const [form, setForm] = useState({
     quantity: String(item.quantity ?? 0),
+    min_stock: String(item.min_stock ?? 5),
     purchase_price: String(item.purchase_price ?? ""),
     sales_price: String(item.sales_price ?? ""),
     location_main: item.location_main ?? "",
@@ -345,6 +375,7 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
     mutationFn: async () => {
       const { error } = await supabase.from("inventory").update({
         quantity: parseInt(form.quantity) || 0,
+        min_stock: parseInt(form.min_stock) || 5,
         purchase_price: form.purchase_price ? parseInt(form.purchase_price) : null,
         sales_price: form.sales_price ? parseInt(form.sales_price) : null,
         location_main: form.location_main || null,
@@ -368,11 +399,17 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
           <p className="text-sm text-muted-foreground font-mono">{item.part_code} — {item.part_name}</p>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>수량</Label>
               <Input type="number" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} />
             </div>
+            <div>
+              <Label>적정재고량</Label>
+              <Input type="number" value={form.min_stock} onChange={(e) => setForm((f) => ({ ...f, min_stock: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>매입가</Label>
               <Input type="number" value={form.purchase_price} onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))} />
