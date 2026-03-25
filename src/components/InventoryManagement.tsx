@@ -218,6 +218,9 @@ export default function InventoryManagement() {
                       )}
                     </td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
+                      {item.min_stock ?? 5}
+                    </td>
+                    <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
                       {item.purchase_price?.toLocaleString() ?? "-"}
                     </td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
@@ -237,7 +240,8 @@ export default function InventoryManagement() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
