@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Upload, Trash2, FileSpreadsheet } from "lucide-react";
+import { Plus, Search, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,9 @@ import type { Customer } from "@/types/database";
 export default function CustomersList() {
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
 
   useRealtimeSync("customers", [["customers"]]);
 
@@ -36,11 +39,36 @@ export default function CustomersList() {
     searchFields: ["name", "phone"],
   });
 
+  const handleSheetImport = async () => {
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: { action: "importCustomersAndMachines" },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["machines"] });
+      toast({
+        title: "구글시트 가져오기 완료",
+        description: `고객 ${data.customers.inserted}명 추가 (${data.customers.skipped}명 기존), 기계 ${data.machines.inserted}대 추가 (${data.machines.skipped}대 기존)`,
+      });
+    } catch (e: any) {
+      toast({ title: "가져오기 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">고객관리</h1>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSheetImport} disabled={importing}>
+            {importing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CloudDownload className="h-4 w-4 mr-1" />}
+            {importing ? "가져오는 중..." : "구글시트 가져오기"}
+          </Button>
           <Button variant="outline" onClick={() => setBulkOpen(true)}>
             <Upload className="h-4 w-4 mr-1" /> 일괄 등록
           </Button>
