@@ -107,9 +107,13 @@ export default function CustomerDetail() {
                   <div>
                     <p className="text-sm font-medium">{m.model_name}</p>
                     <p className="text-xs text-muted-foreground font-mono">{m.serial_number}</p>
+                    {(m as any).engine_number && <p className="text-xs text-muted-foreground">엔진: {(m as any).engine_number}</p>}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <TypeBadge type={m.machine_type} />
+                  <div className="flex items-center gap-3 text-right">
+                    <div className="flex flex-col items-end gap-1">
+                      <TypeBadge type={m.machine_type} />
+                      {(m as any).classification && <Badge variant="outline" className="text-xs">{(m as any).classification}</Badge>}
+                    </div>
                     {m.sale_date && <span className="text-xs text-muted-foreground">{formatDate(m.sale_date)}</span>}
                   </div>
                 </Link>
