@@ -296,9 +296,8 @@ serve(async (req) => {
       }
 
       // 4. Insert machines — skip duplicates by serial_number
-      const existMachRes = await fetch(`${supabaseUrl}/rest/v1/machines?select=serial_number`, { headers });
-      const existingMachines: { serial_number: string }[] = await existMachRes.json();
-      const existSerials = new Set(existingMachines.map(m => m.serial_number));
+      const existingMachines = await fetchAll("machines?select=serial_number");
+      const existSerials = new Set(existingMachines.map((m: any) => m.serial_number));
 
       let machInserted = 0;
       let machSkipped = 0;
