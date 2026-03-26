@@ -1,0 +1,1 @@
+ALTER TABLE public.machines DROP CONSTRAINT machines_machine_type_check;
