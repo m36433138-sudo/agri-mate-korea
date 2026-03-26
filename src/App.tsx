@@ -20,6 +20,7 @@ import MyPage from "@/pages/MyPage";
 import OperationsDashboard from "@/pages/OperationsDashboard";
 import OvertimeDashboard from "@/pages/OvertimeDashboard";
 import RepairStats from "@/pages/RepairStats";
+import OnsiteRepairs from "@/pages/OnsiteRepairs";
 import NotFound from "@/pages/NotFound";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -48,6 +49,7 @@ const App = () => (
                     <Route path="/dashboard/operations" element={<OperationsDashboard />} />
                     <Route path="/dashboard/stats" element={<RepairStats />} />
                     <Route path="/dashboard/overtime" element={<OvertimeDashboard />} />
+                    <Route path="/onsite-repairs" element={<OnsiteRepairs />} />
                     <Route path="/machines" element={<MachinesList />} />
                     <Route path="/machines/:id" element={<MachineDetail />} />
                     <Route path="/customers" element={<CustomersList />} />
