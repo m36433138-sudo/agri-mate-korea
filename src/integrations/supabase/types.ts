@@ -109,8 +109,10 @@ export type Database = {
       }
       machines: {
         Row: {
+          classification: string | null
           created_at: string
           customer_id: string | null
+          engine_number: string | null
           entry_date: string
           id: string
           machine_type: string
@@ -123,8 +125,10 @@ export type Database = {
           status: string
         }
         Insert: {
+          classification?: string | null
           created_at?: string
           customer_id?: string | null
+          engine_number?: string | null
           entry_date: string
           id?: string
           machine_type: string
@@ -137,8 +141,10 @@ export type Database = {
           status?: string
         }
         Update: {
+          classification?: string | null
           created_at?: string
           customer_id?: string | null
+          engine_number?: string | null
           entry_date?: string
           id?: string
           machine_type?: string
