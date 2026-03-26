@@ -215,10 +215,24 @@ serve(async (req) => {
         "apikey": serviceRoleKey,
       };
 
+      // Helper: paginated fetch from Supabase REST API
+      async function fetchAll(endpoint: string): Promise<any[]> {
+        const all: any[] = [];
+        let offset = 0;
+        const limit = 1000;
+        while (true) {
+          const res = await fetch(`${supabaseUrl}/rest/v1/${endpoint}${endpoint.includes('?') ? '&' : '?'}limit=${limit}&offset=${offset}`, { headers });
+          const data = await res.json();
+          if (!Array.isArray(data)) break;
+          all.push(...data);
+          if (data.length < limit) break;
+          offset += limit;
+        }
+        return all;
+      }
+
       // 3. Upsert customers — use name+phone as unique key
-      // First get existing customers
-      const existRes = await fetch(`${supabaseUrl}/rest/v1/customers?select=id,name,phone`, { headers });
-      const existingCustomers: { id: string; name: string; phone: string }[] = await existRes.json();
+      const existingCustomers = await fetchAll("customers?select=id,name,phone");
       const custMap = new Map<string, string>(); // "name|phone" -> id
       for (const c of existingCustomers) {
         custMap.set(`${c.name}|${c.phone}`, c.id);
