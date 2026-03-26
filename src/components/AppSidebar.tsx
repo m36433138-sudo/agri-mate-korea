@@ -37,6 +37,9 @@ export function AppSidebar() {
   } else {
     items.push({ title: "대시보드", url: "/", icon: LayoutDashboard });
     items.push({ title: "작업현황판", url: "/dashboard/operations", icon: ClipboardList });
+    if (isAdmin || isEmployee) {
+      items.push({ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 });
+    }
 
     if (isAdmin || hasPermission("view_machines")) {
       items.push({ title: "기계관리", url: "/machines", icon: Tractor });
@@ -53,7 +56,6 @@ export function AppSidebar() {
     }
     if (isAdmin || isEmployee) {
       items.push({ title: "AI 어시스턴트", url: "/chat", icon: Sparkles });
-      items.push({ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 });
       items.push({ title: "초과근무 현황", url: "/dashboard/overtime", icon: Clock });
     }
     if (isAdmin) {
