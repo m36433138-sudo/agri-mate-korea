@@ -66,8 +66,9 @@ export default function MachinesList() {
         <Tabs value={typeTab} onValueChange={setTypeTab}>
           <TabsList>
             <TabsTrigger value="전체">전체</TabsTrigger>
-            <TabsTrigger value="새기계">새기계</TabsTrigger>
-            <TabsTrigger value="중고기계">중고기계</TabsTrigger>
+            <TabsTrigger value="농업용트랙터">트랙터</TabsTrigger>
+            <TabsTrigger value="콤바인">콤바인</TabsTrigger>
+            <TabsTrigger value="이앙기">이앙기</TabsTrigger>
           </TabsList>
         </Tabs>
         <Tabs value={statusTab} onValueChange={setStatusTab}>
