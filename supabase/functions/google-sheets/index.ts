@@ -186,6 +186,167 @@ serve(async (req) => {
       });
     }
 
+    // IMPORT operation — sync customers & machines from sheets to Supabase
+    if (action === "importCustomersAndMachines") {
+      const accessToken = await getAccessToken();
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (!supabaseUrl || !serviceRoleKey) throw new Error("Supabase config missing");
+
+      // 1. Read 고객목록
+      const custRange = encodeURIComponent("'고객목록'") + "!A:D";
+      const custUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${custRange}?key=${apiKey}`;
+      const custRes = await fetch(custUrl);
+      if (!custRes.ok) throw new Error(`Failed to read 고객목록: ${await custRes.text()}`);
+      const custData = await custRes.json();
+      const custRows = (custData.values || []).slice(1); // skip header
+
+      // 2. Read 보유기계
+      const machRange = encodeURIComponent("'보유기계'") + "!A:I";
+      const machUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${machRange}?key=${apiKey}`;
+      const machRes = await fetch(machUrl);
+      if (!machRes.ok) throw new Error(`Failed to read 보유기계: ${await machRes.text()}`);
+      const machData = await machRes.json();
+      const machRows = (machData.values || []).slice(1); // skip header
+
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceRoleKey}`,
+        "apikey": serviceRoleKey,
+      };
+
+      // 3. Upsert customers — use name+phone as unique key
+      // First get existing customers
+      const existRes = await fetch(`${supabaseUrl}/rest/v1/customers?select=id,name,phone`, { headers });
+      const existingCustomers: { id: string; name: string; phone: string }[] = await existRes.json();
+      const custMap = new Map<string, string>(); // "name|phone" -> id
+      for (const c of existingCustomers) {
+        custMap.set(`${c.name}|${c.phone}`, c.id);
+      }
+
+      // Sheet 고객ID -> Supabase UUID mapping
+      const sheetIdToUuid = new Map<string, string>();
+
+      let custInserted = 0;
+      let custSkipped = 0;
+      const batchSize = 200;
+
+      for (let i = 0; i < custRows.length; i += batchSize) {
+        const batch = custRows.slice(i, i + batchSize);
+        const toInsert: { name: string; phone: string; address: string | null }[] = [];
+        
+        for (const row of batch) {
+          const sheetCustId = String(row[0] || "").trim();
+          const name = String(row[1] || "").trim();
+          const phone = String(row[2] || "").trim();
+          const address = row[3] ? String(row[3]).trim() : null;
+          if (!name || !phone) { custSkipped++; continue; }
+
+          const key = `${name}|${phone}`;
+          if (custMap.has(key)) {
+            sheetIdToUuid.set(sheetCustId, custMap.get(key)!);
+            custSkipped++;
+          } else {
+            toInsert.push({ name, phone, address });
+          }
+        }
+
+        if (toInsert.length > 0) {
+          const insRes = await fetch(`${supabaseUrl}/rest/v1/customers`, {
+            method: "POST",
+            headers: { ...headers, "Prefer": "return=representation" },
+            body: JSON.stringify(toInsert),
+          });
+          if (!insRes.ok) {
+            const errText = await insRes.text();
+            console.error("Customer insert error:", errText);
+          } else {
+            const inserted: { id: string; name: string; phone: string }[] = await insRes.json();
+            for (const c of inserted) {
+              custMap.set(`${c.name}|${c.phone}`, c.id);
+            }
+            custInserted += inserted.length;
+          }
+        }
+      }
+
+      // Re-map sheet IDs for all customers
+      for (const row of custRows) {
+        const sheetCustId = String(row[0] || "").trim();
+        const name = String(row[1] || "").trim();
+        const phone = String(row[2] || "").trim();
+        const key = `${name}|${phone}`;
+        if (custMap.has(key)) {
+          sheetIdToUuid.set(sheetCustId, custMap.get(key)!);
+        }
+      }
+
+      // 4. Insert machines — skip duplicates by serial_number
+      const existMachRes = await fetch(`${supabaseUrl}/rest/v1/machines?select=serial_number`, { headers });
+      const existingMachines: { serial_number: string }[] = await existMachRes.json();
+      const existSerials = new Set(existingMachines.map(m => m.serial_number));
+
+      let machInserted = 0;
+      let machSkipped = 0;
+
+      for (let i = 0; i < machRows.length; i += batchSize) {
+        const batch = machRows.slice(i, i + batchSize);
+        const toInsert: any[] = [];
+
+        for (const row of batch) {
+          const sheetCustId = String(row[0] || "").trim();
+          const machineType = String(row[3] || "").trim();
+          const modelName = String(row[4] || "").trim();
+          const engineNumber = String(row[5] || "").trim() || null;
+          const serialNumber = String(row[6] || "").trim();
+          const saleDate = String(row[7] || "").trim() || null;
+          const classification = String(row[8] || "").trim() || null;
+
+          if (!serialNumber || !modelName) { machSkipped++; continue; }
+          if (existSerials.has(serialNumber)) { machSkipped++; continue; }
+
+          const customerId = sheetIdToUuid.get(sheetCustId) || null;
+
+          toInsert.push({
+            customer_id: customerId,
+            model_name: modelName,
+            serial_number: serialNumber,
+            machine_type: machineType || "기타",
+            entry_date: saleDate || new Date().toISOString().split("T")[0],
+            purchase_price: 0,
+            sale_date: saleDate || null,
+            sale_price: null,
+            status: "판매완료",
+            engine_number: engineNumber,
+            classification: classification,
+          });
+          existSerials.add(serialNumber);
+        }
+
+        if (toInsert.length > 0) {
+          const insRes = await fetch(`${supabaseUrl}/rest/v1/machines`, {
+            method: "POST",
+            headers: { ...headers, "Prefer": "return=minimal" },
+            body: JSON.stringify(toInsert),
+          });
+          if (!insRes.ok) {
+            const errText = await insRes.text();
+            console.error("Machine insert error:", errText);
+          } else {
+            machInserted += toInsert.length;
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        customers: { inserted: custInserted, skipped: custSkipped, total: custRows.length },
+        machines: { inserted: machInserted, skipped: machSkipped, total: machRows.length },
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // READ operation
     if (!tab) throw new Error("Tab name is required");
     if (!apiKey) throw new Error("GOOGLE_SHEETS_API_KEY is not configured");
