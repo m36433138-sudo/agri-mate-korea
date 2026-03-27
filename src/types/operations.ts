@@ -22,9 +22,9 @@ export interface SheetRow {
   _doneCol: string; // Column letter for 전체완료 (for write-back)
 }
 
-export type OperationStatus = "입고대기" | "수리중" | "출고대기" | "보류";
+export type OperationStatus = "입고대기" | "수리대기" | "수리중" | "수리완료" | "출고대기" | "보류";
 
-const VALID_STATUSES: OperationStatus[] = ["입고대기", "수리중", "출고대기", "보류"];
+const VALID_STATUSES: OperationStatus[] = ["입고대기", "수리대기", "수리중", "수리완료", "출고대기", "보류"];
 
 // Normalize status label variations (e.g. 강진 uses "입고대기중" instead of "입고대기")
 function normalizeStatus(label: string): OperationStatus | null {
@@ -32,7 +32,9 @@ function normalizeStatus(label: string): OperationStatus | null {
   if (VALID_STATUSES.includes(label as OperationStatus)) return label as OperationStatus;
   // Handle common variations
   if (label.includes("입고대기")) return "입고대기";
+  if (label.includes("수리대기") || label.includes("수리 대기")) return "수리대기";
   if (label.includes("수리중") || label.includes("수리 중")) return "수리중";
+  if (label.includes("수리완료") || label.includes("수리 완료")) return "수리완료";
   if (label.includes("출고대기") || label.includes("출고 대기")) return "출고대기";
   if (label.includes("보류")) return "보류";
   return null;
@@ -44,7 +46,8 @@ export function getStatus(row: SheetRow): OperationStatus {
   if (normalized) return normalized;
   // Fallback to date-based logic
   if (row.수리완료일 && !row.출고일) return "출고대기";
-  if (row.입고일 && !row.수리완료일) return "수리중";
+  if (row.수리시작일 && !row.수리완료일) return "수리중";
+  if (row.입고일 && !row.수리시작일) return "수리대기";
   return "입고대기";
 }
 

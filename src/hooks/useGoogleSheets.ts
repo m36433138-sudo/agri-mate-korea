@@ -20,6 +20,14 @@ export async function markRowComplete(sheetName: string, rowIndex: number, col: 
   if (data?.error) throw new Error(data.error);
 }
 
+export async function updateRowStatus(sheetName: string, rowIndex: number, newStatus: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("google-sheets", {
+    body: { action: "updateCell", sheetName, rowIndex, col: "A", value: newStatus },
+  });
+  if (error) throw new Error(error.message || "Failed to update status");
+  if (data?.error) throw new Error(data.error);
+}
+
 export function useGoogleSheets() {
   const queryClient = useQueryClient();
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
