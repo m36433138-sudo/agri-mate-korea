@@ -114,9 +114,15 @@ export default function OnsiteRepairs() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">방문수리</h1>
-        <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} /> 새로고침
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleAdd} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> 추가
+          </Button>
+          <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} /> 새로고침
+          </Button>
+        </div>
+      </div>
       </div>
 
       {/* KPI cards */}
