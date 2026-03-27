@@ -233,12 +233,29 @@ serve(async (req) => {
       const readData = await readRes.json();
       const rows = readData.values || [];
 
-      const todayDate = body.date; // e.g. "3-21" or "2026-03-21"
-      // Find the last row matching today's date
+      const todayDate = body.date; // e.g. "3-27"
+      // Build multiple possible date representations for matching
+      const parts = todayDate.split("-");
+      const month = parts[0];
+      const day = parts[1];
+      const possibleFormats = [
+        todayDate,                    // "3-27"
+        `${month}/${day}`,            // "3/27"
+        `${month}.${day}`,            // "3.27"
+        `${month}-${day.padStart(2, "0")}`,  // "3-27" padded
+        `${month.padStart(2, "0")}-${day.padStart(2, "0")}`, // "03-27"
+        `${month}월 ${day}일`,        // "3월 27일"
+      ];
+      // Find the last row matching today's date in any format
       let targetRow = -1;
       for (let i = rows.length - 1; i >= 0; i--) {
         const cellA = (rows[i][0] || "").trim();
-        if (cellA === todayDate) { targetRow = i + 1; break; }
+        // Also extract month/day from cell for numeric comparison
+        const cellParts = cellA.split(/[-/.]/);
+        const cellMatch = cellParts.length >= 2 && 
+          parseInt(cellParts[cellParts.length === 3 ? 1 : 0]) === parseInt(month) &&
+          parseInt(cellParts[cellParts.length === 3 ? 2 : 1]) === parseInt(day);
+        if (possibleFormats.includes(cellA) || cellMatch) { targetRow = i + 1; break; }
       }
 
       if (targetRow === -1) throw new Error(`오늘(${todayDate}) 출근 기록을 찾을 수 없습니다. 먼저 출근을 눌러주세요.`);
