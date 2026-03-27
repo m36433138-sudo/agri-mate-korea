@@ -17,6 +17,7 @@ interface OnsiteRow {
   전화번호: string;
   주소: string;
   내역: string;
+  _rowIndex: number;
 }
 
 function parseOnsiteRows(values: string[][]): OnsiteRow[] {
@@ -33,7 +34,7 @@ function parseOnsiteRows(values: string[][]): OnsiteRow[] {
   const iDetail = col("내역") >= 0 ? col("내역") : 6;
 
   return values.slice(1)
-    .map(row => ({
+    .map((row, idx) => ({
       진행사항: (row[iStatus] || "").trim(),
       손님성함: (row[iName] || "").trim(),
       기계: (row[iMachine] || "").trim(),
@@ -41,6 +42,7 @@ function parseOnsiteRows(values: string[][]): OnsiteRow[] {
       전화번호: (row[iPhone] || "").trim(),
       주소: (row[iAddr] || "").trim(),
       내역: (row[iDetail] || "").trim(),
+      _rowIndex: idx + 2, // 1-indexed, skip header
     }))
     .filter(r => r.손님성함);
 }
