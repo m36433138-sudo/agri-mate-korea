@@ -123,7 +123,6 @@ export default function OnsiteRepairs() {
           </Button>
         </div>
       </div>
-      </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
