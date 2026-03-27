@@ -26,6 +26,7 @@ const COLUMNS: { status: OperationStatus; label: string; color: string }[] = [
   { status: "입고대기", label: "입고대기", color: "#f97316" },
   { status: "수리중", label: "수리중", color: "#3b82f6" },
   { status: "출고대기", label: "출고대기", color: "#16a34a" },
+  { status: "보류", label: "보류", color: "#6b7280" },
 ];
 
 export default function OperationsDashboard() {
@@ -52,11 +53,10 @@ export default function OperationsDashboard() {
   }, [allData]);
 
   const columnData = useMemo(() => {
-    const map: Record<OperationStatus, SheetRow[]> = { 입고대기: [], 수리중: [], 출고대기: [], 완료: [] };
-    // Filter out completed items from kanban display
+    const map: Record<OperationStatus, SheetRow[]> = { 입고대기: [], 수리중: [], 출고대기: [], 보류: [] };
     branchData.forEach(row => {
       const s = getStatus(row);
-      map[s].push(row);
+      if (map[s]) map[s].push(row);
     });
     return map;
   }, [branchData]);
