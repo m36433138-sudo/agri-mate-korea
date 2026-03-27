@@ -113,6 +113,54 @@ serve(async (req) => {
       });
     }
 
+    // WRITE operation — add a new row to sheet
+    if (action === "addRow") {
+      if (!sheetName || !body.values) throw new Error("sheetName and values are required for addRow");
+      const accessToken = await getAccessToken();
+      const range = encodeURIComponent(`'${sheetName}'!A:R`);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+
+      const writeRes = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [body.values] }),
+      });
+
+      if (!writeRes.ok) {
+        const errBody = await writeRes.text();
+        throw new Error(`Google Sheets append error [${writeRes.status}]: ${errBody}`);
+      }
+
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // WRITE operation — update specific cells in a row
+    if (action === "updateRow") {
+      if (!sheetName || !rowIndex || !body.values) throw new Error("sheetName, rowIndex, and values are required for updateRow");
+      const accessToken = await getAccessToken();
+      const range = encodeURIComponent(`'${sheetName}'!A${rowIndex}:R${rowIndex}`);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=USER_ENTERED`;
+
+      const writeRes = await fetch(url, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [body.values] }),
+      });
+
+      if (!writeRes.ok) {
+        const errBody = await writeRes.text();
+        throw new Error(`Google Sheets update error [${writeRes.status}]: ${errBody}`);
+      }
+
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // WRITE operation — clock in (출근)
     if (action === "clockIn") {
       const techName = body.techName;

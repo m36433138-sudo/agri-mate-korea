@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useGoogleSheets, markRowComplete } from "@/hooks/useGoogleSheets";
-import { SheetRow, getStatus, isCompleted, OperationStatus } from "@/types/operations";
+import { SheetRow, getStatus, OperationStatus } from "@/types/operations";
 import { KanbanCard } from "@/components/operations/KanbanCard";
+import { RowFormModal } from "@/components/operations/RowFormModal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,16 +10,10 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { RefreshCw, AlertCircle } from "lucide-react";
+import { RefreshCw, AlertCircle, Plus } from "lucide-react";
 
 type Branch = "전체" | "장흥" | "강진";
 
@@ -26,6 +21,7 @@ const COLUMNS: { status: OperationStatus; label: string; color: string }[] = [
   { status: "입고대기", label: "입고대기", color: "#f97316" },
   { status: "수리중", label: "수리중", color: "#3b82f6" },
   { status: "출고대기", label: "출고대기", color: "#16a34a" },
+  { status: "보류", label: "보류", color: "#6b7280" },
 ];
 
 export default function OperationsDashboard() {
@@ -35,6 +31,8 @@ export default function OperationsDashboard() {
   const [mobileTab, setMobileTab] = useState<OperationStatus>("입고대기");
   const [confirmRow, setConfirmRow] = useState<SheetRow | null>(null);
   const [isMarking, setIsMarking] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editRow, setEditRow] = useState<SheetRow | null>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
@@ -52,11 +50,10 @@ export default function OperationsDashboard() {
   }, [allData]);
 
   const columnData = useMemo(() => {
-    const map: Record<OperationStatus, SheetRow[]> = { 입고대기: [], 수리중: [], 출고대기: [], 완료: [] };
-    // Filter out completed items from kanban display
+    const map: Record<OperationStatus, SheetRow[]> = { 입고대기: [], 수리중: [], 출고대기: [], 보류: [] };
     branchData.forEach(row => {
       const s = getStatus(row);
-      map[s].push(row);
+      if (map[s]) map[s].push(row);
     });
     return map;
   }, [branchData]);
@@ -76,6 +73,18 @@ export default function OperationsDashboard() {
       setConfirmRow(null);
     }
   };
+
+  const handleEdit = (row: SheetRow) => {
+    setEditRow(row);
+    setFormOpen(true);
+  };
+
+  const handleAdd = () => {
+    setEditRow(null);
+    setFormOpen(true);
+  };
+
+  const formBranch = editRow?._branch ?? (branch === "전체" ? "장흥" : branch);
 
   if (error) {
     return (
@@ -104,6 +113,9 @@ export default function OperationsDashboard() {
               {lastUpdated.toLocaleTimeString("ko-KR")}
             </span>
           )}
+          <Button onClick={handleAdd} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> 추가
+          </Button>
           <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} /> 새로고침
           </Button>
@@ -140,7 +152,6 @@ export default function OperationsDashboard() {
           ))}
         </div>
       ) : isMobile ? (
-        /* Mobile: tabs + vertical cards */
         <>
           <Tabs value={mobileTab} onValueChange={v => setMobileTab(v as OperationStatus)}>
             <TabsList className="w-full grid grid-cols-4">
@@ -161,17 +172,16 @@ export default function OperationsDashboard() {
                   row={row}
                   color={COLUMNS.find(c => c.status === mobileTab)!.color}
                   onMarkComplete={setConfirmRow}
+                  onEdit={handleEdit}
                 />
               ))
             )}
           </div>
         </>
       ) : (
-        /* Desktop: 4-column Kanban */
-        <div className="grid grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-4 gap-4 items-start">
           {COLUMNS.map(col => (
             <div key={col.status} className="space-y-2">
-              {/* Column header */}
               <div className="flex items-center gap-2 px-1 pb-1">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: col.color }} />
                 <span className="font-semibold text-sm">{col.label}</span>
@@ -179,7 +189,6 @@ export default function OperationsDashboard() {
                   {columnData[col.status].length}
                 </span>
               </div>
-              {/* Cards */}
               <div className="space-y-2 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
                 {columnData[col.status].length === 0 ? (
                   <p className="text-center text-xs text-muted-foreground py-6 bg-muted/30 rounded-xl">없음</p>
@@ -190,6 +199,7 @@ export default function OperationsDashboard() {
                       row={row}
                       color={col.color}
                       onMarkComplete={setConfirmRow}
+                      onEdit={handleEdit}
                     />
                   ))
                 )}
@@ -216,6 +226,15 @@ export default function OperationsDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add/Edit modal */}
+      <RowFormModal
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditRow(null); }}
+        onSuccess={refresh}
+        row={editRow}
+        branch={formBranch as "장흥" | "강진"}
+      />
 
       {/* Floating refresh */}
       <button

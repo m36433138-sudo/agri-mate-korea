@@ -22,10 +22,14 @@ export interface SheetRow {
   _doneCol: string; // Column letter for 전체완료 (for write-back)
 }
 
-export type OperationStatus = "입고대기" | "수리중" | "출고대기" | "완료";
+export type OperationStatus = "입고대기" | "수리중" | "출고대기" | "보류";
+
+const VALID_STATUSES: OperationStatus[] = ["입고대기", "수리중", "출고대기", "보류"];
 
 export function getStatus(row: SheetRow): OperationStatus {
-  if (isCompleted(row.전체완료)) return "완료";
+  const label = row.status_label?.trim();
+  if (VALID_STATUSES.includes(label as OperationStatus)) return label as OperationStatus;
+  // Fallback to date-based logic
   if (row.수리완료일 && !row.출고일) return "출고대기";
   if (row.입고일 && !row.수리완료일) return "수리중";
   return "입고대기";
