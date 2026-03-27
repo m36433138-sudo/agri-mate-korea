@@ -125,9 +125,10 @@ serve(async (req) => {
       if (!fmtRes.ok) throw new Error(`Failed to read formulas: ${await fmtRes.text()}`);
       const fmtData = await fmtRes.json();
       const formulas = fmtData.values?.[0] || [];
-      const adjusted = formulas.map((f: string) => {
-        if (!f || !f.startsWith("=")) return f || "";
-        return f.replace(new RegExp(String(fromRow), "g"), String(toRow));
+      const adjusted = formulas.map((f: unknown) => {
+        const s = String(f ?? "");
+        if (!s || !s.startsWith("=")) return s;
+        return s.replace(new RegExp(String(fromRow), "g"), String(toRow));
       });
       const writeRange = encodeURIComponent(`'${sheetName}'!${cols[0]}${toRow}:${cols[cols.length-1]}${toRow}`);
       const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`;
@@ -256,11 +257,11 @@ serve(async (req) => {
           if (fmtRes.ok) {
             const fmtData = await fmtRes.json();
             const formulas = fmtData.values?.[0];
-            if (formulas && formulas.some((f: string) => f && f.startsWith("="))) {
-              // Adjust row references in formulas: replace prevRow with lastRow
-              const adjusted = formulas.map((f: string) => {
-                if (!f || !f.startsWith("=")) return f || "";
-                return f.replace(new RegExp(String(prevRow), "g"), String(lastRow));
+            if (formulas && formulas.some((f: unknown) => String(f ?? "").startsWith("="))) {
+              const adjusted = formulas.map((f: unknown) => {
+                const s = String(f ?? "");
+                if (!s || !s.startsWith("=")) return s;
+                return s.replace(new RegExp(String(prevRow), "g"), String(lastRow));
               });
               const copyRange = encodeURIComponent(`'${techName}'!D${lastRow}:F${lastRow}`);
               const copyUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${copyRange}?valueInputOption=USER_ENTERED`;
