@@ -2,7 +2,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCallback } from "react";
 
-const TECHNICIANS = ["유호상", "마성수", "김영일", "이재현", "이동진"] as const;
+const TECHNICIANS = ["유호상", "마성수", "김영일", "이재현", "이동진", "주희"] as const;
 export type TechnicianName = (typeof TECHNICIANS)[number];
 export { TECHNICIANS };
 
