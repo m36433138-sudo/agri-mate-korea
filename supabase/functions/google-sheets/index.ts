@@ -200,8 +200,8 @@ serve(async (req) => {
       const readData = await readRes.json();
       const lastRow = (readData.values?.length || 0) + 1;
 
-      const dateStr = body.date; // e.g. "2026-03-21"
-      const timeStr = body.time; // e.g. "08:30"
+      const dateStr = body.date;
+      const timeStr = body.time;
 
       // Write date to A and time to B
       const writeRange = encodeURIComponent(`'${techName}'!A${lastRow}:B${lastRow}`);
@@ -213,6 +213,40 @@ serve(async (req) => {
       });
 
       if (!writeRes.ok) throw new Error(`Clock-in write error: ${await writeRes.text()}`);
+
+      // Copy formulas from the previous data row (D:F) to the new row
+      // Find the last row that has formulas (search backwards for a row with data in column D)
+      const prevRow = lastRow - 1;
+      if (prevRow >= 2) {
+        try {
+          const fmtRange = encodeURIComponent(`'${techName}'!D${prevRow}:F${prevRow}`);
+          const fmtUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${fmtRange}?valueRenderOption=FORMULA`;
+          const fmtRes = await fetch(fmtUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (fmtRes.ok) {
+            const fmtData = await fmtRes.json();
+            const formulas = fmtData.values?.[0];
+            if (formulas && formulas.some((f: string) => f && f.startsWith("="))) {
+              // Adjust row references in formulas: replace prevRow with lastRow
+              const adjusted = formulas.map((f: string) => {
+                if (!f || !f.startsWith("=")) return f || "";
+                return f.replace(new RegExp(String(prevRow), "g"), String(lastRow));
+              });
+              const copyRange = encodeURIComponent(`'${techName}'!D${lastRow}:F${lastRow}`);
+              const copyUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${copyRange}?valueInputOption=USER_ENTERED`;
+              await fetch(copyUrl, {
+                method: "PUT",
+                headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ values: [adjusted] }),
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Formula copy failed (non-fatal):", e);
+        }
+      }
+
       const result = await writeRes.json();
       return new Response(JSON.stringify({ success: true, row: lastRow, result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
