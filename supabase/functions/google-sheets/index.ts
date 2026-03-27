@@ -113,7 +113,36 @@ serve(async (req) => {
       });
     }
 
-    // WRITE operation — update a single cell
+    // Utility: copy formulas from one row to another
+    if (action === "copyFormulas") {
+      const { fromRow, toRow, cols } = body;
+      if (!sheetName || !fromRow || !toRow || !cols) throw new Error("sheetName, fromRow, toRow, cols required");
+      const accessToken = await getAccessToken();
+      const colRange = `${cols[0]}${fromRow}:${cols[cols.length-1]}${fromRow}`;
+      const fmtRange = encodeURIComponent(`'${sheetName}'!${colRange}`);
+      const fmtUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${fmtRange}?valueRenderOption=FORMULA`;
+      const fmtRes = await fetch(fmtUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!fmtRes.ok) throw new Error(`Failed to read formulas: ${await fmtRes.text()}`);
+      const fmtData = await fmtRes.json();
+      const formulas = fmtData.values?.[0] || [];
+      const adjusted = formulas.map((f: string) => {
+        if (!f || !f.startsWith("=")) return f || "";
+        return f.replace(new RegExp(String(fromRow), "g"), String(toRow));
+      });
+      const writeRange = encodeURIComponent(`'${sheetName}'!${cols[0]}${toRow}:${cols[cols.length-1]}${toRow}`);
+      const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`;
+      const writeRes = await fetch(writeUrl, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [adjusted] }),
+      });
+      if (!writeRes.ok) throw new Error(`Formula copy error: ${await writeRes.text()}`);
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, formulas: adjusted, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "updateCell") {
       const { col, value } = body;
       if (!sheetName || !rowIndex || !col) throw new Error("sheetName, rowIndex, and col are required for updateCell");
