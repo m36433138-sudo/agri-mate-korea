@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, Search, Phone, MapPin, Wrench } from "lucide-react";
+import { RefreshCw, Search, Phone, MapPin, Wrench, Plus, Pencil } from "lucide-react";
+import { OnsiteRowFormModal } from "@/components/onsite/OnsiteRowFormModal";
 
 interface OnsiteRow {
   진행사항: string;
@@ -16,6 +17,7 @@ interface OnsiteRow {
   전화번호: string;
   주소: string;
   내역: string;
+  _rowIndex: number;
 }
 
 function parseOnsiteRows(values: string[][]): OnsiteRow[] {
@@ -32,7 +34,7 @@ function parseOnsiteRows(values: string[][]): OnsiteRow[] {
   const iDetail = col("내역") >= 0 ? col("내역") : 6;
 
   return values.slice(1)
-    .map(row => ({
+    .map((row, idx) => ({
       진행사항: (row[iStatus] || "").trim(),
       손님성함: (row[iName] || "").trim(),
       기계: (row[iMachine] || "").trim(),
@@ -40,6 +42,7 @@ function parseOnsiteRows(values: string[][]): OnsiteRow[] {
       전화번호: (row[iPhone] || "").trim(),
       주소: (row[iAddr] || "").trim(),
       내역: (row[iDetail] || "").trim(),
+      _rowIndex: idx + 2, // 1-indexed, skip header
     }))
     .filter(r => r.손님성함);
 }
@@ -56,6 +59,8 @@ export default function OnsiteRepairs() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
 
   const { data: rows = [], isLoading, error } = useQuery({
     queryKey: ["sheets", "방문수리"],
@@ -102,13 +107,21 @@ export default function OnsiteRepairs() {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["sheets", "방문수리"] });
 
+  const handleAdd = () => { setEditRow(null); setModalOpen(true); };
+  const handleEdit = (r: OnsiteRow) => { setEditRow(r); setModalOpen(true); };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">방문수리</h1>
-        <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} /> 새로고침
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleAdd} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> 추가
+          </Button>
+          <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} /> 새로고침
+          </Button>
+        </div>
       </div>
 
       {/* KPI cards */}
@@ -164,6 +177,7 @@ export default function OnsiteRepairs() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead className="w-10"></TableHead>
                 <TableHead>진행사항</TableHead>
                 <TableHead>손님 성함</TableHead>
                 <TableHead>기계</TableHead>
@@ -176,12 +190,17 @@ export default function OnsiteRepairs() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     방문수리 항목이 없습니다
                   </TableCell>
                 </TableRow>
               ) : filtered.map((r, i) => (
                 <TableRow key={i}>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(r)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </TableCell>
                   <TableCell><StatusBadge status={r.진행사항} /></TableCell>
                   <TableCell className="font-medium">{r.손님성함}</TableCell>
                   <TableCell>{r.기계}</TableCell>
@@ -215,6 +234,13 @@ export default function OnsiteRepairs() {
           </Table>
         </div>
       )}
+
+      <OnsiteRowFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={refresh}
+        row={editRow}
+      />
     </div>
   );
 }
