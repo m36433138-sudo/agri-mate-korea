@@ -1,5 +1,22 @@
 import { SheetRow, getStatus, OperationStatus, getTechnicianColor, getMachineTypeColor, formatSheetDate, parseSheetDate } from "@/types/operations";
-import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil } from "lucide-react";
+import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil, ArrowRight } from "lucide-react";
+
+const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: OperationStatus | "완료" } | null> = {
+  입고대기: { label: "입고완료", next: "수리대기" },
+  수리대기: { label: "수리시작", next: "수리중" },
+  수리중: { label: "수리완료", next: "수리완료" },
+  수리완료: { label: "출고대기로", next: "출고대기" },
+  출고대기: { label: "출고완료", next: "완료" },
+  보류: null,
+};
+
+const TRANSITION_COLORS: Record<string, string> = {
+  입고완료: "text-yellow-700 border-yellow-300 hover:bg-yellow-50",
+  수리시작: "text-blue-700 border-blue-300 hover:bg-blue-50",
+  수리완료: "text-teal-700 border-teal-300 hover:bg-teal-50",
+  "출고대기로": "text-green-700 border-green-300 hover:bg-green-50",
+  출고완료: "text-emerald-700 border-emerald-300 hover:bg-emerald-50",
+};
 
 interface Props {
   row: SheetRow;
@@ -11,6 +28,7 @@ interface Props {
 export function KanbanCard({ row, color, onMarkComplete, onEdit }: Props) {
   const status = getStatus(row);
   const machineColor = getMachineTypeColor(row.기계);
+  const transition = STATUS_TRANSITIONS[status];
   const now = Date.now();
 
   const showEntryWarning = status === "입고대기" && row.수리시작일 && (() => {
@@ -78,12 +96,15 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit }: Props) {
         </span>
       </div>
 
-      <button
-        onClick={() => onMarkComplete(row)}
-        className="w-full mt-1 text-xs font-medium py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-      >
-        완료처리
-      </button>
+      {transition && (
+        <button
+          onClick={() => onMarkComplete(row)}
+          className={`w-full mt-1 text-xs font-medium py-1.5 rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${TRANSITION_COLORS[transition.label] || "text-muted-foreground border-border hover:bg-muted/50"}`}
+        >
+          {transition.label}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }

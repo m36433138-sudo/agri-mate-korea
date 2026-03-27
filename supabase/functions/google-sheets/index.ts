@@ -113,6 +113,31 @@ serve(async (req) => {
       });
     }
 
+    // WRITE operation — update a single cell
+    if (action === "updateCell") {
+      const { col, value } = body;
+      if (!sheetName || !rowIndex || !col) throw new Error("sheetName, rowIndex, and col are required for updateCell");
+      const accessToken = await getAccessToken();
+      const range = encodeURIComponent(`'${sheetName}'!${col}${rowIndex}`);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=USER_ENTERED`;
+
+      const writeRes = await fetch(url, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[value ?? ""]] }),
+      });
+
+      if (!writeRes.ok) {
+        const errBody = await writeRes.text();
+        throw new Error(`Google Sheets updateCell error [${writeRes.status}]: ${errBody}`);
+      }
+
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // WRITE operation — add a new row to sheet
     if (action === "addRow") {
       if (!sheetName || !body.values) throw new Error("sheetName and values are required for addRow");
