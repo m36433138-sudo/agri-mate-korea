@@ -505,7 +505,7 @@ serve(async (req) => {
     if (!tab) throw new Error("Tab name is required");
     if (!apiKey) throw new Error("GOOGLE_SHEETS_API_KEY is not configured");
 
-    const range = encodeURIComponent(`'${tab}'`) + "!A:R";
+    const range = encodeURIComponent(`'${tab}'!A:R`);
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
     console.log("Fetching URL:", url.replace(apiKey, "REDACTED"));
 
