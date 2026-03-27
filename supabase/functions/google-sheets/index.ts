@@ -244,37 +244,24 @@ serve(async (req) => {
 
       if (!writeRes.ok) throw new Error(`Clock-in write error: ${await writeRes.text()}`);
 
-      // Copy formulas from the previous data row (D:F) to the new row
-      // Find the last row that has formulas (search backwards for a row with data in column D)
-      const prevRow = lastRow - 1;
-      if (prevRow >= 2) {
-        try {
-          const fmtRange = encodeURIComponent(`'${techName}'!D${prevRow}:F${prevRow}`);
-          const fmtUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${fmtRange}?valueRenderOption=FORMULA`;
-          const fmtRes = await fetch(fmtUrl, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          if (fmtRes.ok) {
-            const fmtData = await fmtRes.json();
-            const formulas = fmtData.values?.[0];
-            if (formulas && formulas.some((f: unknown) => String(f ?? "").startsWith("="))) {
-              const adjusted = formulas.map((f: unknown) => {
-                const s = String(f ?? "");
-                if (!s || !s.startsWith("=")) return s;
-                return s.replace(new RegExp(String(prevRow), "g"), String(lastRow));
-              });
-              const copyRange = encodeURIComponent(`'${techName}'!D${lastRow}:F${lastRow}`);
-              const copyUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${copyRange}?valueInputOption=USER_ENTERED`;
-              await fetch(copyUrl, {
-                method: "PUT",
-                headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ values: [adjusted] }),
-              });
-            }
-          }
-        } catch (e) {
-          console.error("Formula copy failed (non-fatal):", e);
-        }
+      // Write overtime formulas to D, E, F for the new row
+      // D = morning OT: IF weekday AND B<08:30, 08:30-B, else 0
+      // E = afternoon OT: IF weekday AND C>18:00, C-18:00, else 0
+      // F = daily total: IF weekday, D+E, else C-B (total hours on weekends)
+      try {
+        const r = lastRow;
+        const formulaD = `=IF(AND(B${r}<>"",C${r}<>""),IF(WEEKDAY(A${r},2)<=5,MAX(TIMEVALUE("08:30")-B${r},0),0),"")`;
+        const formulaE = `=IF(AND(B${r}<>"",C${r}<>""),IF(WEEKDAY(A${r},2)<=5,MAX(C${r}-TIMEVALUE("18:00"),0),0),"")`;
+        const formulaF = `=IF(AND(B${r}<>"",C${r}<>""),IF(WEEKDAY(A${r},2)<=5,D${r}+E${r},C${r}-B${r}),"")`;
+        const fmlaRange = encodeURIComponent(`'${techName}'!D${r}:F${r}`);
+        const fmlaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${fmlaRange}?valueInputOption=USER_ENTERED`;
+        await fetch(fmlaUrl, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ values: [[formulaD, formulaE, formulaF]] }),
+        });
+      } catch (e) {
+        console.error("Formula write failed (non-fatal):", e);
       }
 
       const result = await writeRes.json();
