@@ -113,7 +113,37 @@ serve(async (req) => {
       });
     }
 
-    // WRITE operation — update a single cell
+    // Utility: copy formulas from one row to another
+    if (action === "copyFormulas") {
+      const { fromRow, toRow, cols } = body;
+      if (!sheetName || !fromRow || !toRow || !cols) throw new Error("sheetName, fromRow, toRow, cols required");
+      const accessToken = await getAccessToken();
+      const colRange = `${cols[0]}${fromRow}:${cols[cols.length-1]}${fromRow}`;
+      const fmtRange = encodeURIComponent(`'${sheetName}'!${colRange}`);
+      const fmtUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${fmtRange}?valueRenderOption=FORMULA`;
+      const fmtRes = await fetch(fmtUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!fmtRes.ok) throw new Error(`Failed to read formulas: ${await fmtRes.text()}`);
+      const fmtData = await fmtRes.json();
+      const formulas = fmtData.values?.[0] || [];
+      const adjusted = formulas.map((f: unknown) => {
+        const s = String(f ?? "");
+        if (!s || !s.startsWith("=")) return s;
+        return s.replace(new RegExp(String(fromRow), "g"), String(toRow));
+      });
+      const writeRange = encodeURIComponent(`'${sheetName}'!${cols[0]}${toRow}:${cols[cols.length-1]}${toRow}`);
+      const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`;
+      const writeRes = await fetch(writeUrl, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [adjusted] }),
+      });
+      if (!writeRes.ok) throw new Error(`Formula copy error: ${await writeRes.text()}`);
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, formulas: adjusted, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "updateCell") {
       const { col, value } = body;
       if (!sheetName || !rowIndex || !col) throw new Error("sheetName, rowIndex, and col are required for updateCell");
@@ -200,8 +230,8 @@ serve(async (req) => {
       const readData = await readRes.json();
       const lastRow = (readData.values?.length || 0) + 1;
 
-      const dateStr = body.date; // e.g. "2026-03-21"
-      const timeStr = body.time; // e.g. "08:30"
+      const dateStr = body.date;
+      const timeStr = body.time;
 
       // Write date to A and time to B
       const writeRange = encodeURIComponent(`'${techName}'!A${lastRow}:B${lastRow}`);
@@ -213,6 +243,27 @@ serve(async (req) => {
       });
 
       if (!writeRes.ok) throw new Error(`Clock-in write error: ${await writeRes.text()}`);
+
+      // Write overtime formulas to D, E, F for the new row
+      // D = morning OT: IF weekday AND B<08:30, 08:30-B, else 0
+      // E = afternoon OT: IF weekday AND C>18:00, C-18:00, else 0
+      // F = daily total: IF weekday, D+E, else C-B (total hours on weekends)
+      try {
+        const r = lastRow;
+        const formulaD = `=IF(AND(B${r}<>"",C${r}<>""),IF(WEEKDAY(A${r},2)<=5,MAX(TIMEVALUE("08:30")-B${r},0),0),"")`;
+        const formulaE = `=IF(AND(B${r}<>"",C${r}<>""),IF(WEEKDAY(A${r},2)<=5,MAX(C${r}-TIMEVALUE("18:00"),0),0),"")`;
+        const formulaF = `=IF(AND(B${r}<>"",C${r}<>""),IF(WEEKDAY(A${r},2)<=5,D${r}+E${r},C${r}-B${r}),"")`;
+        const fmlaRange = encodeURIComponent(`'${techName}'!D${r}:F${r}`);
+        const fmlaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${fmlaRange}?valueInputOption=USER_ENTERED`;
+        await fetch(fmlaUrl, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ values: [[formulaD, formulaE, formulaF]] }),
+        });
+      } catch (e) {
+        console.error("Formula write failed (non-fatal):", e);
+      }
+
       const result = await writeRes.json();
       return new Response(JSON.stringify({ success: true, row: lastRow, result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
