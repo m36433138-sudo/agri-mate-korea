@@ -178,6 +178,7 @@ export default function OnsiteRepairs() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead className="w-10"></TableHead>
                 <TableHead>진행사항</TableHead>
                 <TableHead>손님 성함</TableHead>
                 <TableHead>기계</TableHead>
@@ -190,12 +191,17 @@ export default function OnsiteRepairs() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     방문수리 항목이 없습니다
                   </TableCell>
                 </TableRow>
               ) : filtered.map((r, i) => (
                 <TableRow key={i}>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(r)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </TableCell>
                   <TableCell><StatusBadge status={r.진행사항} /></TableCell>
                   <TableCell className="font-medium">{r.손님성함}</TableCell>
                   <TableCell>{r.기계}</TableCell>
@@ -229,6 +235,13 @@ export default function OnsiteRepairs() {
           </Table>
         </div>
       )}
+
+      <OnsiteRowFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={refresh}
+        row={editRow}
+      />
     </div>
   );
 }
