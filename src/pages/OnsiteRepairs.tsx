@@ -59,6 +59,8 @@ export default function OnsiteRepairs() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
 
   const { data: rows = [], isLoading, error } = useQuery({
     queryKey: ["sheets", "방문수리"],
@@ -104,6 +106,9 @@ export default function OnsiteRepairs() {
   }, [rows]);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["sheets", "방문수리"] });
+
+  const handleAdd = () => { setEditRow(null); setModalOpen(true); };
+  const handleEdit = (r: OnsiteRow) => { setEditRow(r); setModalOpen(true); };
 
   return (
     <div className="space-y-4">
