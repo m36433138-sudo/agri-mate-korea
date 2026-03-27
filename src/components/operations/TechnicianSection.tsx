@@ -8,7 +8,7 @@ interface Props {
 
 export function TechnicianSection({ data }: Props) {
   const groups = useMemo(() => {
-    const active = data.filter(r => getStatus(r) !== "완료");
+    const active = data;
     const map = new Map<string, SheetRow[]>();
     active.forEach(row => {
       const key = row.수리기사 || "미배정";
