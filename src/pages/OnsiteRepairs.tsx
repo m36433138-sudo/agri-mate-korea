@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, Search, Phone, MapPin, Wrench } from "lucide-react";
+import { RefreshCw, Search, Phone, MapPin, Wrench, Plus, Pencil } from "lucide-react";
+import { OnsiteRowFormModal } from "@/components/onsite/OnsiteRowFormModal";
 
 interface OnsiteRow {
   진행사항: string;
