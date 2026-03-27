@@ -79,15 +79,13 @@ export function KanbanCard({ row, color, onMarkComplete }: Props) {
         </span>
       </div>
 
-      {/* Complete button (not shown for already completed) */}
-      {status !== "완료" && (
-        <button
-          onClick={() => onMarkComplete(row)}
-          className="w-full mt-1 text-xs font-medium py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-        >
-          완료처리
-        </button>
-      )}
+      {/* Complete button */}
+      <button
+        onClick={() => onMarkComplete(row)}
+        className="w-full mt-1 text-xs font-medium py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+      >
+        완료처리
+      </button>
     </div>
   );
 }
