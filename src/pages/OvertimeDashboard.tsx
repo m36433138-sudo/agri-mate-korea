@@ -32,7 +32,7 @@ const TECH_COLORS: Record<string, { bg: string; text: string; accent: string }> 
   김영일: { bg: "bg-amber-50", text: "text-amber-700", accent: "bg-amber-500" },
   이재현: { bg: "bg-purple-50", text: "text-purple-700", accent: "bg-purple-500" },
   이동진: { bg: "bg-rose-50", text: "text-rose-700", accent: "bg-rose-500" },
-  주희: { bg: "bg-cyan-50", text: "text-cyan-700", accent: "bg-cyan-500" },
+  주희로: { bg: "bg-cyan-50", text: "text-cyan-700", accent: "bg-cyan-500" },
 };
 
 function TechnicianCard({
