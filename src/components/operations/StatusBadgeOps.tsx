@@ -3,7 +3,9 @@ import { OperationStatus, getTechnicianColor } from "@/types/operations";
 
 const STATUS_STYLES: Record<OperationStatus, string> = {
   입고대기: "bg-orange-100 text-orange-700 ring-orange-600/20",
+  수리대기: "bg-yellow-100 text-yellow-700 ring-yellow-600/20",
   수리중: "bg-blue-100 text-blue-700 ring-blue-600/20",
+  수리완료: "bg-teal-100 text-teal-700 ring-teal-600/20",
   출고대기: "bg-green-100 text-green-700 ring-green-600/20",
   보류: "bg-gray-100 text-gray-500 ring-gray-500/20",
 };
