@@ -107,6 +107,45 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_adjustments: {
+        Row: {
+          adjusted_by: string | null
+          adjustment_qty: number
+          branch: string
+          created_at: string
+          id: string
+          new_qty: number
+          part_code: string
+          part_name: string
+          previous_qty: number
+          reason: string | null
+        }
+        Insert: {
+          adjusted_by?: string | null
+          adjustment_qty?: number
+          branch?: string
+          created_at?: string
+          id?: string
+          new_qty?: number
+          part_code: string
+          part_name: string
+          previous_qty?: number
+          reason?: string | null
+        }
+        Update: {
+          adjusted_by?: string | null
+          adjustment_qty?: number
+          branch?: string
+          created_at?: string
+          id?: string
+          new_qty?: number
+          part_code?: string
+          part_name?: string
+          previous_qty?: number
+          reason?: string | null
+        }
+        Relationships: []
+      }
       machines: {
         Row: {
           classification: string | null
