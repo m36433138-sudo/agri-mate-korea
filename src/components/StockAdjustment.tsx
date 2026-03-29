@@ -58,7 +58,8 @@ export default function StockAdjustment() {
         .from("inventory")
         .select("*")
         .eq("branch", branch)
-        .order("part_code");
+        .order("part_code")
+        .limit(10000);
       if (error) throw error;
       return data as InventoryItem[];
     },
