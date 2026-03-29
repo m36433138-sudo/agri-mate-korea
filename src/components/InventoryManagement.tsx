@@ -229,8 +229,7 @@ export default function InventoryManagement() {
                       </div>
                     </td>
                   </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>
