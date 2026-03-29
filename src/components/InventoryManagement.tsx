@@ -48,7 +48,8 @@ export default function InventoryManagement() {
         .from("inventory")
         .select("*")
         .eq("branch", branch)
-        .order("part_code");
+        .order("part_code")
+        .limit(10000);
       if (error) throw error;
       return data as InventoryItem[];
     },
@@ -74,8 +75,8 @@ export default function InventoryManagement() {
 
   const totalItems = inventory?.length ?? 0;
   const totalQty = inventory?.reduce((s, i) => s + (i.quantity ?? 0), 0) ?? 0;
-  const lowStock = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 5)).length ?? 0;
-  const lowStockItems = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 5)) ?? [];
+  const lowStock = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 1)).length ?? 0;
+  const lowStockItems = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 1)) ?? [];
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
@@ -170,7 +171,7 @@ export default function InventoryManagement() {
           <div>
             <p className="text-sm font-medium text-destructive">재고 부족 알림 ({lowStockItems.length}건)</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {lowStockItems.map((i) => `${i.part_name}(${i.quantity ?? 0}/${i.min_stock ?? 5})`).join(", ")}
+              {lowStockItems.map((i) => `${i.part_name}(${i.quantity ?? 0}/${i.min_stock ?? 1})`).join(", ")}
             </p>
           </div>
         </div>
@@ -216,7 +217,7 @@ export default function InventoryManagement() {
               </thead>
               <tbody>
                 {filtered?.map((item) => {
-                  const isLow = (item.quantity ?? 0) <= (item.min_stock ?? 5);
+                  const isLow = (item.quantity ?? 0) <= (item.min_stock ?? 1);
                   return (
                   <tr
                     key={item.id}
@@ -235,7 +236,7 @@ export default function InventoryManagement() {
                       )}
                     </td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
-                      {item.min_stock ?? 5}
+                      {item.min_stock ?? 1}
                     </td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
                       {item.sales_price?.toLocaleString() ?? "-"}
@@ -288,7 +289,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    part_code: "", part_name: "", quantity: "0", min_stock: "5",
+    part_code: "", part_name: "", quantity: "0", min_stock: "1",
     purchase_price: "", sales_price: "", location_main: "", location_sub: "",
   });
 
@@ -299,7 +300,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
         part_code: form.part_code,
         part_name: form.part_name,
         quantity: parseInt(form.quantity) || 0,
-        min_stock: parseInt(form.min_stock) || 5,
+        min_stock: parseInt(form.min_stock) || 1,
         purchase_price: form.purchase_price ? parseInt(form.purchase_price) : null,
         sales_price: form.sales_price ? parseInt(form.sales_price) : null,
         location_main: form.location_main || null,
@@ -311,7 +312,7 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
       qc.invalidateQueries({ queryKey: ["inventory"] });
       toast({ title: "재고가 등록되었습니다." });
       onOpenChange(false);
-      setForm({ part_code: "", part_name: "", quantity: "0", min_stock: "5", purchase_price: "", sales_price: "", location_main: "", location_sub: "" });
+      setForm({ part_code: "", part_name: "", quantity: "0", min_stock: "1", purchase_price: "", sales_price: "", location_main: "", location_sub: "" });
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
@@ -378,7 +379,7 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
   const qc = useQueryClient();
   const [form, setForm] = useState({
     quantity: String(item.quantity ?? 0),
-    min_stock: String(item.min_stock ?? 5),
+    min_stock: String(item.min_stock ?? 1),
     purchase_price: String(item.purchase_price ?? ""),
     sales_price: String(item.sales_price ?? ""),
     location_main: item.location_main ?? "",
@@ -389,7 +390,7 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
     mutationFn: async () => {
       const { error } = await supabase.from("inventory").update({
         quantity: parseInt(form.quantity) || 0,
-        min_stock: parseInt(form.min_stock) || 5,
+        min_stock: parseInt(form.min_stock) || 1,
         purchase_price: form.purchase_price ? parseInt(form.purchase_price) : null,
         sales_price: form.sales_price ? parseInt(form.sales_price) : null,
         location_main: form.location_main || null,

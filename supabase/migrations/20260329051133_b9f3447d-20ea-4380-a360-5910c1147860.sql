@@ -1,0 +1,1 @@
+ALTER TABLE public.inventory ALTER COLUMN min_stock SET DEFAULT 1;
