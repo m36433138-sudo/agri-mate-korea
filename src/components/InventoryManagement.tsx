@@ -200,25 +200,15 @@ export default function InventoryManagement() {
                 </tr>
               </thead>
               <tbody>
-                {filtered?.map((item) => {
-                  const isLow = (item.quantity ?? 0) <= (item.min_stock ?? 1);
-                  return (
+                {filtered?.map((item) => (
                   <tr
                     key={item.id}
-                    className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${
-                      isLow ? "bg-destructive/5" : ""
-                    }`}
+                    className="border-b last:border-0 hover:bg-muted/30 transition-colors"
                   >
                     <td className="p-3 font-mono text-xs">{item.part_code}</td>
                     <td className="p-3 font-medium">{item.part_name}</td>
                     <td className="p-3 font-mono text-xs text-muted-foreground hidden lg:table-cell">{item.alt_part_code || "-"}</td>
-                    <td className="p-3 text-right">
-                      {isLow ? (
-                        <Badge variant="destructive" className="text-xs">{item.quantity ?? 0}</Badge>
-                      ) : (
-                        <span className="font-medium">{item.quantity ?? 0}</span>
-                      )}
-                    </td>
+                    <td className="p-3 text-right font-medium">{item.quantity ?? 0}</td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
                       {item.min_stock ?? 1}
                     </td>
