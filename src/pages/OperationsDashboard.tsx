@@ -13,7 +13,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { RefreshCw, AlertCircle, Plus, PackageOpen, Wrench } from "lucide-react";
+import { RefreshCw, AlertCircle, Plus, PackageOpen, Wrench, Clock, CheckCircle2, Truck, PauseCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 type Branch = "전체" | "장흥" | "강진";
 type Section = "입출고" | "수리";
@@ -135,17 +136,28 @@ export default function OperationsDashboard() {
     );
   }
 
+  // 요약 통계
+  const summaryStats = [
+    { label: "입고대기", count: columnData["입고대기"].length, icon: Truck, color: "text-orange-500", bg: "bg-orange-50" },
+    { label: "수리중", count: columnData["수리중"].length, icon: Wrench, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "수리완료", count: columnData["수리완료"].length, icon: CheckCircle2, color: "text-teal-500", bg: "bg-teal-50" },
+    { label: "출고대기", count: columnData["출고대기"].length, icon: PackageOpen, color: "text-green-600", bg: "bg-green-50" },
+    { label: "보류", count: columnData["보류"].length, icon: PauseCircle, color: "text-gray-400", bg: "bg-gray-50" },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">작업현황판</h1>
         <div className="flex items-center gap-3">
           {lastUpdated && (
-            <span className="text-xs text-muted-foreground">
-              {lastUpdated.toLocaleTimeString("ko-KR")}
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {lastUpdated.toLocaleTimeString("ko-KR")} 기준
             </span>
           )}
+        </div>
+        <div className="flex items-center gap-2">
           <Button onClick={handleAdd} size="sm">
             <Plus className="h-4 w-4 mr-1" /> 추가
           </Button>
@@ -154,6 +166,25 @@ export default function OperationsDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* 요약 통계 카드 */}
+      {!isLoading && (
+        <div className="grid grid-cols-5 gap-2">
+          {summaryStats.map(s => (
+            <Card key={s.label} className="border-0 shadow-card">
+              <CardContent className="p-3 flex items-center gap-2">
+                <div className={`p-1.5 rounded-lg ${s.bg} shrink-0`}>
+                  <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground truncate">{s.label}</p>
+                  <p className={`text-lg font-bold tabular-nums leading-none mt-0.5 ${s.count > 0 ? "" : "text-muted-foreground/40"}`}>{s.count}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Section toggle + Filters */}
       <div className="flex flex-wrap gap-2 items-center">

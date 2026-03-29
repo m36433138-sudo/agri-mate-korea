@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2 } from "lucide-react";
+import { Plus, Search, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2, Users, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -60,51 +60,92 @@ export default function CustomersList() {
     }
   };
 
+  // 이름 이니셜용 색상
+  const getAvatarColor = (name: string) => {
+    const colors = ["bg-primary/80", "bg-info/80", "bg-warning/80", "bg-success/80", "bg-purple-500/80", "bg-pink-500/80"];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold">고객관리</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSheetImport} disabled={importing}>
+    <div className="space-y-4">
+      {/* 액션 버튼 */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Users className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">
+              {isLoading ? "..." : `전체 ${customers?.length ?? 0}명`}
+            </p>
+            {search && !isLoading && (
+              <p className="text-xs text-muted-foreground">검색결과 {filtered?.length ?? 0}명</p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleSheetImport} disabled={importing}>
             {importing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CloudDownload className="h-4 w-4 mr-1" />}
-            {importing ? "가져오는 중..." : "구글시트 가져오기"}
+            {importing ? "가져오는 중..." : "시트 가져오기"}
           </Button>
-          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
             <Upload className="h-4 w-4 mr-1" /> 일괄 등록
           </Button>
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> 고객 등록</Button>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> 고객 등록
+          </Button>
         </div>
       </div>
 
-      <div className="relative max-w-xs mb-4">
+      {/* 검색창 */}
+      <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="이름 또는 연락처 검색..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input
+          placeholder="이름 또는 연락처 검색..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="pl-9"
+          autoComplete="off"
+        />
       </div>
 
+      {/* 고객 목록 */}
       {isLoading ? (
-        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}</div>
       ) : filtered?.length === 0 ? (
-        <Card className="shadow-card border-0"><CardContent className="py-12 text-center text-muted-foreground">등록된 고객이 없습니다.</CardContent></Card>
+        <Card className="shadow-card border-0">
+          <CardContent className="py-12 text-center text-muted-foreground text-sm">
+            {search ? `"${search}"에 해당하는 고객이 없습니다.` : "등록된 고객이 없습니다."}
+          </CardContent>
+        </Card>
       ) : (
         <Card className="shadow-card border-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="text-left p-3 font-medium text-muted-foreground">고객명</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">연락처</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">주소</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered?.map(c => (
-                <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                  <td className="p-3"><Link to={`/customers/${c.id}`} className="font-medium hover:text-primary">{c.name}</Link></td>
-                  <td className="p-3 text-muted-foreground">{c.phone}</td>
-                  <td className="p-3 text-muted-foreground">{c.address || "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div>
+            {filtered?.map((c, idx) => (
+              <Link
+                key={c.id}
+                to={`/customers/${c.id}`}
+                className={`flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 transition-colors group ${idx !== 0 ? "border-t" : ""}`}
+              >
+                {/* 아바타 이니셜 */}
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${getAvatarColor(c.name)}`}>
+                  {c.name.charAt(0)}
+                </div>
+                {/* 정보 */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{c.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {c.phone}
+                    {c.address ? ` · ${c.address}` : ""}
+                  </p>
+                </div>
+                {/* 화살표 */}
+                <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/40 transition-colors shrink-0" />
+              </Link>
+            ))}
+          </div>
         </Card>
       )}
 
