@@ -527,21 +527,22 @@ serve(async (req) => {
       };
 
       // Map sheet columns to inventory fields
-      // B=Warehouse Code, C=Parts No, D=Parts Name, I=Unit Price, K=Wage(sales), L=Stock Qty, M=Location main, N=Location sub
+      // A=Parts Code, B=Parts Name (fallback C), D=Design Change Code, E=Sales Price, F=Stock Qty, H=Location main, I=Location sub
       const items: any[] = [];
       for (const row of rows) {
-        const partCode = String(row[2] || "").trim(); // C column (index 2)
-        const partName = String(row[3] || "").trim(); // D column (index 3)
+        const partCode = String(row[0] || "").trim(); // A column (index 0)
+        const partName = String(row[1] || "").trim() || String(row[2] || "").trim(); // B column, fallback C
         if (!partCode || !partName) continue;
         items.push({
           branch: targetBranch,
           part_code: partCode,
           part_name: partName,
-          purchase_price: parseInt(String(row[8] || "")) || null, // I
-          sales_price: parseInt(String(row[10] || "")) || null, // K
-          quantity: parseInt(String(row[11] || "0")) || 0, // L
-          location_main: String(row[12] || "").trim() || null, // M
-          location_sub: String(row[13] || "").trim() || null, // N
+          alt_part_code: String(row[3] || "").trim() || null, // D column - design change code
+          purchase_price: null,
+          sales_price: parseInt(String(row[4] || "")) || null, // E
+          quantity: parseInt(String(row[5] || "0")) || 0, // F
+          location_main: String(row[7] || "").trim() || null, // H
+          location_sub: String(row[8] || "").trim() || null, // I
         });
       }
 

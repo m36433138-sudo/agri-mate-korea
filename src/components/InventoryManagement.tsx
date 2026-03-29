@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, MapPin, AlertTriangle } from "lucide-react";
+import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, MapPin, AlertTriangle, CloudDownload } from "lucide-react";
 import * as XLSX from "xlsx";
 
 type InventoryItem = {
@@ -21,6 +21,7 @@ type InventoryItem = {
   branch: string;
   part_code: string;
   part_name: string;
+  alt_part_code: string | null;
   quantity: number | null;
   purchase_price: number | null;
   sales_price: number | null;
@@ -106,7 +107,22 @@ export default function InventoryManagement() {
             강진
           </Button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={async () => {
+            try {
+              const { data, error } = await supabase.functions.invoke("google-sheets", {
+                body: { action: "syncInventory", branch },
+              });
+              if (error) throw new Error(error.message);
+              if (data?.error) throw new Error(data.error);
+              qc.invalidateQueries({ queryKey: ["inventory"] });
+              toast({ title: `${branch} 재고 동기화 완료`, description: `${data?.synced ?? 0}건 동기화됨` });
+            } catch (e: any) {
+              toast({ title: "동기화 실패", description: e.message, variant: "destructive" });
+            }
+          }}>
+            <CloudDownload className="h-4 w-4 mr-1" /> 시트 동기화
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
             <FileSpreadsheet className="h-4 w-4 mr-1" /> 엑셀 등록
           </Button>
@@ -190,9 +206,9 @@ export default function InventoryManagement() {
                 <tr className="border-b bg-muted/30">
                   <th className="text-left p-3 font-medium text-muted-foreground">부품코드</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">부품명</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">설계변경코드</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">수량</th>
                   <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">적정재고</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">매입가</th>
                   <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">매출가</th>
                   <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">위치</th>
                   <th className="w-20"></th>
@@ -210,6 +226,7 @@ export default function InventoryManagement() {
                   >
                     <td className="p-3 font-mono text-xs">{item.part_code}</td>
                     <td className="p-3 font-medium">{item.part_name}</td>
+                    <td className="p-3 font-mono text-xs text-muted-foreground hidden lg:table-cell">{item.alt_part_code || "-"}</td>
                     <td className="p-3 text-right">
                       {isLow ? (
                         <Badge variant="destructive" className="text-xs">{item.quantity ?? 0}</Badge>
@@ -219,9 +236,6 @@ export default function InventoryManagement() {
                     </td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
                       {item.min_stock ?? 5}
-                    </td>
-                    <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
-                      {item.purchase_price?.toLocaleString() ?? "-"}
                     </td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
                       {item.sales_price?.toLocaleString() ?? "-"}
