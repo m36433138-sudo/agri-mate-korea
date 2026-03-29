@@ -70,6 +70,54 @@
   }
 }
 
+/* ── 페이지 진입 애니메이션 ── */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-enter 0.18s ease-out both;
+}
+
+/* ── 전역 인터랙션 개선 ── */
+@layer base {
+  /* 버튼/링크 클릭 시 살짝 눌리는 느낌 */
+  button:active:not(:disabled),
+  a:active {
+    transform: scale(0.98);
+  }
+
+  /* 스크롤바 슬림하게 */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  /* 포커스 링 통일 */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
 @media print {
   .print\:hidden,
   header,
