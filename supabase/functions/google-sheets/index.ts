@@ -537,6 +537,7 @@ serve(async (req) => {
           branch: targetBranch,
           part_code: partCode,
           part_name: partName,
+          alt_part_code: String(row[3] || "").trim() || null, // D column - design change code
           purchase_price: null,
           sales_price: parseInt(String(row[4] || "")) || null, // E
           quantity: parseInt(String(row[5] || "0")) || 0, // F
