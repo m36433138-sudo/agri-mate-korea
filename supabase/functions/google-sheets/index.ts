@@ -545,11 +545,16 @@ serve(async (req) => {
         });
       }
 
+      // Deduplicate by branch+part_code (keep last occurrence)
+      const uniqueItems = Array.from(
+        new Map(items.map(item => [`${item.branch}-${item.part_code}`, item])).values()
+      );
+
       // Upsert in batches
       let synced = 0;
       const batchSize = 200;
-      for (let i = 0; i < items.length; i += batchSize) {
-        const batch = items.slice(i, i + batchSize);
+      for (let i = 0; i < uniqueItems.length; i += batchSize) {
+        const batch = uniqueItems.slice(i, i + batchSize);
         const res = await fetch(`${supabaseUrl}/rest/v1/inventory?on_conflict=branch,part_code`, {
           method: "POST",
           headers: sbHeaders,
