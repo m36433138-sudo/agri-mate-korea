@@ -501,6 +501,72 @@ serve(async (req) => {
       });
     }
 
+    // SYNC operation — sync inventory from Google Sheets tabs
+    if (action === "syncInventory") {
+      const targetBranch = body.branch; // "장흥" or "강진"
+      if (!targetBranch) throw new Error("branch is required for syncInventory");
+      const tabName = targetBranch === "장흥" ? "재고창고(장흥)" : "재고창고(강진)";
+      const accessToken = await getAccessToken();
+
+      const readRange = encodeURIComponent(`'${tabName}'!A:S`);
+      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}?key=${apiKey}`;
+      const readRes = await fetch(readUrl);
+      if (!readRes.ok) throw new Error(`Failed to read ${tabName}: ${await readRes.text()}`);
+      const readData = await readRes.json();
+      const rows = (readData.values || []).slice(1); // skip header
+
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (!supabaseUrl || !serviceRoleKey) throw new Error("Supabase config missing");
+
+      const sbHeaders = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceRoleKey}`,
+        "apikey": serviceRoleKey,
+        "Prefer": "resolution=merge-duplicates",
+      };
+
+      // Map sheet columns to inventory fields
+      // B=Warehouse Code, C=Parts No, D=Parts Name, I=Unit Price, K=Wage(sales), L=Stock Qty, M=Location main, N=Location sub
+      const items: any[] = [];
+      for (const row of rows) {
+        const partCode = String(row[2] || "").trim(); // C column (index 2)
+        const partName = String(row[3] || "").trim(); // D column (index 3)
+        if (!partCode || !partName) continue;
+        items.push({
+          branch: targetBranch,
+          part_code: partCode,
+          part_name: partName,
+          purchase_price: parseInt(String(row[8] || "")) || null, // I
+          sales_price: parseInt(String(row[10] || "")) || null, // K
+          quantity: parseInt(String(row[11] || "0")) || 0, // L
+          location_main: String(row[12] || "").trim() || null, // M
+          location_sub: String(row[13] || "").trim() || null, // N
+        });
+      }
+
+      // Upsert in batches
+      let synced = 0;
+      const batchSize = 200;
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const res = await fetch(`${supabaseUrl}/rest/v1/inventory?on_conflict=branch,part_code`, {
+          method: "POST",
+          headers: sbHeaders,
+          body: JSON.stringify(batch),
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Inventory upsert error: ${errText}`);
+        }
+        synced += batch.length;
+      }
+
+      return new Response(JSON.stringify({ success: true, synced, total: rows.length }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // READ operation
     if (!tab) throw new Error("Tab name is required");
     if (!apiKey) throw new Error("GOOGLE_SHEETS_API_KEY is not configured");
