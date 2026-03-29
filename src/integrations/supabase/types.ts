@@ -67,6 +67,7 @@ export type Database = {
       }
       inventory: {
         Row: {
+          alt_part_code: string | null
           branch: string
           created_at: string
           id: string
@@ -80,6 +81,7 @@ export type Database = {
           sales_price: number | null
         }
         Insert: {
+          alt_part_code?: string | null
           branch?: string
           created_at?: string
           id?: string
@@ -93,6 +95,7 @@ export type Database = {
           sales_price?: number | null
         }
         Update: {
+          alt_part_code?: string | null
           branch?: string
           created_at?: string
           id?: string
