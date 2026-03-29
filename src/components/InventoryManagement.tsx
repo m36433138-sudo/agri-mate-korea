@@ -83,8 +83,6 @@ export default function InventoryManagement() {
 
   const totalItems = inventory?.length ?? 0;
   const totalQty = inventory?.reduce((s, i) => s + (i.quantity ?? 0), 0) ?? 0;
-  const lowStock = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 1)).length ?? 0;
-  const lowStockItems = inventory?.filter((i) => (i.quantity ?? 0) <= (i.min_stock ?? 1)) ?? [];
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
@@ -142,7 +140,7 @@ export default function InventoryManagement() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Card className="shadow-card border-0">
           <CardContent className="p-3 flex items-center gap-2">
             <Package className="h-4 w-4 text-primary" />
@@ -161,29 +159,7 @@ export default function InventoryManagement() {
             </div>
           </CardContent>
         </Card>
-        <Card className="shadow-card border-0">
-          <CardContent className="p-3 flex items-center gap-2">
-            <Package className="h-4 w-4 text-destructive" />
-            <div>
-              <p className="text-xs text-muted-foreground">부족 품목</p>
-              <p className="text-lg font-bold text-destructive">{lowStock}</p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-
-      {/* Low stock alert */}
-      {lowStockItems.length > 0 && (
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-destructive">재고 부족 알림 ({lowStockItems.length}건)</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {lowStockItems.map((i) => `${i.part_name}(${i.quantity ?? 0}/${i.min_stock ?? 1})`).join(", ")}
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Search */}
       <div className="relative max-w-xs">
@@ -224,25 +200,15 @@ export default function InventoryManagement() {
                 </tr>
               </thead>
               <tbody>
-                {filtered?.map((item) => {
-                  const isLow = (item.quantity ?? 0) <= (item.min_stock ?? 1);
-                  return (
+                {filtered?.map((item) => (
                   <tr
                     key={item.id}
-                    className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${
-                      isLow ? "bg-destructive/5" : ""
-                    }`}
+                    className="border-b last:border-0 hover:bg-muted/30 transition-colors"
                   >
                     <td className="p-3 font-mono text-xs">{item.part_code}</td>
                     <td className="p-3 font-medium">{item.part_name}</td>
                     <td className="p-3 font-mono text-xs text-muted-foreground hidden lg:table-cell">{item.alt_part_code || "-"}</td>
-                    <td className="p-3 text-right">
-                      {isLow ? (
-                        <Badge variant="destructive" className="text-xs">{item.quantity ?? 0}</Badge>
-                      ) : (
-                        <span className="font-medium">{item.quantity ?? 0}</span>
-                      )}
-                    </td>
+                    <td className="p-3 text-right font-medium">{item.quantity ?? 0}</td>
                     <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
                       {item.min_stock ?? 1}
                     </td>
@@ -263,8 +229,7 @@ export default function InventoryManagement() {
                       </div>
                     </td>
                   </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>
