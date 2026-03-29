@@ -1,19 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { useListFilter } from "@/hooks/useListFilter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, MapPin, AlertTriangle, CloudDownload } from "lucide-react";
+import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes } from "lucide-react";
 import * as XLSX from "xlsx";
 
 type InventoryItem = {
@@ -30,8 +28,19 @@ type InventoryItem = {
   min_stock: number | null;
 };
 
+// 검색어 디바운스 훅 (300ms)
+function useDebounce<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function InventoryManagement() {
   const [branch, setBranch] = useState<"장흥" | "강진">("장흥");
+  const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -39,28 +48,46 @@ export default function InventoryManagement() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  useRealtimeSync("inventory", [["inventory"]]);
+  const debouncedSearch = useDebounce(search, 300);
+  const hasSearch = debouncedSearch.trim().length >= 2;
 
-  const { data: inventory, isLoading } = useQuery({
-    queryKey: ["inventory", branch],
+  useRealtimeSync("inventory", [["inventory-stats", branch], ["inventory-search", branch, debouncedSearch]]);
+
+  // ① 요약 통계만 먼저 로드 (빠름 - 숫자만)
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["inventory-stats", branch],
     queryFn: async () => {
-      const allRows: InventoryItem[] = [];
-      const pageSize = 1000;
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("inventory")
-          .select("*")
-          .eq("branch", branch)
-          .order("part_code")
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        allRows.push(...(data as InventoryItem[]));
-        if (!data || data.length < pageSize) break;
-        from += pageSize;
-      }
-      return allRows;
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("quantity, min_stock")
+        .eq("branch", branch);
+      if (error) throw error;
+      const totalItems = data.length;
+      const totalQty = data.reduce((s, i) => s + (i.quantity ?? 0), 0);
+      const lowStockCount = data.filter(
+        (i) => (i.quantity ?? 0) < (i.min_stock ?? 1)
+      ).length;
+      return { totalItems, totalQty, lowStockCount };
     },
+    staleTime: 1000 * 60 * 3, // 3분 캐시
+  });
+
+  // ② 검색 시에만 서버에서 데이터 가져옴 (최대 50개)
+  const { data: searchResults, isLoading: searchLoading } = useQuery({
+    queryKey: ["inventory-search", branch, debouncedSearch],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("*")
+        .eq("branch", branch)
+        .or(`part_code.ilike.%${debouncedSearch}%,part_name.ilike.%${debouncedSearch}%`)
+        .order("part_code")
+        .limit(50);
+      if (error) throw error;
+      return data as InventoryItem[];
+    },
+    enabled: hasSearch, // 검색어 2자 이상일 때만 실행
+    staleTime: 1000 * 30, // 30초 캐시
   });
 
   const deleteMutation = useMutation({
@@ -69,20 +96,13 @@ export default function InventoryManagement() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inventory"] });
+      qc.invalidateQueries({ queryKey: ["inventory-stats"] });
+      qc.invalidateQueries({ queryKey: ["inventory-search"] });
       toast({ title: "재고가 삭제되었습니다." });
       setDeleteId(null);
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
-
-  const { search, setSearch, filtered } = useListFilter<InventoryItem>({
-    data: inventory,
-    searchFields: ["part_code", "part_name"],
-  });
-
-  const totalItems = inventory?.length ?? 0;
-  const totalQty = inventory?.reduce((s, i) => s + (i.quantity ?? 0), 0) ?? 0;
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
@@ -96,21 +116,13 @@ export default function InventoryManagement() {
 
   return (
     <div className="space-y-4">
-      {/* Branch toggle + actions */}
+      {/* 지점 선택 + 액션 버튼 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Button
-            variant={branch === "장흥" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setBranch("장흥")}
-          >
+          <Button variant={branch === "장흥" ? "default" : "outline"} size="sm" onClick={() => { setBranch("장흥"); setSearch(""); }}>
             장흥
           </Button>
-          <Button
-            variant={branch === "강진" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setBranch("강진")}
-          >
+          <Button variant={branch === "강진" ? "default" : "outline"} size="sm" onClick={() => { setBranch("강진"); setSearch(""); }}>
             강진
           </Button>
         </div>
@@ -122,7 +134,8 @@ export default function InventoryManagement() {
               });
               if (error) throw new Error(error.message);
               if (data?.error) throw new Error(data.error);
-              qc.invalidateQueries({ queryKey: ["inventory"] });
+              qc.invalidateQueries({ queryKey: ["inventory-stats"] });
+              qc.invalidateQueries({ queryKey: ["inventory-search"] });
               toast({ title: `${branch} 재고 동기화 완료`, description: `${data?.synced ?? 0}건 동기화됨` });
             } catch (e: any) {
               toast({ title: "동기화 실패", description: e.message, variant: "destructive" });
@@ -139,48 +152,92 @@ export default function InventoryManagement() {
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* 요약 카드 - 항상 표시 */}
+      <div className="grid grid-cols-3 gap-3">
         <Card className="shadow-card border-0">
-          <CardContent className="p-3 flex items-center gap-2">
-            <Package className="h-4 w-4 text-primary" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Package className="h-4 w-4 text-primary" />
+            </div>
             <div>
-              <p className="text-xs text-muted-foreground">품목 수</p>
-              <p className="text-lg font-bold">{totalItems}</p>
+              <p className="text-xs text-muted-foreground">총 품목</p>
+              {statsLoading ? (
+                <Skeleton className="h-6 w-12 mt-0.5" />
+              ) : (
+                <p className="text-lg font-bold tabular-nums">{stats?.totalItems ?? 0}<span className="text-xs font-normal text-muted-foreground ml-1">종</span></p>
+              )}
             </div>
           </CardContent>
         </Card>
         <Card className="shadow-card border-0">
-          <CardContent className="p-3 flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-primary" />
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-info/10">
+              <Boxes className="h-4 w-4 text-info" />
+            </div>
             <div>
               <p className="text-xs text-muted-foreground">총 수량</p>
-              <p className="text-lg font-bold">{totalQty}</p>
+              {statsLoading ? (
+                <Skeleton className="h-6 w-12 mt-0.5" />
+              ) : (
+                <p className="text-lg font-bold tabular-nums">{stats?.totalQty ?? 0}<span className="text-xs font-normal text-muted-foreground ml-1">개</span></p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={`shadow-card border-0 ${(stats?.lowStockCount ?? 0) > 0 ? "border-l-2 border-l-destructive" : ""}`}>
+          <CardContent className="p-3 flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">재고 부족</p>
+              {statsLoading ? (
+                <Skeleton className="h-6 w-12 mt-0.5" />
+              ) : (
+                <p className="text-lg font-bold tabular-nums text-destructive">
+                  {stats?.lowStockCount ?? 0}<span className="text-xs font-normal ml-1">건</span>
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-xs">
+      {/* 검색창 */}
+      <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="부품코드 또는 부품명 검색..."
+          placeholder="부품코드 또는 부품명을 2글자 이상 입력하면 검색됩니다..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          className="pl-9 max-w-md"
+          autoComplete="off"
         />
+        {hasSearch && searchResults && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+            {searchResults.length}건{searchResults.length === 50 ? " (최대)" : ""}
+          </span>
+        )}
       </div>
 
-      {/* Table */}
-      {isLoading ? (
+      {/* 결과 영역 */}
+      {!hasSearch ? (
+        /* 검색 전 안내 */
+        <Card className="shadow-card border-0 border-dashed border-2">
+          <CardContent className="py-14 text-center">
+            <Search className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
+            <p className="text-sm font-medium text-muted-foreground">부품코드 또는 부품명으로 검색하세요</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">{branch} 지점 · 총 {statsLoading ? "..." : stats?.totalItems ?? 0}개 품목</p>
+          </CardContent>
+        </Card>
+      ) : searchLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
         </div>
-      ) : filtered?.length === 0 ? (
+      ) : !searchResults || searchResults.length === 0 ? (
         <Card className="shadow-card border-0">
           <CardContent className="py-12 text-center text-muted-foreground">
-            {branch} 지점에 등록된 재고가 없습니다.
+            <p className="text-sm">"{debouncedSearch}"에 해당하는 부품이 없습니다.</p>
           </CardContent>
         </Card>
       ) : (
@@ -189,47 +246,59 @@ export default function InventoryManagement() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">부품코드</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">부품명</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">설계변경코드</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">수량</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">적정재고</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">매출가</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">위치</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground text-xs">부품코드</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground text-xs">부품명</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground text-xs hidden lg:table-cell">설계변경코드</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground text-xs">수량</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground text-xs hidden sm:table-cell">적정재고</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground text-xs hidden sm:table-cell">매출가</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground text-xs hidden md:table-cell">위치</th>
                   <th className="w-20"></th>
                 </tr>
               </thead>
               <tbody>
-                {filtered?.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="border-b last:border-0 hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="p-3 font-mono text-xs">{item.part_code}</td>
-                    <td className="p-3 font-medium">{item.part_name}</td>
-                    <td className="p-3 font-mono text-xs text-muted-foreground hidden lg:table-cell">{item.alt_part_code || "-"}</td>
-                    <td className="p-3 text-right font-medium">{item.quantity ?? 0}</td>
-                    <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
-                      {item.min_stock ?? 1}
-                    </td>
-                    <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
-                      {item.sales_price?.toLocaleString() ?? "-"}
-                    </td>
-                    <td className="p-3 text-muted-foreground hidden md:table-cell text-xs">
-                      {[item.location_main, item.location_sub].filter(Boolean).join(" / ") || "-"}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditItem(item)}>
-                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(item.id)}>
-                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {searchResults.map((item) => {
+                  const isLow = (item.quantity ?? 0) < (item.min_stock ?? 1);
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`border-b last:border-0 transition-colors ${isLow ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/25"}`}
+                    >
+                      <td className="p-3 font-mono text-xs">{item.part_code}</td>
+                      <td className="p-3 font-medium">
+                        <span>{item.part_name}</span>
+                        {isLow && (
+                          <span className="ml-2 text-[10px] text-destructive font-semibold bg-destructive/10 px-1.5 py-0.5 rounded-full">부족</span>
+                        )}
+                      </td>
+                      <td className="p-3 font-mono text-xs text-muted-foreground hidden lg:table-cell">
+                        {item.alt_part_code || "-"}
+                      </td>
+                      <td className={`p-3 text-right font-bold tabular-nums ${isLow ? "text-destructive" : ""}`}>
+                        {item.quantity ?? 0}
+                      </td>
+                      <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
+                        {item.min_stock ?? 1}
+                      </td>
+                      <td className="p-3 text-right text-muted-foreground hidden sm:table-cell tabular-nums">
+                        {item.sales_price?.toLocaleString() ?? "-"}
+                      </td>
+                      <td className="p-3 text-muted-foreground hidden md:table-cell text-xs">
+                        {[item.location_main, item.location_sub].filter(Boolean).join(" / ") || "-"}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditItem(item)}>
+                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(item.id)}>
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -282,7 +351,8 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inventory"] });
+      qc.invalidateQueries({ queryKey: ["inventory-stats"] });
+      qc.invalidateQueries({ queryKey: ["inventory-search"] });
       toast({ title: "재고가 등록되었습니다." });
       onOpenChange(false);
       setForm({ part_code: "", part_name: "", quantity: "0", min_stock: "1", purchase_price: "", sales_price: "", location_main: "", location_sub: "" });
@@ -372,7 +442,8 @@ function EditInventoryDialog({ item, onOpenChange }: { item: InventoryItem; onOp
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inventory"] });
+      qc.invalidateQueries({ queryKey: ["inventory-stats"] });
+      qc.invalidateQueries({ queryKey: ["inventory-search"] });
       toast({ title: "재고가 수정되었습니다." });
       onOpenChange(false);
     },
@@ -478,7 +549,8 @@ function BulkInventoryDialog({
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inventory"] });
+      qc.invalidateQueries({ queryKey: ["inventory-stats"] });
+      qc.invalidateQueries({ queryKey: ["inventory-search"] });
       toast({ title: `${validRows.length}건 등록 완료` });
       onOpenChange(false);
       setRows([]);
