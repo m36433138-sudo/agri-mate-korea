@@ -163,7 +163,6 @@ export type Database = {
           purchase_price: number
           sale_date: string | null
           sale_price: number | null
-          salesperson: string | null
           serial_number: string
           status: string
         }
@@ -180,7 +179,6 @@ export type Database = {
           purchase_price: number
           sale_date?: string | null
           sale_price?: number | null
-          salesperson?: string | null
           serial_number: string
           status?: string
         }
@@ -197,7 +195,6 @@ export type Database = {
           purchase_price?: number
           sale_date?: string | null
           sale_price?: number | null
-          salesperson?: string | null
           serial_number?: string
           status?: string
         }
