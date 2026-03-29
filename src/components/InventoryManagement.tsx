@@ -44,14 +44,22 @@ export default function InventoryManagement() {
   const { data: inventory, isLoading } = useQuery({
     queryKey: ["inventory", branch],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory")
-        .select("*")
-        .eq("branch", branch)
-        .order("part_code")
-        .limit(10000);
-      if (error) throw error;
-      return data as InventoryItem[];
+      const allRows: InventoryItem[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("inventory")
+          .select("*")
+          .eq("branch", branch)
+          .order("part_code")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        allRows.push(...(data as InventoryItem[]));
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      return allRows;
     },
   });
 
