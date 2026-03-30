@@ -110,36 +110,6 @@ export type Database = {
         }
         Relationships: []
       }
-      repair_notes: {
-        Row: {
-          id: string
-          branch: string
-          row_index: number
-          content: string
-          is_done: boolean
-          created_at: string
-          done_at: string | null
-        }
-        Insert: {
-          id?: string
-          branch: string
-          row_index: number
-          content: string
-          is_done?: boolean
-          created_at?: string
-          done_at?: string | null
-        }
-        Update: {
-          id?: string
-          branch?: string
-          row_index?: number
-          content?: string
-          is_done?: boolean
-          created_at?: string
-          done_at?: string | null
-        }
-        Relationships: []
-      }
       inventory_adjustments: {
         Row: {
           adjusted_by: string | null
@@ -421,6 +391,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      repair_notes: {
+        Row: {
+          branch: string
+          content: string
+          created_at: string
+          done_at: string | null
+          id: string
+          is_done: boolean
+          row_index: number
+        }
+        Insert: {
+          branch: string
+          content: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          is_done?: boolean
+          row_index: number
+        }
+        Update: {
+          branch?: string
+          content?: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          is_done?: boolean
+          row_index?: number
+        }
+        Relationships: []
       }
       repair_parts: {
         Row: {
