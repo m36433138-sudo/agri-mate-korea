@@ -44,6 +44,51 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          id: string
+          name: string
+          phone: string | null
+          address: string | null
+          resident_number: string | null
+          team: string | null
+          position: string | null
+          salary: number | null
+          join_date: string | null
+          notes: string | null
+          user_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          phone?: string | null
+          address?: string | null
+          resident_number?: string | null
+          team?: string | null
+          position?: string | null
+          salary?: number | null
+          join_date?: string | null
+          notes?: string | null
+          user_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          phone?: string | null
+          address?: string | null
+          resident_number?: string | null
+          team?: string | null
+          position?: string | null
+          salary?: number | null
+          join_date?: string | null
+          notes?: string | null
+          user_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       employee_permissions: {
         Row: {
           employee_id: string

@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, display_name, phone, role, customer_id, team } = await req.json();
+    const { email, password, display_name, phone, role, customer_id, employee_id, team } = await req.json();
 
     if (!email || !password || !display_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -100,6 +100,11 @@ Deno.serve(async (req) => {
           }))
         );
       }
+    }
+
+    // If employee role, link to employees table record
+    if (role === "employee" && employee_id) {
+      await adminClient.from("employees").update({ user_id: userId }).eq("id", employee_id);
     }
 
     // If customer role, link to existing customer record or create one
