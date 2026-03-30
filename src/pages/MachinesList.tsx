@@ -20,6 +20,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MachineWithCustomer } from "@/types/database";
 
+const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
+
 export default function MachinesList() {
   const [typeTab, setTypeTab] = useState("전체");
   const [statusTab, setStatusTab] = useState("전체");
@@ -94,6 +96,7 @@ export default function MachinesList() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
+                  <th className="text-left p-3 font-medium text-muted-foreground">제조사</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">모델명</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">제조번호</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">구분</th>
@@ -107,6 +110,7 @@ export default function MachinesList() {
               <tbody>
                 {filtered?.map((m: any) => (
                   <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                    <td className="p-3 text-muted-foreground">{m.manufacturer || "-"}</td>
                     <td className="p-3">
                       <Link to={`/machines/${m.id}`} className="font-medium text-foreground hover:text-primary">{m.model_name}</Link>
                     </td>
@@ -134,13 +138,14 @@ export default function MachinesList() {
 function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [form, setForm] = useState({ model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
+  const [form, setForm] = useState({ model_name: "", serial_number: "", machine_type: "새기계", manufacturer: "얀마", entry_date: "", purchase_price: "", notes: "" });
 
   const mutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("machines").insert({
         model_name: form.model_name, serial_number: form.serial_number,
-        machine_type: form.machine_type, entry_date: form.entry_date,
+        machine_type: form.machine_type, manufacturer: form.manufacturer,
+        entry_date: form.entry_date,
         purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
       });
       if (error) throw error;
@@ -149,7 +154,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       qc.invalidateQueries({ queryKey: ["machines"] });
       toast({ title: "기계가 성공적으로 등록되었습니다." });
       onOpenChange(false);
-      setForm({ model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
+      setForm({ model_name: "", serial_number: "", machine_type: "새기계", manufacturer: "얀마", entry_date: "", purchase_price: "", notes: "" });
     },
     onError: (e: any) => toast({ title: "오류 발생", description: e.message, variant: "destructive" }),
   });
@@ -161,6 +166,13 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       <DialogContent className="sm:max-w-md">
         <DialogHeader><DialogTitle>기계 등록</DialogTitle></DialogHeader>
         <div className="space-y-4">
+          <div>
+            <Label>제조사 *</Label>
+            <Select value={form.manufacturer} onValueChange={v => setForm(f => ({...f, manufacturer: v}))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{MANUFACTURERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div><Label>모델명 *</Label><Input value={form.model_name} onChange={e => setForm(f => ({...f, model_name: e.target.value}))} placeholder="예: YT5101 트랙터" /></div>
           <div><Label>제조번호 *</Label><Input value={form.serial_number} onChange={e => setForm(f => ({...f, serial_number: e.target.value}))} placeholder="예: YT5101-2023001" /></div>
           <div>

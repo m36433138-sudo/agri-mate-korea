@@ -104,6 +104,7 @@ export default function MachineDetail() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t">
+            <InfoItem label="제조사" value={machine.manufacturer || "-"} />
             <InfoItem label="입고일" value={formatDate(machine.entry_date)} />
             <InfoItem label="매입가" value={formatPrice(machine.purchase_price)} bold />
             {machine.status === "판매완료" && (
@@ -481,7 +482,8 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
   const qc = useQueryClient();
   const [form, setForm] = useState({
     model_name: machine.model_name, serial_number: machine.serial_number,
-    machine_type: machine.machine_type, entry_date: machine.entry_date,
+    machine_type: machine.machine_type, manufacturer: machine.manufacturer || "얀마",
+    entry_date: machine.entry_date,
     purchase_price: String(machine.purchase_price), notes: machine.notes || "",
   });
 
@@ -489,7 +491,8 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
     mutationFn: async () => {
       const { error } = await supabase.from("machines").update({
         model_name: form.model_name, serial_number: form.serial_number,
-        machine_type: form.machine_type, entry_date: form.entry_date,
+        machine_type: form.machine_type, manufacturer: form.manufacturer,
+        entry_date: form.entry_date,
         purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
       }).eq("id", machine.id);
       if (error) throw error;
@@ -508,6 +511,13 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
       <DialogContent className="sm:max-w-md">
         <DialogHeader><DialogTitle>정보 수정</DialogTitle></DialogHeader>
         <div className="space-y-4">
+          <div>
+            <Label>제조사</Label>
+            <Select value={form.manufacturer} onValueChange={v => setForm(f => ({...f, manufacturer: v}))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{MANUFACTURERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div><Label>모델명</Label><Input value={form.model_name} onChange={e => setForm(f => ({...f, model_name: e.target.value}))} /></div>
           <div><Label>제조번호</Label><Input value={form.serial_number} onChange={e => setForm(f => ({...f, serial_number: e.target.value}))} /></div>
           <div>
