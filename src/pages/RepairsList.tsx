@@ -91,10 +91,7 @@ export default function RepairsList() {
                       <th className="text-left p-3 font-medium text-muted-foreground">담당</th>
                       <th className="text-right p-3 font-medium text-muted-foreground">공임비</th>
                       <th className="text-right p-3 font-medium text-muted-foreground">총비용</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered?.map((r: any) => (
+                      <th className="p-3 w-10"></th>
                       <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="p-3 whitespace-nowrap">{formatDate(r.repair_date)}</td>
                         <td className="p-3">
