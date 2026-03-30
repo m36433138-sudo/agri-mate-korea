@@ -110,11 +110,11 @@ export default function RepairStats() {
     [allWithArchive]
   );
 
-  // 기간 + 지점 필터 적용 (날짜 없는 항목은 제외)
+  // 기간 + 지점 필터 적용 (입고일 기준, 날짜 없는 항목은 항상 포함)
   const filteredRepairs = useMemo(() => {
     let rows = completed.filter(r => {
-      const d = parseSheetDate(r.출고일) || parseSheetDate(r.수리완료일) || parseSheetDate(r.입고일);
-      if (!d) return false; // 날짜 파싱 불가한 항목은 제외
+      const d = parseSheetDate(r.입고일); // 입고일 기준
+      if (!d) return true; // 날짜 없는 항목도 포함 (기사 확인 가능)
       return d >= range.from && d <= range.to;
     });
     if (branch !== "전체") rows = rows.filter(r => r._branch === branch);
@@ -142,7 +142,7 @@ export default function RepairStats() {
 
     filteredRepairs.forEach(r => {
       const names = parseTechNames(r.수리기사);
-      const d = parseSheetDate(r.출고일) || parseSheetDate(r.수리완료일) || parseSheetDate(r.입고일);
+      const d = parseSheetDate(r.입고일); // 입고일 기준
       const monthKey = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : null;
 
       names.forEach(name => {
@@ -496,8 +496,13 @@ export default function RepairStats() {
                             </td>
                           );
                         })}
-                        <td className="px-3 py-2 text-center text-sm font-bold tabular-nums text-primary">
-                          {filteredRepairs.length}
+                        <td className="px-3 py-2 text-center">
+                          <span className="text-sm font-bold tabular-nums text-primary">{filteredRepairs.length}</span>
+                          {filteredRepairs.filter(r => !parseSheetDate(r.입고일)).length > 0 && (
+                            <span className="block text-[10px] text-amber-600">
+                              날짜없음 {filteredRepairs.filter(r => !parseSheetDate(r.입고일)).length}건 포함
+                            </span>
+                          )}
                         </td>
                       </tr>
                     </tbody>
@@ -557,7 +562,9 @@ export default function RepairStats() {
                             {r.손님요구사항}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                            {formatSheetDateFull(r.입고일)}
+                            {r.입고일 ? formatSheetDateFull(r.입고일) : (
+                              <span className="text-[10px] bg-amber-100 text-amber-700 rounded px-1 py-0.5">날짜없음</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {formatSheetDateFull(r.수리완료일)}
