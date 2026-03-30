@@ -65,6 +65,51 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          id: string
+          join_date: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          position: string | null
+          resident_number: string | null
+          salary: number | null
+          team: string | null
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          join_date?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          resident_number?: string | null
+          salary?: number | null
+          team?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          join_date?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          resident_number?: string | null
+          salary?: number | null
+          team?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           alt_part_code: string | null
@@ -148,6 +193,44 @@ export type Database = {
           reason?: string | null
         }
         Relationships: []
+      }
+      machine_attachments: {
+        Row: {
+          created_at: string | null
+          id: string
+          machine_id: string
+          model: string | null
+          name: string
+          notes: string | null
+          serial_number: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          machine_id: string
+          model?: string | null
+          name: string
+          notes?: string | null
+          serial_number?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          machine_id?: string
+          model?: string | null
+          name?: string
+          notes?: string | null
+          serial_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_attachments_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       machines: {
         Row: {
