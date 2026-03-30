@@ -273,6 +273,7 @@ export type Database = {
           entry_date: string
           id: string
           machine_type: string
+          manufacturer: string | null
           model_name: string
           notes: string | null
           purchase_price: number
@@ -290,6 +291,7 @@ export type Database = {
           entry_date: string
           id?: string
           machine_type: string
+          manufacturer?: string | null
           model_name: string
           notes?: string | null
           purchase_price: number
@@ -307,6 +309,7 @@ export type Database = {
           entry_date?: string
           id?: string
           machine_type?: string
+          manufacturer?: string | null
           model_name?: string
           notes?: string | null
           purchase_price?: number
