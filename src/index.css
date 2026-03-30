@@ -6,32 +6,32 @@
 
 @layer base {
   :root {
-    --background: 140 10% 97%;
-    --foreground: 220 20% 10%;
+    --background: 220 20% 97%;
+    --foreground: 224 28% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card-foreground: 224 28% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover-foreground: 224 28% 12%;
 
     --primary: 142 64% 34%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 140 20% 95%;
-    --secondary-foreground: 220 20% 10%;
+    --secondary: 220 16% 95%;
+    --secondary-foreground: 224 28% 12%;
 
-    --muted: 140 10% 95%;
-    --muted-foreground: 215 14% 46%;
+    --muted: 220 16% 94%;
+    --muted-foreground: 220 12% 50%;
 
-    --accent: 140 20% 93%;
-    --accent-foreground: 220 20% 10%;
+    --accent: 220 14% 92%;
+    --accent-foreground: 224 28% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 140 10% 90%;
-    --input: 140 10% 90%;
+    --border: 220 16% 90%;
+    --input: 220 16% 90%;
     --ring: 142 64% 34%;
 
     --radius: 0.75rem;
@@ -72,18 +72,52 @@
 
 /* ── 페이지 진입 애니메이션 ── */
 @keyframes page-enter {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: page-enter 0.22s ease-out both;
 }
 
-.page-enter {
-  animation: page-enter 0.18s ease-out both;
+/* ── 클릭 Ripple 애니메이션 ── */
+@keyframes ripple-expand {
+  from { transform: scale(0); opacity: 0.35; }
+  to   { transform: scale(4); opacity: 0; }
+}
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: hsl(var(--primary) / 0.18);
+  animation: ripple-expand 0.55s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Glow Card (마우스 추적 내부 발광) ── */
+.glow-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.glow-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    280px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    hsl(142 64% 34% / 0.09),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+.glow-card:hover::before {
+  opacity: 1;
+}
+.glow-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ── 전역 인터랙션 개선 ── */

@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import GlowCard from "@/components/GlowCard";
 import {
   Tractor, Wrench, Users, Package,
   ChevronRight, MessageSquare, BookOpen,
@@ -13,10 +13,10 @@ import { TypeBadge } from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
-  useRealtimeSync("machines", [["machines"]]);
-  useRealtimeSync("repairs", [["repairs-recent"]]);
-  useRealtimeSync("customers", [["customers-count"]]);
-  useRealtimeSync("inventory", [["parts-count"]]);
+  useRealtimeSync("machines",   [["machines"]]);
+  useRealtimeSync("repairs",    [["repairs-recent"]]);
+  useRealtimeSync("customers",  [["customers-count"]]);
+  useRealtimeSync("inventory",  [["parts-count"]]);
 
   const { data: machines, isLoading: ml } = useQuery({
     queryKey: ["machines"],
@@ -65,14 +65,14 @@ export default function Dashboard() {
   });
 
   const loading = ml || rl;
-  const inStock = machines?.filter((m) => m.status === "재고중") ?? [];
-  const newMachines = inStock.filter((m) => m.machine_type === "새기계");
+  const inStock      = machines?.filter((m) => m.status === "재고중") ?? [];
+  const newMachines  = inStock.filter((m) => m.machine_type === "새기계");
   const usedMachines = inStock.filter((m) => m.machine_type === "중고기계");
 
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const repairsThisMonth = repairs?.filter((r) => r.repair_date.startsWith(thisMonth)).length ?? 0;
-  const salesThisMonth = machines?.filter((m) => m.sale_date?.startsWith(thisMonth)).length ?? 0;
+  const repairsThisMonth = repairs?.filter((r) => r.repair_date?.startsWith(thisMonth)).length ?? 0;
+  const salesThisMonth   = machines?.filter((m) => m.sale_date?.startsWith(thisMonth)).length ?? 0;
 
   const recentEntries = machines
     ?.filter((m) => m.status === "재고중")
@@ -82,116 +82,133 @@ export default function Dashboard() {
   const stats = [
     {
       label: "전체 고객",
-      value: loading ? null : `${customersCount ?? 0}명`,
+      value: `${customersCount ?? 0}`,
+      unit: "명",
       icon: Users,
-      color: "text-info",
-      bg: "bg-info/10",
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-500",
+      accent: "#3B82F6",
       to: "/customers",
     },
     {
       label: "재고 기계",
-      value: loading ? null : `${inStock.length}대`,
-      sub: loading ? null : `새기계 ${newMachines.length} · 중고 ${usedMachines.length}`,
+      value: `${inStock.length}`,
+      unit: "대",
+      sub: `새기계 ${newMachines.length} · 중고 ${usedMachines.length}`,
       icon: Tractor,
-      color: "text-primary",
-      bg: "bg-primary/10",
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+      accent: "#10B981",
       to: "/machines",
     },
     {
       label: "이번 달 수리",
-      value: loading ? null : `${repairsThisMonth}건`,
+      value: `${repairsThisMonth}`,
+      unit: "건",
       icon: Wrench,
-      color: "text-warning",
-      bg: "bg-warning/10",
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-500",
+      accent: "#F59E0B",
       to: "/repairs",
     },
     {
       label: "등록 부품",
-      value: loading ? null : `${partsCount ?? 0}종`,
+      value: `${partsCount ?? 0}`,
+      unit: "종",
       icon: Package,
-      color: "text-destructive",
-      bg: "bg-destructive/10",
+      iconBg: "bg-rose-50",
+      iconColor: "text-rose-500",
+      accent: "#F43F5E",
       to: "/parts",
     },
   ];
 
-  // 빠른 액션 버튼
   const quickActions = [
-    { label: "작업현황판", desc: "오늘 수리 현황", icon: ClipboardList, to: "/dashboard/operations", accent: "bg-primary text-primary-foreground" },
-    { label: "방문수리 접수", desc: "출장 수리 등록", icon: Truck, to: "/onsite-repairs", accent: "bg-info text-white" },
-    { label: "AI 어시스턴트", desc: "정비 질문하기", icon: MessageSquare, to: "/chat", accent: "bg-warning text-white" },
-    { label: "실적 현황", desc: "이번 달 매출", icon: TrendingUp, to: "/dashboard/stats", accent: "bg-success text-white" },
+    { label: "작업현황판",   desc: "오늘 수리 현황",  icon: ClipboardList, to: "/dashboard/operations", bg: "bg-primary",    fg: "text-primary-foreground" },
+    { label: "방문수리 접수", desc: "출장 수리 등록",  icon: Truck,         to: "/onsite-repairs",      bg: "bg-blue-500",   fg: "text-white" },
+    { label: "AI 어시스턴트", desc: "정비 질문하기",   icon: MessageSquare, to: "/chat",                bg: "bg-amber-500",  fg: "text-white" },
+    { label: "실적 현황",    desc: "이번 달 매출",    icon: TrendingUp,    to: "/dashboard/stats",     bg: "bg-violet-500", fg: "text-white" },
   ];
 
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
+      {/* ── 헤더 ── */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">오늘의 업무 현황</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
+          <p className="text-sm text-muted-foreground font-medium">
             {now.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
           </p>
+          <h1 className="text-2xl font-bold tracking-tight mt-0.5">오늘의 업무 현황</h1>
         </div>
         {!loading && salesThisMonth > 0 && (
-          <div className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-success bg-success/10 px-3 py-1.5 rounded-full">
+          <div className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-emerald-600 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-100">
             <ArrowUpRight className="h-3.5 w-3.5" />
             이번 달 판매 {salesThisMonth}대
           </div>
         )}
       </div>
 
-      {/* 빠른 액션 */}
+      {/* ── 빠른 액션 ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {quickActions.map((action) => (
-          <Link
-            key={action.to}
-            to={action.to}
-            className="group flex items-center gap-3 p-3.5 rounded-xl bg-card border hover:border-primary/30 hover:shadow-card-hover transition-all duration-150"
-          >
-            <div className={`p-2 rounded-lg shrink-0 ${action.accent}`}>
-              <action.icon className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold leading-none truncate">{action.label}</p>
-              <p className="text-xs text-muted-foreground mt-1 truncate">{action.desc}</p>
-            </div>
+        {quickActions.map((a) => (
+          <Link key={a.to} to={a.to}>
+            <GlowCard className="flex items-center gap-3 p-4 cursor-pointer group">
+              <div className={`p-2.5 rounded-xl shrink-0 ${a.bg} ${a.fg}`}>
+                <a.icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold truncate leading-none">{a.label}</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">{a.desc}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/40 transition-colors ml-auto shrink-0" />
+            </GlowCard>
           </Link>
         ))}
       </div>
 
-      {/* KPI 카드 */}
+      {/* ── KPI 카드 ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <Link key={i} to={stat.to}>
-            <Card className="border-0 shadow-card hover:shadow-card-hover transition-all duration-150 rounded-2xl cursor-pointer group">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-2.5 rounded-xl ${stat.bg}`}>
-                    <stat.icon className={`h-4.5 w-4.5 ${stat.color}`} />
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors" />
+        {stats.map((s, i) => (
+          <Link key={i} to={s.to}>
+            <GlowCard className="p-5 cursor-pointer group">
+              {/* 상단: 아이콘 + 화살표 */}
+              <div className="flex items-start justify-between mb-4">
+                <div className={`p-2.5 rounded-xl ${s.iconBg}`}>
+                  <s.icon className={`h-5 w-5 ${s.iconColor}`} />
                 </div>
-                <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                {stat.value === null ? (
-                  <Skeleton className="h-7 w-20 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold mt-0.5 tabular-nums">{stat.value}</p>
-                )}
-                {stat.sub && (
-                  <p className="text-xs text-muted-foreground mt-1">{stat.sub}</p>
-                )}
-              </CardContent>
-            </Card>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/40 transition-colors" />
+              </div>
+              {/* 숫자 */}
+              <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
+              {loading ? (
+                <Skeleton className="h-8 w-24 mt-1.5 rounded-lg" />
+              ) : (
+                <p className="text-3xl font-extrabold mt-1 tabular-nums tracking-tight">
+                  {s.value}
+                  <span className="text-lg font-semibold text-muted-foreground ml-1">{s.unit}</span>
+                </p>
+              )}
+              {s.sub && (
+                <p className="text-xs text-muted-foreground mt-1.5">{s.sub}</p>
+              )}
+              {/* 하단 컬러 바 */}
+              <div className="mt-4 h-1 rounded-full bg-gray-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: loading ? "0%" : "60%", background: s.accent }}
+                />
+              </div>
+            </GlowCard>
           </Link>
         ))}
       </div>
 
+      {/* ── 메인 콘텐츠 ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* 최근 정비 내역 */}
         <div className="lg:col-span-2">
-          <Card className="border-0 shadow-card rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b flex justify-between items-center">
+          <GlowCard>
+            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
               <h3 className="font-bold text-sm">최근 정비 내역</h3>
               <Link
                 to="/repairs"
@@ -206,31 +223,31 @@ export default function Dashboard() {
                   {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
                 </div>
               ) : repairs?.length === 0 ? (
-                <p className="text-sm text-muted-foreground p-5 text-center">수리 이력이 없습니다.</p>
+                <p className="text-sm text-muted-foreground p-8 text-center">수리 이력이 없습니다.</p>
               ) : (
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40">
-                      <th className="px-5 py-2.5">기계</th>
-                      <th className="px-5 py-2.5">작업 내용</th>
-                      <th className="px-5 py-2.5 hidden sm:table-cell">비용</th>
-                      <th className="px-5 py-2.5 text-right">날짜</th>
+                    <tr className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-gray-50/80">
+                      <th className="px-5 py-3">기계</th>
+                      <th className="px-5 py-3">작업 내용</th>
+                      <th className="px-5 py-3 hidden sm:table-cell">비용</th>
+                      <th className="px-5 py-3 text-right">날짜</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border/60">
+                  <tbody className="divide-y divide-gray-50">
                     {repairs?.map((r: any) => (
-                      <tr key={r.id} className="hover:bg-muted/25 transition-colors">
-                        <td className="px-5 py-3">
+                      <tr key={r.id} className="hover:bg-gray-50/60 transition-colors">
+                        <td className="px-5 py-3.5">
                           <p className="text-sm font-semibold leading-none">{r.machines?.model_name}</p>
                           <p className="text-xs text-muted-foreground font-mono mt-0.5">{r.machines?.serial_number}</p>
                         </td>
-                        <td className="px-5 py-3 text-sm text-muted-foreground max-w-[160px] truncate">
+                        <td className="px-5 py-3.5 text-sm text-muted-foreground max-w-[160px] truncate">
                           {r.repair_content}
                         </td>
-                        <td className="px-5 py-3 text-sm font-semibold tabular-nums hidden sm:table-cell">
+                        <td className="px-5 py-3.5 text-sm font-semibold tabular-nums hidden sm:table-cell">
                           {r.total_cost > 0 ? formatPrice(r.total_cost) : <span className="text-muted-foreground">-</span>}
                         </td>
-                        <td className="px-5 py-3 text-right text-xs text-muted-foreground whitespace-nowrap">
+                        <td className="px-5 py-3.5 text-right text-xs text-muted-foreground whitespace-nowrap">
                           {formatDate(r.repair_date)}
                         </td>
                       </tr>
@@ -239,63 +256,75 @@ export default function Dashboard() {
                 </table>
               )}
             </div>
-          </Card>
+          </GlowCard>
         </div>
 
-        {/* AI 어드바이저 카드 */}
-        <Card className="border-0 rounded-2xl overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/75 text-primary-foreground shadow-lg">
-          <CardContent className="p-6 flex flex-col h-full relative min-h-[240px]">
-            <div className="absolute -top-4 -right-4 opacity-[0.07]">
-              <BookOpen className="h-36 w-36" />
+        {/* AI 어드바이저 */}
+        <div
+          className="rounded-2xl overflow-hidden relative"
+          style={{
+            background: "linear-gradient(135deg, hsl(142 64% 28%) 0%, hsl(142 64% 38%) 50%, hsl(217 91% 55%) 100%)",
+          }}
+        >
+          <div className="p-6 flex flex-col h-full text-white min-h-[240px] relative">
+            {/* 배경 장식 */}
+            <div className="absolute -top-6 -right-6 opacity-[0.08]">
+              <BookOpen className="h-40 w-40" />
             </div>
+            {/* 반짝이는 원 장식 */}
+            <div className="absolute top-4 right-8 w-20 h-20 rounded-full bg-white/5 blur-xl" />
+            <div className="absolute bottom-8 left-4 w-16 h-16 rounded-full bg-white/5 blur-lg" />
+
             <div className="relative z-10 flex-1">
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-white/15 rounded-lg">
+                <div className="p-2 bg-white/15 backdrop-blur-sm rounded-xl border border-white/10">
                   <MessageSquare className="h-4 w-4" />
                 </div>
                 <span className="font-bold text-sm">AI 정비 어드바이저</span>
               </div>
-              <h4 className="text-lg font-bold mb-3 leading-snug">기계 증상을<br />물어보세요</h4>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3.5 text-xs border border-white/10 leading-relaxed text-primary-foreground/90">
+              <h4 className="text-lg font-extrabold mb-3 leading-snug">
+                기계 증상을<br />물어보세요
+              </h4>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3.5 text-xs border border-white/10 leading-relaxed text-white/90">
                 "유압 압력이 불규칙할 때는 펌프 입구 스트레이너 막힘을 먼저 확인하세요..."
               </div>
             </div>
             <Link
               to="/chat"
-              className="mt-5 w-full py-2.5 bg-white text-primary font-bold rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center gap-1.5 text-sm"
+              className="mt-5 w-full py-2.5 bg-white text-primary font-bold rounded-xl hover:bg-white/92 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 text-sm shadow-lg shadow-black/10"
             >
               AI 상담 시작 <ChevronRight className="h-4 w-4" />
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      {/* 최근 입고 기계 */}
-      <Card className="border-0 shadow-card rounded-2xl">
-        <div className="px-5 py-4 border-b flex justify-between items-center">
+      {/* ── 최근 입고 기계 ── */}
+      <GlowCard>
+        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
           <h3 className="font-bold text-sm">최근 입고 기계</h3>
           <Link to="/machines" className="text-xs text-primary font-semibold hover:underline flex items-center gap-0.5">
             전체보기 <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        <CardContent className="p-4">
+        <div className="p-4">
           {loading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
             </div>
           ) : recentEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">입고 기계가 없습니다.</p>
+            <p className="text-sm text-muted-foreground text-center py-6">입고 기계가 없습니다.</p>
           ) : (
             <div className="space-y-1">
               {recentEntries.map((m) => (
                 <Link
                   key={m.id}
                   to={`/machines/${m.id}`}
-                  className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-muted/50 transition-colors group"
+                  className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Tractor className="h-4 w-4 text-primary" />
+                    <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                      <Tractor className="h-4.5 w-4.5 text-emerald-600" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate">{m.model_name}</p>
@@ -315,8 +344,8 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlowCard>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import GlobalSearch from "@/components/GlobalSearch";
+import CursorGlow from "@/components/CursorGlow";
 import { useLocation, Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 
@@ -61,6 +62,7 @@ function Breadcrumb() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
+      <CursorGlow />
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
