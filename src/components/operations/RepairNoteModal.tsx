@@ -28,8 +28,8 @@ export function RepairNoteModal({ open, onClose, row }: Props) {
     try {
       await addNote.mutateAsync({ branch: row._branch, rowIndex: row._rowIndex, content });
       setInput("");
-    } catch {
-      toast({ title: "추가 실패", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "추가 실패", description: e?.message || "Supabase 테이블이 없을 수 있습니다.", variant: "destructive" });
     }
   };
 
