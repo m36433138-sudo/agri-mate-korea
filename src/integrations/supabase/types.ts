@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_drive_links: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          label: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          label: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          label?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_drive_links_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -41,30 +73,6 @@ export type Database = {
           notes?: string | null
           phone?: string
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      customer_drive_links: {
-        Row: {
-          id: string
-          customer_id: string
-          label: string
-          url: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          customer_id: string
-          label: string
-          url: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          customer_id?: string
-          label?: string
-          url?: string
-          created_at?: string
         }
         Relationships: []
       }
