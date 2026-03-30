@@ -16,7 +16,7 @@ export default function Dashboard() {
   useRealtimeSync("machines", [["machines"]]);
   useRealtimeSync("repairs", [["repairs-recent"]]);
   useRealtimeSync("customers", [["customers-count"]]);
-  useRealtimeSync("parts", [["parts-count"]]);
+  useRealtimeSync("inventory", [["parts-count"]]);
 
   const { data: machines, isLoading: ml } = useQuery({
     queryKey: ["machines"],
@@ -40,22 +40,28 @@ export default function Dashboard() {
     },
   });
 
-  const { data: customers } = useQuery({
+  const { data: customersCount } = useQuery({
     queryKey: ["customers-count"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("id");
+      const { count, error } = await supabase
+        .from("customers")
+        .select("*", { count: "exact", head: true });
       if (error) throw error;
-      return data;
+      return count ?? 0;
     },
+    staleTime: 1000 * 60 * 2,
   });
 
-  const { data: parts } = useQuery({
+  const { data: partsCount } = useQuery({
     queryKey: ["parts-count"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("parts").select("id");
+      const { count, error } = await supabase
+        .from("inventory")
+        .select("*", { count: "exact", head: true });
       if (error) throw error;
-      return data;
+      return count ?? 0;
     },
+    staleTime: 1000 * 60 * 2,
   });
 
   const loading = ml || rl;
@@ -76,7 +82,7 @@ export default function Dashboard() {
   const stats = [
     {
       label: "전체 고객",
-      value: loading ? null : `${customers?.length ?? 0}명`,
+      value: loading ? null : `${customersCount ?? 0}명`,
       icon: Users,
       color: "text-info",
       bg: "bg-info/10",
@@ -101,7 +107,7 @@ export default function Dashboard() {
     },
     {
       label: "등록 부품",
-      value: loading ? null : `${parts?.length ?? 0}종`,
+      value: loading ? null : `${partsCount ?? 0}종`,
       icon: Package,
       color: "text-destructive",
       bg: "bg-destructive/10",
