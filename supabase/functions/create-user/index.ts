@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, display_name, phone, role, customer_id } = await req.json();
+    const { email, password, display_name, phone, role, customer_id, team } = await req.json();
 
     if (!email || !password || !display_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -78,9 +78,12 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id;
 
-    // Update phone if provided
-    if (phone) {
-      await adminClient.from("profiles").update({ phone }).eq("id", userId);
+    // Update phone and team if provided
+    const profileUpdates: Record<string, string> = {};
+    if (phone) profileUpdates.phone = phone;
+    if (team) profileUpdates.team = team;
+    if (Object.keys(profileUpdates).length > 0) {
+      await adminClient.from("profiles").update(profileUpdates).eq("id", userId);
     }
 
     // Update role if not customer (trigger already sets customer)

@@ -247,6 +247,7 @@ export type Database = {
           id: string
           memo: string | null
           phone: string | null
+          team: string | null
         }
         Insert: {
           branch?: string | null
@@ -256,6 +257,7 @@ export type Database = {
           id: string
           memo?: string | null
           phone?: string | null
+          team?: string | null
         }
         Update: {
           branch?: string | null
@@ -265,6 +267,7 @@ export type Database = {
           id?: string
           memo?: string | null
           phone?: string | null
+          team?: string | null
         }
         Relationships: []
       }
