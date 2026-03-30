@@ -41,6 +41,18 @@ export default function RepairsList() {
     searchFields: ["repair_content", "technician", "machines.serial_number", "machines.model_name"],
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("repairs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["all-repairs"] });
+      toast({ title: "수리 이력이 삭제되었습니다." });
+    },
+    onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
