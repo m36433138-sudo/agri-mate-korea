@@ -19,6 +19,8 @@ import type { RepairWithMachine } from "@/types/database";
 
 export default function RepairsList() {
   const [repairOpen, setRepairOpen] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
 
   useRealtimeSync("repairs", [["all-repairs"]]);
 
