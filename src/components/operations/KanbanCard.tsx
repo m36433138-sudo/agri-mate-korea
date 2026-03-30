@@ -1,5 +1,6 @@
 import { SheetRow, getStatus, OperationStatus, getTechnicianColor, getMachineTypeColor, formatSheetDate, parseSheetDate } from "@/types/operations";
-import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil, ArrowRight } from "lucide-react";
+import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil, ArrowRight, Package } from "lucide-react";
+import { RepairNote } from "@/hooks/useRepairNotes";
 
 const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: OperationStatus | "완료" } | null> = {
   입고대기: { label: "입고완료", next: "수리대기" },
@@ -23,13 +24,18 @@ interface Props {
   color: string;
   onMarkComplete: (row: SheetRow) => void;
   onEdit?: (row: SheetRow) => void;
+  onNotes?: (row: SheetRow) => void;
+  notes?: RepairNote[];
 }
 
-export function KanbanCard({ row, color, onMarkComplete, onEdit }: Props) {
+export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, notes = [] }: Props) {
   const status = getStatus(row);
   const machineColor = getMachineTypeColor(row.기계);
   const transition = STATUS_TRANSITIONS[status];
   const now = Date.now();
+
+  const pendingNotes = notes.filter(n => !n.is_done);
+  const doneNotes = notes.filter(n => n.is_done);
 
   const showEntryWarning = status === "입고대기" && row.수리시작일 && (() => {
     const d = parseSheetDate(row.수리시작일);
@@ -53,11 +59,29 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit }: Props) {
         {row.품목 && <span className="text-xs text-muted-foreground">{row.품목}</span>}
         {showEntryWarning && <AlertTriangle className="h-3.5 w-3.5 text-orange-500 ml-auto" />}
         {showExitWarning && <CircleAlert className="h-3.5 w-3.5 text-red-500 ml-auto" />}
-        {onEdit && (
-          <button onClick={() => onEdit(row)} className="ml-auto p-1 rounded hover:bg-muted/50 transition-colors" title="수정">
-            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-1">
+          {/* 조달 뱃지 */}
+          {onNotes && (
+            <button
+              onClick={() => onNotes(row)}
+              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md transition-colors hover:bg-orange-50"
+              title="조달/필요사항"
+            >
+              <Package className={`h-3.5 w-3.5 ${pendingNotes.length > 0 ? "text-orange-500" : "text-muted-foreground/40"}`} />
+              {pendingNotes.length > 0 && (
+                <span className="text-[10px] font-bold text-orange-500 tabular-nums">{pendingNotes.length}</span>
+              )}
+              {pendingNotes.length === 0 && doneNotes.length > 0 && (
+                <span className="text-[10px] text-muted-foreground/40">✓</span>
+              )}
+            </button>
+          )}
+          {onEdit && (
+            <button onClick={() => onEdit(row)} className="p-1 rounded hover:bg-muted/50 transition-colors" title="수정">
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-1.5">

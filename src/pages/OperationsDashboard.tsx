@@ -3,6 +3,8 @@ import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGo
 import { SheetRow, getStatus, OperationStatus } from "@/types/operations";
 import { KanbanCard } from "@/components/operations/KanbanCard";
 import { RowFormModal } from "@/components/operations/RowFormModal";
+import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
+import { useRepairNotes } from "@/hooks/useRepairNotes";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { RefreshCw, AlertCircle, Plus, PackageOpen, Wrench, Clock, CheckCircle2, Truck, PauseCircle } from "lucide-react";
+import { RefreshCw, AlertCircle, Plus, PackageOpen, Wrench, Clock, CheckCircle2, Truck, PauseCircle, Package } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Branch = "전체" | "장흥" | "강진";
@@ -51,6 +53,8 @@ export default function OperationsDashboard() {
   const [isMarking, setIsMarking] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editRow, setEditRow] = useState<SheetRow | null>(null);
+  const [noteRow, setNoteRow] = useState<SheetRow | null>(null);
+  const { allNotes, getNotesForRow, pendingCount } = useRepairNotes();
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
@@ -113,6 +117,10 @@ export default function OperationsDashboard() {
     setFormOpen(true);
   };
 
+  const handleNotes = (row: SheetRow) => {
+    setNoteRow(row);
+  };
+
   const handleAdd = () => {
     setEditRow(null);
     setFormOpen(true);
@@ -143,6 +151,7 @@ export default function OperationsDashboard() {
     { label: "수리완료", count: columnData["수리완료"].length, icon: CheckCircle2, color: "text-teal-500", bg: "bg-teal-50" },
     { label: "출고대기", count: columnData["출고대기"].length, icon: PackageOpen, color: "text-green-600", bg: "bg-green-50" },
     { label: "보류", count: columnData["보류"].length, icon: PauseCircle, color: "text-gray-400", bg: "bg-gray-50" },
+    { label: "조달필요", count: pendingCount, icon: Package, color: "text-orange-600", bg: "bg-orange-50" },
   ];
 
   return (
@@ -169,7 +178,7 @@ export default function OperationsDashboard() {
 
       {/* 요약 통계 카드 */}
       {!isLoading && (
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {summaryStats.map(s => (
             <Card key={s.label} className="border-0 shadow-card">
               <CardContent className="p-3 flex items-center gap-2">
@@ -255,6 +264,8 @@ export default function OperationsDashboard() {
                   color={currentColumns.find(c => c.status === mobileTab)!.color}
                   onMarkComplete={handleTransition}
                   onEdit={handleEdit}
+                  onNotes={handleNotes}
+                  notes={getNotesForRow(row._branch, row._rowIndex)}
                 />
               ))
             )}
@@ -282,6 +293,8 @@ export default function OperationsDashboard() {
                       color={col.color}
                       onMarkComplete={handleTransition}
                       onEdit={handleEdit}
+                      onNotes={handleNotes}
+                      notes={getNotesForRow(row._branch, row._rowIndex)}
                     />
                   ))
                 )}
@@ -322,6 +335,15 @@ export default function OperationsDashboard() {
         row={editRow}
         branch={formBranch as "장흥" | "강진"}
       />
+
+      {/* 조달/필요사항 모달 */}
+      {noteRow && (
+        <RepairNoteModal
+          open={!!noteRow}
+          onClose={() => setNoteRow(null)}
+          row={noteRow}
+        />
+      )}
 
       {/* Floating refresh */}
       <button
