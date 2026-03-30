@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { ArrowLeft, Pencil, UserCheck } from "lucide-react";
+import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Customer, Machine, Repair } from "@/types/database";
@@ -18,6 +18,9 @@ import type { Customer, Machine, Repair } from "@/types/database";
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const [editOpen, setEditOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const qc = useQueryClient();
+  const { toast } = useToast();
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", id],
@@ -35,6 +38,28 @@ export default function CustomerDetail() {
       if (error) throw error;
       return data as Machine[];
     },
+  });
+
+  const { data: driveLinks } = useQuery({
+    queryKey: ["customer-drive-links", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customer_drive_links")
+        .select("*")
+        .eq("customer_id", id!)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const deleteLinkMutation = useMutation({
+    mutationFn: async (linkId: string) => {
+      const { error } = await supabase.from("customer_drive_links").delete().eq("id", linkId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["customer-drive-links", id] }),
+    onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
 
   const machineIds = machines?.map(m => m.id) ?? [];
@@ -92,6 +117,58 @@ export default function CustomerDetail() {
             <div><p className="text-xs text-muted-foreground">주소</p><p className="font-medium">{customer.address || "-"}</p></div>
             {customer.notes && <div><p className="text-xs text-muted-foreground">비고</p><p className="font-medium">{customer.notes}</p></div>}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 구글 드라이브 링크 */}
+      <Card className="shadow-card border-0 mb-6">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            사진/서류 (드라이브)
+            {driveLinks && driveLinks.length > 0 && (
+              <span className="text-sm font-normal text-muted-foreground">({driveLinks.length})</span>
+            )}
+          </CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> 링크 추가
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!driveLinks || driveLinks.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              등록된 드라이브 링크가 없습니다.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {driveLinks.map((link: any) => (
+                <div key={link.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors group">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <FolderOpen className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{link.label}</p>
+                    <p className="text-xs text-muted-foreground truncate">{link.url}</p>
+                  </div>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 p-1.5 rounded-md hover:bg-blue-100 text-blue-600 transition-colors"
+                    title="드라이브 열기"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                  <Button
+                    variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => { if (confirm(`"${link.label}" 링크를 삭제하시겠습니까?`)) deleteLinkMutation.mutate(link.id); }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -155,7 +232,73 @@ export default function CustomerDetail() {
       </Card>
 
       {customer && <EditCustomerDialog open={editOpen} onOpenChange={setEditOpen} customer={customer} />}
+      <AddDriveLinkDialog open={linkOpen} onOpenChange={setLinkOpen} customerId={id!} />
     </div>
+  );
+}
+
+function AddDriveLinkDialog({ open, onOpenChange, customerId }: { open: boolean; onOpenChange: (v: boolean) => void; customerId: string }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ label: "", url: "" });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("customer_drive_links").insert({
+        customer_id: customerId,
+        label: form.label,
+        url: form.url,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-drive-links", customerId] });
+      toast({ title: "링크가 추가되었습니다." });
+      onOpenChange(false);
+      setForm({ label: "", url: "" });
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  const isValid = form.label.trim() && form.url.trim().startsWith("http");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-blue-600" /> 드라이브 링크 추가
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>분류명 *</Label>
+            <Input
+              value={form.label}
+              onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
+              placeholder="예: 융자서류, 인물사진, 수리사진 2024"
+            />
+          </div>
+          <div>
+            <Label>구글 드라이브 링크 *</Label>
+            <Input
+              value={form.url}
+              onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+              placeholder="https://drive.google.com/drive/folders/..."
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              드라이브에서 폴더 우클릭 → 공유 → 링크 복사
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!isValid || mutation.isPending}>
+            {mutation.isPending ? "추가 중..." : "추가"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

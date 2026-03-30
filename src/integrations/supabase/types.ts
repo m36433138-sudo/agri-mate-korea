@@ -44,6 +44,30 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_drive_links: {
+        Row: {
+          id: string
+          customer_id: string
+          label: string
+          url: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          customer_id: string
+          label: string
+          url: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          customer_id?: string
+          label?: string
+          url?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       employee_permissions: {
         Row: {
           employee_id: string
