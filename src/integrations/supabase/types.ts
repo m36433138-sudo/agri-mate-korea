@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      machine_attachments: {
+        Row: {
+          id: string
+          machine_id: string
+          name: string
+          model: string | null
+          serial_number: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          machine_id: string
+          name: string
+          model?: string | null
+          serial_number?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          machine_id?: string
+          name?: string
+          model?: string | null
+          serial_number?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           id: string

@@ -12,7 +12,7 @@ import { formatPrice, formatDate } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
@@ -25,6 +25,7 @@ export default function MachineDetail() {
   const [repairOpen, setRepairOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [expandedRepair, setExpandedRepair] = useState<string | null>(null);
+  const [attachOpen, setAttachOpen] = useState(false);
 
   const { data: machine, isLoading } = useQuery({
     queryKey: ["machine", id],
@@ -33,6 +34,27 @@ export default function MachineDetail() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const { data: attachments, isLoading: attachLoading } = useQuery({
+    queryKey: ["machine-attachments", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("machine_attachments")
+        .select("*")
+        .eq("machine_id", id!)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const deleteAttachment = useMutation({
+    mutationFn: async (attachId: string) => {
+      const { error } = await supabase.from("machine_attachments").delete().eq("id", attachId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["machine-attachments", id] }),
   });
 
   const { data: repairs, isLoading: repairsLoading } = useQuery({
@@ -103,6 +125,48 @@ export default function MachineDetail() {
           {machine.status === "재고중" && (
             <div className="mt-6 pt-4 border-t print:hidden">
               <Button onClick={() => setSaleOpen(true)}>판매 처리</Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 작업기 섹션 */}
+      <Card className="shadow-card border-0 mb-4 print:shadow-none print:border">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Tractor className="h-4 w-4 text-muted-foreground" /> 작업기
+            <span className="text-sm font-normal text-muted-foreground">({attachments?.length ?? 0})</span>
+          </CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setAttachOpen(true)} className="print:hidden">
+            <Plus className="h-4 w-4 mr-1" /> 작업기 추가
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {attachLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : attachments?.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">등록된 작업기가 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {attachments?.map((a: any) => (
+                <div key={a.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Tractor className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">{a.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {[a.model, a.serial_number ? `S/N: ${a.serial_number}` : null, a.notes].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost" size="icon" className="h-7 w-7 print:hidden text-muted-foreground hover:text-destructive"
+                    onClick={() => { if (confirm(`${a.name}을(를) 삭제하시겠습니까?`)) deleteAttachment.mutate(a.id); }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -199,6 +263,7 @@ export default function MachineDetail() {
       <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} entryDate={machine.entry_date} />
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} machineName={`${machine.model_name} (${machine.serial_number})`} />
       <EditMachineDialog open={editOpen} onOpenChange={setEditOpen} machine={machine} />
+      <AttachmentDialog open={attachOpen} onOpenChange={setAttachOpen} machineId={machine.id} />
     </div>
   );
 }
@@ -209,6 +274,64 @@ function InfoItem({ label, value, bold, primary }: { label: string; value: any; 
       <p className={`text-xs mb-1 ${primary ? "text-primary font-semibold" : "text-muted-foreground"}`}>{label}</p>
       <div className={`${bold ? "font-bold tabular-nums" : "font-medium"} ${primary ? "text-primary" : ""}`}>{value}</div>
     </div>
+  );
+}
+
+function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; onOpenChange: (v: boolean) => void; machineId: string }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ name: "", model: "", serial_number: "", notes: "" });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("machine_attachments").insert({
+        machine_id: machineId,
+        name: form.name,
+        model: form.model || null,
+        serial_number: form.serial_number || null,
+        notes: form.notes || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["machine-attachments", machineId] });
+      toast({ title: "작업기가 등록되었습니다." });
+      onOpenChange(false);
+      setForm({ name: "", model: "", serial_number: "", notes: "" });
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Tractor className="h-4 w-4" /> 작업기 추가</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>작업기명 *</Label>
+            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="로터리, 쟁기, 파종기..." />
+          </div>
+          <div>
+            <Label>모델명</Label>
+            <Input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder="모델명 (선택)" />
+          </div>
+          <div>
+            <Label>제조번호</Label>
+            <Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))} placeholder="S/N (선택)" />
+          </div>
+          <div>
+            <Label>비고</Label>
+            <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="특이사항" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!form.name || mutation.isPending}>
+            {mutation.isPending ? "등록 중..." : "등록"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
