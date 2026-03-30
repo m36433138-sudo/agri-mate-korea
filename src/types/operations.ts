@@ -59,9 +59,26 @@ export function isCompleted(val: string): boolean {
 
 export function parseSheetDate(dateStr: string): Date | null {
   if (!dateStr) return null;
+
+  // Handle Korean datetime: "2026. 3. 17 오후 12:46:45" or "2026. 3. 17."
+  const koMatch = dateStr.match(
+    /(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?\s*(?:(오전|오후)\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?/
+  );
+  if (koMatch) {
+    const [, y, mo, d, ampm, h, mi, s] = koMatch;
+    let hour = h ? parseInt(h, 10) : 0;
+    if (ampm === "오후" && hour < 12) hour += 12;
+    if (ampm === "오전" && hour === 12) hour = 0;
+    return new Date(
+      parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(d, 10),
+      hour, mi ? parseInt(mi, 10) : 0, s ? parseInt(s, 10) : 0
+    );
+  }
+
+  // Fallback: strip whitespace, replace dots with dashes
   const cleaned = dateStr.replace(/\s/g, "").replace(/\./g, "-").replace(/-+$/, "");
-  const d = new Date(cleaned);
-  return isNaN(d.getTime()) ? null : d;
+  const dt = new Date(cleaned);
+  return isNaN(dt.getTime()) ? null : dt;
 }
 
 export function formatSheetDate(dateStr: string): string {
