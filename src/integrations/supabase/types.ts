@@ -392,6 +392,36 @@ export type Database = {
           },
         ]
       }
+      repair_notes: {
+        Row: {
+          branch: string
+          content: string
+          created_at: string
+          done_at: string | null
+          id: string
+          is_done: boolean
+          row_index: number
+        }
+        Insert: {
+          branch: string
+          content: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          is_done?: boolean
+          row_index: number
+        }
+        Update: {
+          branch?: string
+          content?: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          is_done?: boolean
+          row_index?: number
+        }
+        Relationships: []
+      }
       repair_parts: {
         Row: {
           id: string
