@@ -507,8 +507,7 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
   });
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+    <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogHeader>
           <DialogTitle>{isEdit ? "직원 정보 수정" : "직원 등록"}</DialogTitle>
         </DialogHeader>
