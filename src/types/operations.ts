@@ -144,6 +144,7 @@ export function parseRows(values: string[][], branch: "장흥" | "강진"): Shee
   const iContactNote = colIdx("견적") >= 0 ? colIdx("견적") : colIdx("연락사항") >= 0 ? colIdx("연락사항") : 14;
   const iDone = colIdx("전체") >= 0 ? colIdx("전체") : colIdx("완료") >= 0 ? colIdx("완료") : 15;
   const iNote = colIdx("비고") >= 0 ? colIdx("비고") : 16;
+  const iWriter = colIdx("입력자") >= 0 ? colIdx("입력자") : -1;
 
   // Store the actual column letter for the "전체완료" field (for write-back)
   const doneColLetter = String.fromCharCode(65 + iDone); // A=65
