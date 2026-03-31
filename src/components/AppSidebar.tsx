@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package,
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
-  ClipboardList, BarChart3, Clock, Truck,
+  ClipboardList, BarChart3, Clock, Truck, Briefcase,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
@@ -57,6 +57,7 @@ export function AppSidebar() {
   // 업무 그룹
   const workItems: NavItem[] = [
     { title: "대시보드", url: "/", icon: LayoutDashboard },
+    { title: "내 업무", url: "/workspace", icon: Briefcase },
     { title: "작업현황판", url: "/dashboard/operations", icon: ClipboardList },
     { title: "방문수리", url: "/onsite-repairs", icon: Truck },
     ...(isAdmin || isEmployee ? [{ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 }] : []),

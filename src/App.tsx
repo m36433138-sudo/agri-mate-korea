@@ -26,6 +26,7 @@ const OvertimeDashboard = lazy(() => import("@/pages/OvertimeDashboard"));
 const RepairStats = lazy(() => import("@/pages/RepairStats"));
 const OnsiteRepairs = lazy(() => import("@/pages/OnsiteRepairs"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const WorkspacePage = lazy(() => import("@/components/workspace/WorkspacePage"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
@@ -87,6 +88,7 @@ const App = () => (
                             <UserManagement />
                           </ProtectedRoute>
                         } />
+                        <Route path="/workspace" element={<WorkspacePage />} />
                         <Route path="/my-page" element={<MyPage />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
