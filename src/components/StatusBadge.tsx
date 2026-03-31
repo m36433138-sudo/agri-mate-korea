@@ -9,5 +9,6 @@ export function StatusBadge({ status }: { status: string }) {
 export function TypeBadge({ type }: { type: string }) {
   if (type === "새기계") return <Badge variant="newMachine">새기계</Badge>;
   if (type === "중고기계") return <Badge variant="usedMachine">중고기계</Badge>;
+  if (type === "타사구매") return <Badge variant="outline" className="border-orange-400 text-orange-600">타사구매</Badge>;
   return <Badge variant="secondary">{type}</Badge>;
 }
