@@ -30,13 +30,14 @@ interface FormData {
   contact: string;
   contactNote: string;
   note: string;
+  writer: string;
 }
 
 function rowToForm(row?: SheetRow): FormData {
   if (!row) return {
     status: "입고대기", name: "", machine: "", model: "", phone: "", address: "",
     location: "", technician: "", request: "", entryDate: "", repairStart: "",
-    repairDone: "", exitDate: "", contact: "", contactNote: "", note: "",
+    repairDone: "", exitDate: "", contact: "", contactNote: "", note: "", writer: "",
   };
   return {
     status: row.status_label || "입고대기",
@@ -44,7 +45,7 @@ function rowToForm(row?: SheetRow): FormData {
     address: row.주소, location: row.위치, technician: row.수리기사,
     request: row.손님요구사항, entryDate: row.입고일, repairStart: row.수리시작일,
     repairDone: row.수리완료일, exitDate: row.출고일, contact: row.연락여부,
-    contactNote: row.연락사항, note: row.비고,
+    contactNote: row.연락사항, note: row.비고, writer: row.입력자 || "",
   };
 }
 
@@ -181,6 +182,10 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
           <div className="col-span-2">
             <Label>비고</Label>
             <Input value={form.note} onChange={e => set("note", e.target.value)} />
+          </div>
+          <div className="col-span-2">
+            <Label>입력자</Label>
+            <Input value={form.writer} onChange={e => set("writer", e.target.value)} placeholder="이름을 입력하세요" />
           </div>
         </div>
         <DialogFooter>

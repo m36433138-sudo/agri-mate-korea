@@ -17,6 +17,7 @@ export interface SheetRow {
   연락사항: string;
   전체완료: string;
   비고: string;
+  입력자: string;
   _branch: "장흥" | "강진";
   _rowIndex: number;
   _doneCol: string; // Column letter for 전체완료 (for write-back)
@@ -143,6 +144,7 @@ export function parseRows(values: string[][], branch: "장흥" | "강진"): Shee
   const iContactNote = colIdx("견적") >= 0 ? colIdx("견적") : colIdx("연락사항") >= 0 ? colIdx("연락사항") : 14;
   const iDone = colIdx("전체") >= 0 ? colIdx("전체") : colIdx("완료") >= 0 ? colIdx("완료") : 15;
   const iNote = colIdx("비고") >= 0 ? colIdx("비고") : 16;
+  const iWriter = colIdx("입력자") >= 0 ? colIdx("입력자") : -1;
 
   // Store the actual column letter for the "전체완료" field (for write-back)
   const doneColLetter = String.fromCharCode(65 + iDone); // A=65
@@ -167,6 +169,7 @@ export function parseRows(values: string[][], branch: "장흥" | "강진"): Shee
       연락사항: (row[iContactNote] || "").trim(),
       전체완료: (row[iDone] || "").trim(),
       비고: (row[iNote] || "").trim(),
+      입력자: iWriter >= 0 ? (row[iWriter] || "").trim() : "",
       _branch: branch,
       _rowIndex: idx + 2,
       _doneCol: doneColLetter,

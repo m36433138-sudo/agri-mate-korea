@@ -32,6 +32,18 @@ export default function MachinesList() {
 
   useRealtimeSync("machines", [["machines"]]);
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("machines").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["machines"] });
+      toast({ title: "기계가 삭제되었습니다." });
+    },
+    onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
+  });
+
   const { data: machines, isLoading } = useQuery({
     queryKey: ["machines"],
     queryFn: async () => {
@@ -105,6 +117,7 @@ export default function MachinesList() {
                   <th className="text-left p-3 font-medium text-muted-foreground">판매일</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">고객명</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">매입가</th>
+                  <th className="p-3 w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -121,6 +134,12 @@ export default function MachinesList() {
                     <td className="p-3 text-muted-foreground">{m.sale_date ? formatDate(m.sale_date) : "-"}</td>
                     <td className="p-3 text-muted-foreground">{m.customers?.name || "-"}</td>
                     <td className="p-3 text-right tabular-nums font-medium">{formatPrice(m.purchase_price)}</td>
+                    <td className="p-3">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); if (confirm("이 기계를 삭제하시겠습니까?")) deleteMutation.mutate(m.id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

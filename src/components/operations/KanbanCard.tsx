@@ -86,14 +86,14 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, notes 
 
       <div className="flex items-center gap-1.5">
         <User className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-base font-bold text-foreground truncate">{row.손님성명}</span>
+        <span className="text-lg font-bold text-foreground truncate">{row.손님성명}</span>
       </div>
 
       {row.수리기사 && (
         <div className="flex items-center gap-1.5">
           <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <span
-            className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium text-white"
+            className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium text-white"
             style={{ backgroundColor: getTechnicianColor(row.수리기사) }}
           >
             {row.수리기사}
@@ -103,8 +103,14 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, notes 
 
       {row.손님요구사항 && (
         <div className="flex items-start gap-1.5">
-          <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-xs text-muted-foreground line-clamp-2">{row.손님요구사항}</p>
+          <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-sm text-foreground leading-snug whitespace-pre-wrap">{row.손님요구사항}</p>
+        </div>
+      )}
+
+      {row.입력자 && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground">입력: {row.입력자}</span>
         </div>
       )}
 
