@@ -313,7 +313,7 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                 <Input value={row.serial_number} onChange={(e) => updateRow(i, "serial_number", e.target.value)} placeholder="제조번호" className="h-9 text-sm" />
                 <Select value={row.machine_type} onValueChange={(v) => updateRow(i, "machine_type", v)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고</SelectItem><SelectItem value="타사구매">타사구매</SelectItem></SelectContent>
                 </Select>
                 <Input type="date" value={row.entry_date} onChange={(e) => updateRow(i, "entry_date", e.target.value)} className="h-9 text-sm" />
                 <Input type="number" value={row.purchase_price} onChange={(e) => updateRow(i, "purchase_price", e.target.value)} placeholder="매입가" className="h-9 text-sm" />
