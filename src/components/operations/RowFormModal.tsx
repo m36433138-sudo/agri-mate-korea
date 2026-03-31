@@ -183,6 +183,10 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
             <Label>비고</Label>
             <Input value={form.note} onChange={e => set("note", e.target.value)} />
           </div>
+          <div className="col-span-2">
+            <Label>입력자</Label>
+            <Input value={form.writer} onChange={e => set("writer", e.target.value)} placeholder="이름을 입력하세요" />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>취소</Button>
