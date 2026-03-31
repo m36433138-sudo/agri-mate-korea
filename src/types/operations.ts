@@ -17,6 +17,7 @@ export interface SheetRow {
   연락사항: string;
   전체완료: string;
   비고: string;
+  입력자: string;
   _branch: "장흥" | "강진";
   _rowIndex: number;
   _doneCol: string; // Column letter for 전체완료 (for write-back)
