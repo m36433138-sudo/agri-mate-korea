@@ -117,6 +117,7 @@ export default function MachinesList() {
                   <th className="text-left p-3 font-medium text-muted-foreground">판매일</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">고객명</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">매입가</th>
+                  <th className="p-3 w-10"></th>
                 </tr>
               </thead>
               <tbody>
