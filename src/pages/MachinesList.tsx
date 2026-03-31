@@ -32,6 +32,18 @@ export default function MachinesList() {
 
   useRealtimeSync("machines", [["machines"]]);
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("machines").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["machines"] });
+      toast({ title: "기계가 삭제되었습니다." });
+    },
+    onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
+  });
+
   const { data: machines, isLoading } = useQuery({
     queryKey: ["machines"],
     queryFn: async () => {
