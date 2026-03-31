@@ -37,7 +37,7 @@ function rowToForm(row?: SheetRow): FormData {
   if (!row) return {
     status: "입고대기", name: "", machine: "", model: "", phone: "", address: "",
     location: "", technician: "", request: "", entryDate: "", repairStart: "",
-    repairDone: "", exitDate: "", contact: "", contactNote: "", note: "",
+    repairDone: "", exitDate: "", contact: "", contactNote: "", note: "", writer: "",
   };
   return {
     status: row.status_label || "입고대기",
@@ -45,7 +45,7 @@ function rowToForm(row?: SheetRow): FormData {
     address: row.주소, location: row.위치, technician: row.수리기사,
     request: row.손님요구사항, entryDate: row.입고일, repairStart: row.수리시작일,
     repairDone: row.수리완료일, exitDate: row.출고일, contact: row.연락여부,
-    contactNote: row.연락사항, note: row.비고,
+    contactNote: row.연락사항, note: row.비고, writer: row.입력자 || "",
   };
 }
 
