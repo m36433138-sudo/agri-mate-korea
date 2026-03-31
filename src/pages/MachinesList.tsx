@@ -134,6 +134,12 @@ export default function MachinesList() {
                     <td className="p-3 text-muted-foreground">{m.sale_date ? formatDate(m.sale_date) : "-"}</td>
                     <td className="p-3 text-muted-foreground">{m.customers?.name || "-"}</td>
                     <td className="p-3 text-right tabular-nums font-medium">{formatPrice(m.purchase_price)}</td>
+                    <td className="p-3">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); if (confirm("이 기계를 삭제하시겠습니까?")) deleteMutation.mutate(m.id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
