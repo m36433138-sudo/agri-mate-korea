@@ -30,6 +30,7 @@ interface FormData {
   contact: string;
   contactNote: string;
   note: string;
+  writer: string;
 }
 
 function rowToForm(row?: SheetRow): FormData {
