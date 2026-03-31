@@ -277,8 +277,8 @@ export default function OperationsDashboard() {
             <div key={col.status} className="space-y-2">
               <div className="flex items-center gap-2 px-1 pb-1">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: col.color }} />
-                <span className="font-semibold text-sm">{col.label}</span>
-                <span className="ml-auto text-xs font-medium rounded-full px-2 py-0.5" style={{ backgroundColor: col.color + "18", color: col.color }}>
+                <span className="font-semibold text-base">{col.label}</span>
+                <span className="ml-auto text-sm font-medium rounded-full px-2 py-0.5" style={{ backgroundColor: col.color + "18", color: col.color }}>
                   {columnData[col.status].length}
                 </span>
               </div>
