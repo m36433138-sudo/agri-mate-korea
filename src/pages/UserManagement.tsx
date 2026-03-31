@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -454,9 +454,9 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
   const isEdit = !!editTarget;
   const [form, setForm] = useState<EmployeeForm>(emptyForm());
 
-  // editTarget이 바뀔 때 폼 초기화
-  const handleOpen = (v: boolean) => {
-    if (v && editTarget) {
+  // editTarget이나 open이 바뀔 때 폼 초기화
+  useEffect(() => {
+    if (open && editTarget) {
       setForm({
         name: editTarget.name,
         phone: editTarget.phone ?? "",
@@ -468,11 +468,10 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
         join_date: editTarget.join_date ?? "",
         notes: editTarget.notes ?? "",
       });
-    } else if (v) {
+    } else if (open) {
       setForm(emptyForm());
     }
-    onOpenChange(v);
-  };
+  }, [open, editTarget]);
 
   const f = (field: keyof EmployeeForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }));
@@ -508,7 +507,7 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
   });
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{isEdit ? "직원 정보 수정" : "직원 등록"}</DialogTitle>
