@@ -198,7 +198,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             <Label>구분 *</Label>
             <Select value={form.machine_type} onValueChange={v => setForm(f => ({...f, machine_type: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고기계</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고기계</SelectItem><SelectItem value="타사구매">타사구매</SelectItem></SelectContent>
             </Select>
           </div>
           <div><Label>입고일 *</Label><Input type="date" value={form.entry_date} onChange={e => setForm(f => ({...f, entry_date: e.target.value}))} /></div>
