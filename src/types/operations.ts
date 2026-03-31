@@ -169,6 +169,7 @@ export function parseRows(values: string[][], branch: "장흥" | "강진"): Shee
       연락사항: (row[iContactNote] || "").trim(),
       전체완료: (row[iDone] || "").trim(),
       비고: (row[iNote] || "").trim(),
+      입력자: iWriter >= 0 ? (row[iWriter] || "").trim() : "",
       _branch: branch,
       _rowIndex: idx + 2,
       _doneCol: doneColLetter,
