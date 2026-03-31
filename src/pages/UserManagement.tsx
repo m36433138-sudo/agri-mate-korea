@@ -454,9 +454,9 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
   const isEdit = !!editTarget;
   const [form, setForm] = useState<EmployeeForm>(emptyForm());
 
-  // editTarget이 바뀔 때 폼 초기화
-  const handleOpen = (v: boolean) => {
-    if (v && editTarget) {
+  // editTarget이나 open이 바뀔 때 폼 초기화
+  useEffect(() => {
+    if (open && editTarget) {
       setForm({
         name: editTarget.name,
         phone: editTarget.phone ?? "",
@@ -468,11 +468,10 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
         join_date: editTarget.join_date ?? "",
         notes: editTarget.notes ?? "",
       });
-    } else if (v) {
+    } else if (open) {
       setForm(emptyForm());
     }
-    onOpenChange(v);
-  };
+  }, [open, editTarget]);
 
   const f = (field: keyof EmployeeForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }));
