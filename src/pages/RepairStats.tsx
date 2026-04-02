@@ -95,6 +95,7 @@ export default function RepairStats() {
         .from("machines")
         .select("*, customers(name)")
         .not("sale_date", "is", null)
+        .neq("machine_type", "타사구매")
         .order("sale_date", { ascending: false });
       if (error) throw error;
       return data;

@@ -127,7 +127,9 @@ export default function MachineDetail() {
 
           {machine.status === "재고중" && (
             <div className="mt-6 pt-4 border-t print:hidden">
-              <Button onClick={() => setSaleOpen(true)}>판매 처리</Button>
+              <Button onClick={() => setSaleOpen(true)}>
+                {machine.machine_type === "타사구매" ? "고객 연결" : "판매 처리"}
+              </Button>
             </div>
           )}
         </CardContent>
@@ -263,7 +265,7 @@ export default function MachineDetail() {
         </CardContent>
       </Card>
 
-      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} entryDate={machine.entry_date} />
+      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} entryDate={machine.entry_date} isSale={machine.machine_type !== "타사구매"} />
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} machineName={`${machine.model_name} (${machine.serial_number})`} />
       <EditMachineDialog open={editOpen} onOpenChange={setEditOpen} machine={machine} />
       <AttachmentDialog open={attachOpen} onOpenChange={setAttachOpen} machineId={machine.id} />
@@ -338,7 +340,7 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
   );
 }
 
-function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolean; onOpenChange: (v: boolean) => void; machineId: string; entryDate: string }) {
+function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }: { open: boolean; onOpenChange: (v: boolean) => void; machineId: string; entryDate: string; isSale?: boolean }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [step, setStep] = useState<"form" | "confirm">("form");
@@ -360,8 +362,8 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
   const selectedCustomer = mode === "existing" ? customers?.find((c) => c.id === form.customer_id) : null;
 
   const formValid = mode === "existing"
-    ? form.customer_id && form.sale_price && form.sale_date
-    : newCustomer.name && newCustomer.phone && form.sale_price && form.sale_date;
+    ? form.customer_id && (!isSale || (form.sale_price && form.sale_date))
+    : newCustomer.name && newCustomer.phone && (!isSale || (form.sale_price && form.sale_date));
 
   const createCustomerAndSell = useMutation({
     mutationFn: async () => {
@@ -375,7 +377,8 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
       }
       const { error } = await supabase.from("machines").update({
         status: "판매완료", customer_id: customerId,
-        sale_price: parseInt(form.sale_price), sale_date: form.sale_date,
+        sale_price: isSale && form.sale_price ? parseInt(form.sale_price) : null,
+        sale_date: isSale && form.sale_date ? form.sale_date : null,
       }).eq("id", machineId);
       if (error) throw error;
     },
@@ -383,7 +386,7 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
       qc.invalidateQueries({ queryKey: ["machine", machineId] });
       qc.invalidateQueries({ queryKey: ["machines"] });
       qc.invalidateQueries({ queryKey: ["customers"] });
-      toast({ title: "판매 처리가 완료되었습니다." });
+      toast({ title: isSale ? "판매 처리가 완료되었습니다." : "고객 연결이 완료되었습니다." });
       handleClose();
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
@@ -403,7 +406,7 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader><DialogTitle>판매 처리</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isSale ? "판매 처리" : "고객 연결 (타사구매 기계)"}</DialogTitle></DialogHeader>
         <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
           <span className="text-muted-foreground">재고 보유 기간:</span>
           <span className="font-semibold text-foreground">{daysInStock}일</span>
@@ -436,16 +439,26 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate }: { open: boolea
                 </div>
               )}
             </div>
-            <div><Label>판매가 (원) *</Label><Input type="number" value={form.sale_price} onChange={(e) => setForm((f) => ({ ...f, sale_price: e.target.value }))} /></div>
-            <div><Label>판매일 *</Label><Input type="date" value={form.sale_date} onChange={(e) => setForm((f) => ({ ...f, sale_date: e.target.value }))} /></div>
+            {isSale && (
+              <>
+                <div><Label>판매가 (원) *</Label><Input type="number" value={form.sale_price} onChange={(e) => setForm((f) => ({ ...f, sale_price: e.target.value }))} /></div>
+                <div><Label>판매일 *</Label><Input type="date" value={form.sale_date} onChange={(e) => setForm((f) => ({ ...f, sale_date: e.target.value }))} /></div>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">아래 내용으로 판매를 처리합니다.</p>
+            <p className="text-sm text-muted-foreground">
+              {isSale ? "아래 내용으로 판매를 처리합니다." : "아래 고객에게 기계를 연결합니다. (영업실적 제외)"}
+            </p>
             <div className="rounded-md border bg-muted/50 p-4 space-y-2 text-sm">
               <ConfirmRow label="고객" value={customerDisplayName} />
-              <ConfirmRow label="판매가" value={formatPrice(parseInt(form.sale_price))} />
-              <ConfirmRow label="판매일" value={formatDate(form.sale_date)} />
+              {isSale && (
+                <>
+                  <ConfirmRow label="판매가" value={formatPrice(parseInt(form.sale_price))} />
+                  <ConfirmRow label="판매일" value={formatDate(form.sale_date)} />
+                </>
+              )}
             </div>
           </div>
         )}
