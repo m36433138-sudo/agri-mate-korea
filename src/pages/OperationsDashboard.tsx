@@ -59,8 +59,10 @@ export default function OperationsDashboard() {
   const [editRow, setEditRow] = useState<SheetRow | null>(null);
   const [noteRow, setNoteRow] = useState<SheetRow | null>(null);
   const [draftRow, setDraftRow] = useState<SheetRow | null>(null);
+  const [repairModalOpen, setRepairModalOpen] = useState(false);
+  const [draftPrefill, setDraftPrefill] = useState<DraftPrefill | null>(null);
   const { allNotes, getNotesForRow, pendingCount } = useRepairNotes();
-  const { drafts, getDraftForRow } = useRepairDrafts();
+  const { drafts, getDraftForRow, finalizeDraft } = useRepairDrafts();
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
