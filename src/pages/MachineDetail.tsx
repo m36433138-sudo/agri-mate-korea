@@ -215,6 +215,7 @@ export default function MachineDetail() {
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
+                        {r.operating_hours && <span>사용시간: {r.operating_hours.toLocaleString()}Hr</span>}
                         {r.labor_cost > 0 && <span>공임비: {formatPrice(r.labor_cost)}</span>}
                         {r.total_cost > 0 && <span>총비용: {formatPrice(r.total_cost)}</span>}
                         {r.technician && <span>담당: {r.technician}</span>}
