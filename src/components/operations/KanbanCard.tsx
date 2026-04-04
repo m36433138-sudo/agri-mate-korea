@@ -62,6 +62,17 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
         {showEntryWarning && <AlertTriangle className="h-3.5 w-3.5 text-orange-500 ml-auto" />}
         {showExitWarning && <CircleAlert className="h-3.5 w-3.5 text-red-500 ml-auto" />}
         <div className="ml-auto flex items-center gap-1">
+          {/* 수리내역 버튼 */}
+          {onRepairDraft && (status === "수리중" || status === "수리완료" || status === "수리대기") && (
+            <button
+              onClick={() => onRepairDraft(row)}
+              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-md transition-colors hover:bg-blue-50 ${hasDraft ? "text-blue-600" : "text-muted-foreground/40"}`}
+              title="수리내역 기록"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {hasDraft && <span className="text-[10px] font-bold">●</span>}
+            </button>
+          )}
           {/* 조달 뱃지 */}
           {onNotes && (
             <button
