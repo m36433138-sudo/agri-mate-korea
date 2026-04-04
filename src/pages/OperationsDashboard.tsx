@@ -5,6 +5,8 @@ import { KanbanCard } from "@/components/operations/KanbanCard";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
 import { RepairDraftModal } from "@/components/operations/RepairDraftModal";
+import RepairInputModal from "@/components/RepairInputModal";
+import type { DraftPrefill } from "@/components/RepairInputModal";
 import { useRepairNotes } from "@/hooks/useRepairNotes";
 import { useRepairDrafts } from "@/hooks/useRepairDrafts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -57,8 +59,10 @@ export default function OperationsDashboard() {
   const [editRow, setEditRow] = useState<SheetRow | null>(null);
   const [noteRow, setNoteRow] = useState<SheetRow | null>(null);
   const [draftRow, setDraftRow] = useState<SheetRow | null>(null);
+  const [repairModalOpen, setRepairModalOpen] = useState(false);
+  const [draftPrefill, setDraftPrefill] = useState<DraftPrefill | null>(null);
   const { allNotes, getNotesForRow, pendingCount } = useRepairNotes();
-  const { drafts, getDraftForRow } = useRepairDrafts();
+  const { drafts, getDraftForRow, finalizeDraft } = useRepairDrafts();
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
@@ -363,8 +367,23 @@ export default function OperationsDashboard() {
           open={!!draftRow}
           onClose={() => setDraftRow(null)}
           row={draftRow}
+          onTransferToRepair={(prefill) => {
+            setDraftPrefill(prefill);
+            setRepairModalOpen(true);
+          }}
         />
       )}
+
+      {/* 수리이력 등록 모달 (draft에서 전환) */}
+      <RepairInputModal
+        open={repairModalOpen}
+        onOpenChange={setRepairModalOpen}
+        draftPrefill={draftPrefill}
+        onDraftFinalized={(draftId) => {
+          finalizeDraft.mutate(draftId);
+          setDraftPrefill(null);
+        }}
+      />
 
       {/* Floating refresh */}
       <button

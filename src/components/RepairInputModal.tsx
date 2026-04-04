@@ -21,14 +21,25 @@ type PartRow = {
   fromTemplate?: string; // template id
 };
 
+export type DraftPrefill = {
+  technician?: string;
+  repairContent?: string;
+  laborCost?: number;
+  notes?: string;
+  draftId?: string;
+  parts?: { part_code?: string; part_name: string; quantity: number; unit_price: number }[];
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   machineId?: string;
   machineName?: string;
+  draftPrefill?: DraftPrefill | null;
+  onDraftFinalized?: (draftId: string) => void;
 };
 
-export default function RepairInputModal({ open, onOpenChange, machineId, machineName }: Props) {
+export default function RepairInputModal({ open, onOpenChange, machineId, machineName, draftPrefill, onDraftFinalized }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -68,10 +79,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   useEffect(() => {
     if (open) {
       setRepairDate(new Date().toISOString().split("T")[0]);
-      setRepairContent("");
-      setTechnician("");
-      setLaborCost("");
-      setNotes("");
+      setRepairContent(draftPrefill?.repairContent || "");
+      setTechnician(draftPrefill?.technician || "");
+      setLaborCost(draftPrefill?.laborCost ? String(draftPrefill.laborCost) : "");
+      setNotes(draftPrefill?.notes || "");
       setPartRows([]);
       setPartSearch("");
       setMachineSearch("");
@@ -79,7 +90,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setSelectedMachineName(machineName || "");
       setAppliedTemplates([]);
     }
-  }, [open, machineId, machineName]);
+  }, [open, machineId, machineName, draftPrefill]);
 
   // Machine search
   const searchMachines = async (q: string) => {
@@ -208,6 +219,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       qc.invalidateQueries({ queryKey: ["repairs"] });
       qc.invalidateQueries({ queryKey: ["all-repairs"] });
       qc.invalidateQueries({ queryKey: ["repairs-recent"] });
+      // Finalize draft if exists
+      if (draftPrefill?.draftId && onDraftFinalized) {
+        onDraftFinalized(draftPrefill.draftId);
+      }
       toast({ title: "수리 이력이 저장되었습니다." });
       onOpenChange(false);
     },
