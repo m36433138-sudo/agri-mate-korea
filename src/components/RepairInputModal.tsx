@@ -219,6 +219,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       qc.invalidateQueries({ queryKey: ["repairs"] });
       qc.invalidateQueries({ queryKey: ["all-repairs"] });
       qc.invalidateQueries({ queryKey: ["repairs-recent"] });
+      // Finalize draft if exists
+      if (draftPrefill?.draftId && onDraftFinalized) {
+        onDraftFinalized(draftPrefill.draftId);
+      }
       toast({ title: "수리 이력이 저장되었습니다." });
       onOpenChange(false);
     },
