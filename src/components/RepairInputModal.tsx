@@ -48,6 +48,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [repairContent, setRepairContent] = useState("");
   const [technician, setTechnician] = useState("");
   const [laborCost, setLaborCost] = useState("");
+  const [operatingHours, setOperatingHours] = useState("");
   const [notes, setNotes] = useState("");
 
   // Machine search (if not pre-filled)
