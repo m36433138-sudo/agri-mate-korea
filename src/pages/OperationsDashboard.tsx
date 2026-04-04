@@ -125,6 +125,10 @@ export default function OperationsDashboard() {
     setNoteRow(row);
   };
 
+  const handleRepairDraft = (row: SheetRow) => {
+    setDraftRow(row);
+  };
+
   const handleAdd = () => {
     setEditRow(null);
     setFormOpen(true);
