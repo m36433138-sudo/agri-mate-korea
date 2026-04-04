@@ -273,7 +273,9 @@ export default function OperationsDashboard() {
                   onMarkComplete={handleTransition}
                   onEdit={handleEdit}
                   onNotes={handleNotes}
+                  onRepairDraft={handleRepairDraft}
                   notes={getNotesForRow(row._branch, row._rowIndex)}
+                  hasDraft={!!getDraftForRow(row._branch, row._rowIndex)}
                 />
               ))
             )}
