@@ -357,6 +357,15 @@ export default function OperationsDashboard() {
         />
       )}
 
+      {/* 수리내역 임시저장 모달 */}
+      {draftRow && (
+        <RepairDraftModal
+          open={!!draftRow}
+          onClose={() => setDraftRow(null)}
+          row={draftRow}
+        />
+      )}
+
       {/* Floating refresh */}
       <button
         onClick={refresh}
