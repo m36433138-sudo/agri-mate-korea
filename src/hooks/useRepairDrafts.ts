@@ -92,6 +92,7 @@ export function useRepairDrafts() {
             technician: input.technician || null,
             description: input.description || null,
             labor_cost: input.labor_cost || 0,
+            operating_hours: input.operating_hours ?? null,
             updated_at: new Date().toISOString(),
             is_finalized: false,
           },
