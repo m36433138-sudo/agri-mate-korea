@@ -113,6 +113,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
         technician,
         description,
         labor_cost: laborCost,
+        operating_hours: operatingHours,
       });
       draftId = result.id;
       setDraft(result as RepairDraft);
