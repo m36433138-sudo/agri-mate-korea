@@ -1,5 +1,5 @@
 import { SheetRow, getStatus, OperationStatus, getTechnicianColor, getMachineTypeColor, formatSheetDate, parseSheetDate } from "@/types/operations";
-import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil, ArrowRight, Package } from "lucide-react";
+import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil, ArrowRight, Package, FileText } from "lucide-react";
 import { RepairNote } from "@/hooks/useRepairNotes";
 
 const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: OperationStatus | "완료" } | null> = {
