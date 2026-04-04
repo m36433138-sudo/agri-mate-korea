@@ -1,0 +1,1 @@
+ALTER TABLE public.repairs ADD COLUMN operating_hours integer NULL;
