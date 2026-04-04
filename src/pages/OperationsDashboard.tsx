@@ -5,6 +5,8 @@ import { KanbanCard } from "@/components/operations/KanbanCard";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
 import { RepairDraftModal } from "@/components/operations/RepairDraftModal";
+import RepairInputModal from "@/components/RepairInputModal";
+import type { DraftPrefill } from "@/components/RepairInputModal";
 import { useRepairNotes } from "@/hooks/useRepairNotes";
 import { useRepairDrafts } from "@/hooks/useRepairDrafts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
