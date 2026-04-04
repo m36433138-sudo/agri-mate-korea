@@ -27,6 +27,7 @@ export type DraftPrefill = {
   laborCost?: number;
   notes?: string;
   draftId?: string;
+  operatingHours?: number;
   parts?: { part_code?: string; part_name: string; quantity: number; unit_price: number }[];
 };
 
