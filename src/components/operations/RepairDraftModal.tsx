@@ -193,6 +193,16 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label className="text-xs">사용시간 (Hr)</Label>
+                <Input
+                  type="number"
+                  value={operatingHours ?? ""}
+                  onChange={e => setOperatingHours(e.target.value ? Number(e.target.value) : null)}
+                  placeholder="예: 1500"
+                  className="h-9"
+                />
+              </div>
             </div>
 
             {/* 수리 내역 */}
