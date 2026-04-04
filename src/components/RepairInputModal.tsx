@@ -79,10 +79,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   useEffect(() => {
     if (open) {
       setRepairDate(new Date().toISOString().split("T")[0]);
-      setRepairContent("");
-      setTechnician("");
-      setLaborCost("");
-      setNotes("");
+      setRepairContent(draftPrefill?.repairContent || "");
+      setTechnician(draftPrefill?.technician || "");
+      setLaborCost(draftPrefill?.laborCost ? String(draftPrefill.laborCost) : "");
+      setNotes(draftPrefill?.notes || "");
       setPartRows([]);
       setPartSearch("");
       setMachineSearch("");
@@ -90,7 +90,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setSelectedMachineName(machineName || "");
       setAppliedTemplates([]);
     }
-  }, [open, machineId, machineName]);
+  }, [open, machineId, machineName, draftPrefill]);
 
   // Machine search
   const searchMachines = async (q: string) => {
