@@ -243,6 +243,7 @@ export default function MachineDetail() {
                     <th className="text-left py-2 pr-3 font-semibold">수리일</th>
                     <th className="text-left py-2 pr-3 font-semibold">수리 내용</th>
                     <th className="text-left py-2 pr-3 font-semibold">사용 부품</th>
+                    <th className="text-right py-2 pr-3 font-semibold">사용시간</th>
                     <th className="text-right py-2 pr-3 font-semibold">공임비</th>
                     <th className="text-right py-2 pr-3 font-semibold">총비용</th>
                     <th className="text-left py-2 font-semibold">담당</th>
