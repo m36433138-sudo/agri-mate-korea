@@ -30,7 +30,7 @@ interface Props {
   hasDraft?: boolean;
 }
 
-export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, notes = [] }: Props) {
+export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepairDraft, notes = [], hasDraft = false }: Props) {
   const status = getStatus(row);
   const machineColor = getMachineTypeColor(row.기계);
   const transition = STATUS_TRANSITIONS[status];
