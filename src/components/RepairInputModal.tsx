@@ -321,6 +321,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                 <Label>공임비 (원)</Label>
                 <Input type="number" value={laborCost} onChange={(e) => setLaborCost(e.target.value)} placeholder="0" />
               </div>
+              <div>
+                <Label>사용시간 (Hr)</Label>
+                <Input type="number" value={operatingHours} onChange={(e) => setOperatingHours(e.target.value)} placeholder="예: 1500" />
+              </div>
             </div>
 
             {/* Section B: Parts */}
