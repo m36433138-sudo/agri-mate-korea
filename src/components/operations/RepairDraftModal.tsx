@@ -13,12 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
-import { Trash2, Save, Plus, Package, Wrench } from "lucide-react";
+import { Trash2, Save, Plus, Package, Wrench, ArrowRightCircle } from "lucide-react";
+import type { DraftPrefill } from "@/components/RepairInputModal";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   row: SheetRow;
+  onTransferToRepair?: (prefill: DraftPrefill) => void;
 }
 
 export function RepairDraftModal({ open, onClose, row }: Props) {
