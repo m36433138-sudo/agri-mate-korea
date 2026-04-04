@@ -732,6 +732,7 @@ export type Database = {
           labor_cost: number | null
           machine_id: string
           notes: string | null
+          operating_hours: number | null
           repair_content: string
           repair_date: string
           technician: string | null
@@ -743,6 +744,7 @@ export type Database = {
           labor_cost?: number | null
           machine_id: string
           notes?: string | null
+          operating_hours?: number | null
           repair_content: string
           repair_date: string
           technician?: string | null
@@ -754,6 +756,7 @@ export type Database = {
           labor_cost?: number | null
           machine_id?: string
           notes?: string | null
+          operating_hours?: number | null
           repair_content?: string
           repair_date?: string
           technician?: string | null

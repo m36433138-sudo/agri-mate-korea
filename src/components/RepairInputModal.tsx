@@ -27,6 +27,7 @@ export type DraftPrefill = {
   laborCost?: number;
   notes?: string;
   draftId?: string;
+  operatingHours?: number;
   parts?: { part_code?: string; part_name: string; quantity: number; unit_price: number }[];
 };
 
@@ -47,6 +48,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [repairContent, setRepairContent] = useState("");
   const [technician, setTechnician] = useState("");
   const [laborCost, setLaborCost] = useState("");
+  const [operatingHours, setOperatingHours] = useState("");
   const [notes, setNotes] = useState("");
 
   // Machine search (if not pre-filled)
@@ -82,8 +84,20 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setRepairContent(draftPrefill?.repairContent || "");
       setTechnician(draftPrefill?.technician || "");
       setLaborCost(draftPrefill?.laborCost ? String(draftPrefill.laborCost) : "");
+      setOperatingHours(draftPrefill?.operatingHours ? String(draftPrefill.operatingHours) : "");
       setNotes(draftPrefill?.notes || "");
-      setPartRows([]);
+      // Prefill parts from draft
+      if (draftPrefill?.parts && draftPrefill.parts.length > 0) {
+        setPartRows(draftPrefill.parts.map((p, i) => ({
+          part_id: p.part_code || `draft-${i}`,
+          part_name: p.part_name,
+          part_number: p.part_code || "",
+          unit: "개",
+          quantity: p.quantity,
+        })));
+      } else {
+        setPartRows([]);
+      }
       setPartSearch("");
       setMachineSearch("");
       setSelectedMachineId(machineId || "");
@@ -197,6 +211,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           labor_cost: parseInt(laborCost) || 0,
           total_cost: totalCost,
           notes: notes || null,
+          operating_hours: parseInt(operatingHours) || null,
         })
         .select("id")
         .single();
@@ -305,6 +320,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               <div>
                 <Label>공임비 (원)</Label>
                 <Input type="number" value={laborCost} onChange={(e) => setLaborCost(e.target.value)} placeholder="0" />
+              </div>
+              <div>
+                <Label>사용시간 (Hr)</Label>
+                <Input type="number" value={operatingHours} onChange={(e) => setOperatingHours(e.target.value)} placeholder="예: 1500" />
               </div>
             </div>
 
