@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { SheetRow, OperationStatus } from "@/types/operations";
 import { supabase } from "@/integrations/supabase/client";
+import { useTechnicians } from "@/hooks/useTechnicians";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -68,6 +69,7 @@ interface Props {
 export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
   const [form, setForm] = useState<FormData>(rowToForm(row || undefined));
   const [saving, setSaving] = useState(false);
+  const { data: technicians = [] } = useTechnicians();
   const { toast } = useToast();
   const isEdit = !!row;
 
@@ -149,7 +151,18 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
           </div>
           <div>
             <Label>수리기사</Label>
-            <Input value={form.technician} onChange={e => set("technician", e.target.value)} />
+            <Select value={form.technician || "_none"} onValueChange={v => set("technician", v === "_none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="기사 선택" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">선택 안함</SelectItem>
+                {technicians.map(t => (
+                  <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                ))}
+                {form.technician && !technicians.find(t => t.name === form.technician) && form.technician !== "" && (
+                  <SelectItem value={form.technician}>{form.technician} (기존)</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>연락여부</Label>

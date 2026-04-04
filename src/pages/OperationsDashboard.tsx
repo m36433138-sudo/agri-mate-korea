@@ -4,7 +4,9 @@ import { SheetRow, getStatus, OperationStatus } from "@/types/operations";
 import { KanbanCard } from "@/components/operations/KanbanCard";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
+import { RepairDraftModal } from "@/components/operations/RepairDraftModal";
 import { useRepairNotes } from "@/hooks/useRepairNotes";
+import { useRepairDrafts } from "@/hooks/useRepairDrafts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,7 +56,9 @@ export default function OperationsDashboard() {
   const [formOpen, setFormOpen] = useState(false);
   const [editRow, setEditRow] = useState<SheetRow | null>(null);
   const [noteRow, setNoteRow] = useState<SheetRow | null>(null);
+  const [draftRow, setDraftRow] = useState<SheetRow | null>(null);
   const { allNotes, getNotesForRow, pendingCount } = useRepairNotes();
+  const { drafts, getDraftForRow } = useRepairDrafts();
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
@@ -119,6 +123,10 @@ export default function OperationsDashboard() {
 
   const handleNotes = (row: SheetRow) => {
     setNoteRow(row);
+  };
+
+  const handleRepairDraft = (row: SheetRow) => {
+    setDraftRow(row);
   };
 
   const handleAdd = () => {
@@ -265,7 +273,9 @@ export default function OperationsDashboard() {
                   onMarkComplete={handleTransition}
                   onEdit={handleEdit}
                   onNotes={handleNotes}
+                  onRepairDraft={handleRepairDraft}
                   notes={getNotesForRow(row._branch, row._rowIndex)}
+                  hasDraft={!!getDraftForRow(row._branch, row._rowIndex)}
                 />
               ))
             )}
@@ -294,7 +304,9 @@ export default function OperationsDashboard() {
                       onMarkComplete={handleTransition}
                       onEdit={handleEdit}
                       onNotes={handleNotes}
+                      onRepairDraft={handleRepairDraft}
                       notes={getNotesForRow(row._branch, row._rowIndex)}
+                      hasDraft={!!getDraftForRow(row._branch, row._rowIndex)}
                     />
                   ))
                 )}
@@ -342,6 +354,15 @@ export default function OperationsDashboard() {
           open={!!noteRow}
           onClose={() => setNoteRow(null)}
           row={noteRow}
+        />
+      )}
+
+      {/* 수리내역 임시저장 모달 */}
+      {draftRow && (
+        <RepairDraftModal
+          open={!!draftRow}
+          onClose={() => setDraftRow(null)}
+          row={draftRow}
         />
       )}
 

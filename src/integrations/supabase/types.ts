@@ -329,6 +329,89 @@ export type Database = {
           },
         ]
       }
+      operation_repair_draft_parts: {
+        Row: {
+          created_at: string | null
+          draft_id: string
+          id: string
+          part_code: string | null
+          part_name: string
+          quantity: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          draft_id: string
+          id?: string
+          part_code?: string | null
+          part_name: string
+          quantity?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          draft_id?: string
+          id?: string
+          part_code?: string | null
+          part_name?: string
+          quantity?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_repair_draft_parts_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "operation_repair_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operation_repair_drafts: {
+        Row: {
+          branch: string
+          created_at: string | null
+          customer_name: string | null
+          description: string | null
+          id: string
+          is_finalized: boolean | null
+          labor_cost: number | null
+          machine_type: string | null
+          model: string | null
+          row_index: number
+          technician: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          branch: string
+          created_at?: string | null
+          customer_name?: string | null
+          description?: string | null
+          id?: string
+          is_finalized?: boolean | null
+          labor_cost?: number | null
+          machine_type?: string | null
+          model?: string | null
+          row_index: number
+          technician?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          branch?: string
+          created_at?: string | null
+          customer_name?: string | null
+          description?: string | null
+          id?: string
+          is_finalized?: boolean | null
+          labor_cost?: number | null
+          machine_type?: string | null
+          model?: string | null
+          row_index?: number
+          technician?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       parts: {
         Row: {
           created_at: string

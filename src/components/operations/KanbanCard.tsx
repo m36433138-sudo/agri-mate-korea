@@ -1,5 +1,5 @@
 import { SheetRow, getStatus, OperationStatus, getTechnicianColor, getMachineTypeColor, formatSheetDate, parseSheetDate } from "@/types/operations";
-import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil, ArrowRight, Package } from "lucide-react";
+import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil, ArrowRight, Package, FileText } from "lucide-react";
 import { RepairNote } from "@/hooks/useRepairNotes";
 
 const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: OperationStatus | "완료" } | null> = {
@@ -25,10 +25,12 @@ interface Props {
   onMarkComplete: (row: SheetRow) => void;
   onEdit?: (row: SheetRow) => void;
   onNotes?: (row: SheetRow) => void;
+  onRepairDraft?: (row: SheetRow) => void;
   notes?: RepairNote[];
+  hasDraft?: boolean;
 }
 
-export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, notes = [] }: Props) {
+export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepairDraft, notes = [], hasDraft = false }: Props) {
   const status = getStatus(row);
   const machineColor = getMachineTypeColor(row.기계);
   const transition = STATUS_TRANSITIONS[status];
@@ -60,6 +62,17 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, notes 
         {showEntryWarning && <AlertTriangle className="h-3.5 w-3.5 text-orange-500 ml-auto" />}
         {showExitWarning && <CircleAlert className="h-3.5 w-3.5 text-red-500 ml-auto" />}
         <div className="ml-auto flex items-center gap-1">
+          {/* 수리내역 버튼 */}
+          {onRepairDraft && (status === "수리중" || status === "수리완료" || status === "수리대기") && (
+            <button
+              onClick={() => onRepairDraft(row)}
+              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-md transition-colors hover:bg-blue-50 ${hasDraft ? "text-blue-600" : "text-muted-foreground/40"}`}
+              title="수리내역 기록"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {hasDraft && <span className="text-[10px] font-bold">●</span>}
+            </button>
+          )}
           {/* 조달 뱃지 */}
           {onNotes && (
             <button
