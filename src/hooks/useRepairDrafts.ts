@@ -78,6 +78,7 @@ export function useRepairDrafts() {
       technician?: string;
       description?: string;
       labor_cost?: number;
+      operating_hours?: number | null;
     }) => {
       const { data, error } = await supabase
         .from("operation_repair_drafts")
