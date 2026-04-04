@@ -215,6 +215,7 @@ export default function MachineDetail() {
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
+                        {r.operating_hours && <span>사용시간: {r.operating_hours.toLocaleString()}Hr</span>}
                         {r.labor_cost > 0 && <span>공임비: {formatPrice(r.labor_cost)}</span>}
                         {r.total_cost > 0 && <span>총비용: {formatPrice(r.total_cost)}</span>}
                         {r.technician && <span>담당: {r.technician}</span>}
@@ -242,6 +243,7 @@ export default function MachineDetail() {
                     <th className="text-left py-2 pr-3 font-semibold">수리일</th>
                     <th className="text-left py-2 pr-3 font-semibold">수리 내용</th>
                     <th className="text-left py-2 pr-3 font-semibold">사용 부품</th>
+                    <th className="text-right py-2 pr-3 font-semibold">사용시간</th>
                     <th className="text-right py-2 pr-3 font-semibold">공임비</th>
                     <th className="text-right py-2 pr-3 font-semibold">총비용</th>
                     <th className="text-left py-2 font-semibold">담당</th>
@@ -253,6 +255,7 @@ export default function MachineDetail() {
                       <td className="py-2 pr-3 whitespace-nowrap">{formatDate(r.repair_date)}</td>
                       <td className="py-2 pr-3">{r.repair_content}</td>
                       <td className="py-2 pr-3">{r.repair_parts?.map((rp: any) => `${rp.parts?.part_name} x${rp.quantity}`).join(", ") || "-"}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{r.operating_hours ? `${r.operating_hours.toLocaleString()}Hr` : "-"}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{r.labor_cost > 0 ? formatPrice(r.labor_cost) : "-"}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{r.total_cost > 0 ? formatPrice(r.total_cost) : "-"}</td>
                       <td className="py-2">{r.technician || "-"}</td>

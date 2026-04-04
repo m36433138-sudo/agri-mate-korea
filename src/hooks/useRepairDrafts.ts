@@ -21,6 +21,7 @@ export type RepairDraft = {
   technician: string | null;
   description: string | null;
   labor_cost: number;
+  operating_hours: number | null;
   created_at: string;
   updated_at: string;
   is_finalized: boolean;
@@ -77,6 +78,7 @@ export function useRepairDrafts() {
       technician?: string;
       description?: string;
       labor_cost?: number;
+      operating_hours?: number | null;
     }) => {
       const { data, error } = await supabase
         .from("operation_repair_drafts")
@@ -90,6 +92,7 @@ export function useRepairDrafts() {
             technician: input.technician || null,
             description: input.description || null,
             labor_cost: input.labor_cost || 0,
+            operating_hours: input.operating_hours ?? null,
             updated_at: new Date().toISOString(),
             is_finalized: false,
           },

@@ -34,6 +34,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
   const [parts, setParts] = useState<RepairDraftPart[]>([]);
   const [description, setDescription] = useState("");
   const [laborCost, setLaborCost] = useState(0);
+  const [operatingHours, setOperatingHours] = useState<number | null>(null);
   const [technician, setTechnician] = useState(row.수리기사 || "");
 
   // New part form
@@ -51,12 +52,14 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
         setParts(existing.parts || []);
         setDescription(existing.description || "");
         setLaborCost(existing.labor_cost || 0);
+        setOperatingHours(existing.operating_hours ?? null);
         setTechnician(existing.technician || row.수리기사 || "");
       } else {
         setDraft(null);
         setParts([]);
         setDescription("");
         setLaborCost(0);
+        setOperatingHours(null);
         setTechnician(row.수리기사 || "");
       }
     } catch {
@@ -82,6 +85,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
         technician,
         description,
         labor_cost: laborCost,
+        operating_hours: operatingHours,
       });
       setDraft(prev => prev ? { ...prev, ...result } : result as RepairDraft);
       toast({ title: "임시 저장 완료" });
@@ -109,6 +113,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
         technician,
         description,
         labor_cost: laborCost,
+        operating_hours: operatingHours,
       });
       draftId = result.id;
       setDraft(result as RepairDraft);
@@ -187,6 +192,16 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                     )}
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label className="text-xs">사용시간 (Hr)</Label>
+                <Input
+                  type="number"
+                  value={operatingHours ?? ""}
+                  onChange={e => setOperatingHours(e.target.value ? Number(e.target.value) : null)}
+                  placeholder="예: 1500"
+                  className="h-9"
+                />
               </div>
             </div>
 
@@ -318,6 +333,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                   technician,
                   repairContent: description,
                   laborCost,
+                  operatingHours: operatingHours ?? undefined,
                   notes: `[작업현황판] ${row.손님성명} - ${row.기계} ${row.품목}`,
                   draftId: draft.id,
                   parts: parts.map(p => ({
