@@ -25,7 +25,9 @@ interface Props {
   onMarkComplete: (row: SheetRow) => void;
   onEdit?: (row: SheetRow) => void;
   onNotes?: (row: SheetRow) => void;
+  onRepairDraft?: (row: SheetRow) => void;
   notes?: RepairNote[];
+  hasDraft?: boolean;
 }
 
 export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, notes = [] }: Props) {
