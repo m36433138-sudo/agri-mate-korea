@@ -69,6 +69,7 @@ interface Props {
 export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
   const [form, setForm] = useState<FormData>(rowToForm(row || undefined));
   const [saving, setSaving] = useState(false);
+  const { data: technicians = [] } = useTechnicians();
   const { toast } = useToast();
   const isEdit = !!row;
 
