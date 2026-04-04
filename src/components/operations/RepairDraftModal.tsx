@@ -52,6 +52,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
         setParts(existing.parts || []);
         setDescription(existing.description || "");
         setLaborCost(existing.labor_cost || 0);
+        setOperatingHours(existing.operating_hours ?? null);
         setTechnician(existing.technician || row.수리기사 || "");
       } else {
         setDraft(null);
