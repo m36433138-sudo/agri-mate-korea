@@ -333,6 +333,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                   technician,
                   repairContent: description,
                   laborCost,
+                  operatingHours: operatingHours ?? undefined,
                   notes: `[작업현황판] ${row.손님성명} - ${row.기계} ${row.품목}`,
                   draftId: draft.id,
                   parts: parts.map(p => ({
