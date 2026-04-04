@@ -21,6 +21,7 @@ export type RepairDraft = {
   technician: string | null;
   description: string | null;
   labor_cost: number;
+  operating_hours: number | null;
   created_at: string;
   updated_at: string;
   is_finalized: boolean;
