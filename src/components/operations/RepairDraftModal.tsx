@@ -23,7 +23,7 @@ interface Props {
   onTransferToRepair?: (prefill: DraftPrefill) => void;
 }
 
-export function RepairDraftModal({ open, onClose, row }: Props) {
+export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Props) {
   const { fetchDraftWithParts, upsertDraft, addDraftPart, removeDraftPart } = useRepairDrafts();
   const { data: technicians = [] } = useTechnicians();
   const { toast } = useToast();
