@@ -34,6 +34,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
   const [parts, setParts] = useState<RepairDraftPart[]>([]);
   const [description, setDescription] = useState("");
   const [laborCost, setLaborCost] = useState(0);
+  const [operatingHours, setOperatingHours] = useState<number | null>(null);
   const [technician, setTechnician] = useState(row.수리기사 || "");
 
   // New part form
