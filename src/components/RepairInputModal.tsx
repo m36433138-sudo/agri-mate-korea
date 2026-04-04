@@ -84,8 +84,20 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setRepairContent(draftPrefill?.repairContent || "");
       setTechnician(draftPrefill?.technician || "");
       setLaborCost(draftPrefill?.laborCost ? String(draftPrefill.laborCost) : "");
+      setOperatingHours(draftPrefill?.operatingHours ? String(draftPrefill.operatingHours) : "");
       setNotes(draftPrefill?.notes || "");
-      setPartRows([]);
+      // Prefill parts from draft
+      if (draftPrefill?.parts && draftPrefill.parts.length > 0) {
+        setPartRows(draftPrefill.parts.map((p, i) => ({
+          part_id: p.part_code || `draft-${i}`,
+          part_name: p.part_name,
+          part_number: p.part_code || "",
+          unit: "개",
+          quantity: p.quantity,
+        })));
+      } else {
+        setPartRows([]);
+      }
       setPartSearch("");
       setMachineSearch("");
       setSelectedMachineId(machineId || "");
