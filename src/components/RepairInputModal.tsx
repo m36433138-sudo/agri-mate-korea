@@ -21,11 +21,22 @@ type PartRow = {
   fromTemplate?: string; // template id
 };
 
+export type DraftPrefill = {
+  technician?: string;
+  repairContent?: string;
+  laborCost?: number;
+  notes?: string;
+  draftId?: string;
+  parts?: { part_code?: string; part_name: string; quantity: number; unit_price: number }[];
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   machineId?: string;
   machineName?: string;
+  draftPrefill?: DraftPrefill | null;
+  onDraftFinalized?: (draftId: string) => void;
 };
 
 export default function RepairInputModal({ open, onOpenChange, machineId, machineName }: Props) {
