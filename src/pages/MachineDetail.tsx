@@ -255,6 +255,7 @@ export default function MachineDetail() {
                       <td className="py-2 pr-3 whitespace-nowrap">{formatDate(r.repair_date)}</td>
                       <td className="py-2 pr-3">{r.repair_content}</td>
                       <td className="py-2 pr-3">{r.repair_parts?.map((rp: any) => `${rp.parts?.part_name} x${rp.quantity}`).join(", ") || "-"}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{r.operating_hours ? `${r.operating_hours.toLocaleString()}Hr` : "-"}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{r.labor_cost > 0 ? formatPrice(r.labor_cost) : "-"}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{r.total_cost > 0 ? formatPrice(r.total_cost) : "-"}</td>
                       <td className="py-2">{r.technician || "-"}</td>
