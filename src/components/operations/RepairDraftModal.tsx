@@ -308,8 +308,34 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
           </div>
         )}
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 flex-wrap">
           <Button variant="outline" onClick={onClose}>닫기</Button>
+          {onTransferToRepair && draft && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const prefill: DraftPrefill = {
+                  technician,
+                  repairContent: description,
+                  laborCost,
+                  notes: `[작업현황판] ${row.손님성명} - ${row.기계} ${row.품목}`,
+                  draftId: draft.id,
+                  parts: parts.map(p => ({
+                    part_code: p.part_code || undefined,
+                    part_name: p.part_name,
+                    quantity: p.quantity,
+                    unit_price: p.unit_price,
+                  })),
+                };
+                onTransferToRepair(prefill);
+                onClose();
+              }}
+              disabled={loading}
+            >
+              <ArrowRightCircle className="h-4 w-4 mr-1" />
+              수리이력으로 전환
+            </Button>
+          )}
           <Button onClick={handleSave} disabled={saving || loading}>
             <Save className="h-4 w-4 mr-1" />
             {saving ? "저장 중..." : "임시 저장"}
