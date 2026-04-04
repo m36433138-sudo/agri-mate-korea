@@ -211,6 +211,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           labor_cost: parseInt(laborCost) || 0,
           total_cost: totalCost,
           notes: notes || null,
+          operating_hours: parseInt(operatingHours) || null,
         })
         .select("id")
         .single();
