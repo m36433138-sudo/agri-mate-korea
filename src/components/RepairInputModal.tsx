@@ -39,7 +39,7 @@ type Props = {
   onDraftFinalized?: (draftId: string) => void;
 };
 
-export default function RepairInputModal({ open, onOpenChange, machineId, machineName }: Props) {
+export default function RepairInputModal({ open, onOpenChange, machineId, machineName, draftPrefill, onDraftFinalized }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
