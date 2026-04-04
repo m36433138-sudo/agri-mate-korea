@@ -367,8 +367,23 @@ export default function OperationsDashboard() {
           open={!!draftRow}
           onClose={() => setDraftRow(null)}
           row={draftRow}
+          onTransferToRepair={(prefill) => {
+            setDraftPrefill(prefill);
+            setRepairModalOpen(true);
+          }}
         />
       )}
+
+      {/* 수리이력 등록 모달 (draft에서 전환) */}
+      <RepairInputModal
+        open={repairModalOpen}
+        onOpenChange={setRepairModalOpen}
+        draftPrefill={draftPrefill}
+        onDraftFinalized={(draftId) => {
+          finalizeDraft.mutate(draftId);
+          setDraftPrefill(null);
+        }}
+      />
 
       {/* Floating refresh */}
       <button
