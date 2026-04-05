@@ -46,9 +46,21 @@ export default function CustomersList() {
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("*").order("name");
-      if (error) throw error;
-      return data as Customer[];
+      const all: Customer[] = [];
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("customers")
+          .select("*")
+          .order("name")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        all.push(...(data as Customer[]));
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     },
   });
 
