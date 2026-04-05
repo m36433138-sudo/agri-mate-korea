@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CustomerSearchInput } from "@/components/CustomerSearchInput";
+import { MachineSearchInput } from "@/components/MachineSearchInput";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -116,7 +118,15 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
           </div>
           <div>
             <Label>손님 성함 *</Label>
-            <Input value={form.name} onChange={e => set("name", e.target.value)} />
+            <CustomerSearchInput
+              value={form.name}
+              onChange={v => set("name", v)}
+              onSelect={c => {
+                set("name", c.name);
+                set("phone", c.phone || "");
+                set("address", c.address || "");
+              }}
+            />
           </div>
           <div>
             <Label>전화번호</Label>
@@ -124,7 +134,14 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
           </div>
           <div>
             <Label>기계</Label>
-            <Input value={form.machine} onChange={e => set("machine", e.target.value)} />
+            <MachineSearchInput
+              value={form.machine}
+              onChange={v => set("machine", v)}
+              onSelect={m => {
+                set("machine", m.machine_type);
+                set("model", m.model_name);
+              }}
+            />
           </div>
           <div>
             <Label>품목</Label>
