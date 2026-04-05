@@ -12,6 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2, Users, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Customer } from "@/types/database";
