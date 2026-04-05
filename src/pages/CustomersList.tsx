@@ -24,10 +24,24 @@ export default function CustomersList() {
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
   useRealtimeSync("customers", [["customers"]]);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("customers").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      toast({ title: "고객이 삭제되었습니다." });
+      setDeleteTarget(null);
+    },
+    onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
+  });
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers"],
@@ -128,26 +142,38 @@ export default function CustomersList() {
         <Card className="shadow-card border-0 overflow-hidden">
           <div>
             {filtered?.map((c, idx) => (
-              <Link
+              <div
                 key={c.id}
-                to={`/customers/${c.id}`}
                 className={`flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 transition-colors group ${idx !== 0 ? "border-t" : ""}`}
               >
-                {/* 아바타 이니셜 */}
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${getAvatarColor(c.name)}`}>
-                  {c.name.charAt(0)}
-                </div>
-                {/* 정보 */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{c.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {c.phone}
-                    {c.address ? ` · ${c.address}` : ""}
-                  </p>
-                </div>
+                <Link to={`/customers/${c.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                  {/* 아바타 이니셜 */}
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${getAvatarColor(c.name)}`}>
+                    {c.name.charAt(0)}
+                  </div>
+                  {/* 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {c.phone}
+                      {c.address ? ` · ${c.address}` : ""}
+                    </p>
+                  </div>
+                </Link>
+                {/* 삭제 버튼 */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  onClick={(e) => { e.preventDefault(); setDeleteTarget(c); }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
                 {/* 화살표 */}
-                <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/40 transition-colors shrink-0" />
-              </Link>
+                <Link to={`/customers/${c.id}`}>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/40 transition-colors shrink-0" />
+                </Link>
+              </div>
             ))}
           </div>
         </Card>
@@ -155,6 +181,28 @@ export default function CustomersList() {
 
       <AddCustomerDialog open={open} onOpenChange={setOpen} />
       <BulkCustomerDialog open={bulkOpen} onOpenChange={setBulkOpen} />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={v => { if (!v) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>고객을 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.name}님의 정보가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "삭제 중..." : "삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
