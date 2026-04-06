@@ -370,9 +370,17 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }:
   const { data: customers } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("*").order("name");
-      if (error) throw error;
-      return data;
+      const all: any[] = [];
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase.from("customers").select("*").order("name").range(from, from + PAGE - 1);
+        if (error) throw error;
+        all.push(...data);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     },
   });
 
