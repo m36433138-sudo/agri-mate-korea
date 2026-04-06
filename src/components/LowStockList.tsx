@@ -29,18 +29,25 @@ export default function LowStockList() {
   const { data: allInventory, isLoading } = useQuery({
     queryKey: ["inventory", "all-for-lowstock"],
     queryFn: async () => {
-      // quantity=0 이거나 min_stock 이상인 것만 서버에서 필터 후 가져옴
-      // (전체 스캔 대신 quantity가 낮은 것 위주로 가져와 클라이언트에서 정확히 판별)
-      const { data, error } = await supabase
-        .from("inventory")
-        .select("id, branch, part_code, part_name, quantity, min_stock, sales_price, location_main, location_sub")
-        .lte("quantity", 10) // 수량 10 이하인 것만 가져옴 (재고부족 후보)
-        .order("branch")
-        .order("part_code");
-      if (error) throw error;
-      return data as InventoryItem[];
+      const all: InventoryItem[] = [];
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("inventory")
+          .select("id, branch, part_code, part_name, quantity, min_stock, sales_price, location_main, location_sub")
+          .lte("quantity", 10)
+          .order("branch")
+          .order("part_code")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        all.push(...(data as InventoryItem[]));
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     },
-    staleTime: 1000 * 60 * 5, // 5분 캐시 - 탭 전환 시 재요청 방지
+    staleTime: 1000 * 60 * 5,
   });
 
   // 적정재고 미만인 항목만 (min_stock=1이면 quantity=0일 때)
