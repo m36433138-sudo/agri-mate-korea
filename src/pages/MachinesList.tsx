@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Plus, Search, Upload, Trash2, FileSpreadsheet } from "lucide-react";
+import { Plus, Search, Upload, Trash2, FileSpreadsheet, Zap } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -126,7 +126,14 @@ export default function MachinesList() {
                   <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
                     <td className="p-3 text-muted-foreground">{m.manufacturer || "-"}</td>
                     <td className="p-3">
-                      <Link to={`/machines/${m.id}`} className="font-medium text-foreground hover:text-primary">{m.model_name}</Link>
+                      <div className="flex items-center gap-2">
+                        <Link to={`/machines/${m.id}`} className="font-medium text-foreground hover:text-primary">{m.model_name}</Link>
+                        {(m as any).ecu_mapped && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-blue-600 to-violet-600 text-white whitespace-nowrap">
+                            <Zap className="h-2.5 w-2.5" />ECU{(m as any).ecu_hp ? ` ${(m as any).ecu_hp}HP` : ""}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3 font-mono text-xs text-muted-foreground">{m.serial_number}</td>
                     <td className="p-3"><TypeBadge type={m.machine_type} /></td>

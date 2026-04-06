@@ -45,7 +45,7 @@ export default function CustomersList() {
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
 
-  // 불완전 고객 정리: 전화번호/주소 둘 다 부실 + 보유기계 0대
+  // 불완전 고객 정리: 주소 없음 + 보유기계 0대
   const handleCleanup = async () => {
     setCleaning(true);
     try {
@@ -54,14 +54,20 @@ export default function CustomersList() {
         .from("machines")
         .select("customer_id")
         .not("customer_id", "is", null);
-      if (me) throw me;
+      if (me) throw new Error(me.message);
       const ownedIds = new Set((machineRows ?? []).map((r: any) => r.customer_id));
 
-      // 불완전 고객 필터링: phone/address 모두 부실 + 기계 없음
+      // 드라이브 링크가 있는 고객 ID 목록 (FK 제약 방지)
+      const { data: linkRows, error: le } = await supabase
+        .from("customer_drive_links")
+        .select("customer_id");
+      if (le) throw new Error(le.message);
+      const linkedIds = new Set((linkRows ?? []).map((r: any) => r.customer_id));
+
+      // 조건: 주소 없음 + 기계 없음 + 드라이브 링크 없음
       const incomplete = (customers ?? []).filter(c => {
-        const noPhone = !c.phone || c.phone.trim().length < 4;
         const noAddress = !c.address || c.address.trim().length < 2;
-        return noPhone && noAddress && !ownedIds.has(c.id);
+        return noAddress && !ownedIds.has(c.id) && !linkedIds.has(c.id);
       });
 
       if (incomplete.length === 0) {
@@ -70,12 +76,15 @@ export default function CustomersList() {
         return;
       }
 
-      const ids = incomplete.map(c => c.id);
-      const { error } = await supabase.from("customers").delete().in("id", ids);
-      if (error) throw error;
+      // 한 명씩 삭제해서 FK 오류 시에도 나머지 진행
+      let deleted = 0;
+      for (const c of incomplete) {
+        const { error } = await supabase.from("customers").delete().eq("id", c.id);
+        if (!error) deleted++;
+      }
 
       qc.invalidateQueries({ queryKey: ["customers"] });
-      toast({ title: `${incomplete.length}명의 불완전 고객이 삭제되었습니다.` });
+      toast({ title: `${deleted}명의 불완전 고객이 삭제되었습니다.` });
     } catch (e: any) {
       toast({ title: "정리 실패", description: e.message, variant: "destructive" });
     } finally {
@@ -209,7 +218,10 @@ export default function CustomersList() {
                   </div>
                   {/* 정보 */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{c.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm truncate">{c.name}</p>
+                      {(c as any).grade && <CustomerGradeBadge grade={(c as any).grade} />}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {c.phone}
                       {c.address ? ` · ${c.address}` : ""}
@@ -283,6 +295,23 @@ export default function CustomersList() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+const GRADE_CONFIG: Record<string, { label: string; style: string }> = {
+  VVIP:   { label: "VVIP",   style: "bg-gradient-to-r from-violet-600 to-purple-500 text-white shadow-sm shadow-violet-200" },
+  VIP:    { label: "VIP",    style: "bg-gradient-to-r from-amber-500 to-orange-400 text-white shadow-sm shadow-amber-200" },
+  GOLD:   { label: "GOLD",   style: "bg-gradient-to-r from-yellow-400 to-amber-400 text-white shadow-sm shadow-yellow-200" },
+  SILVER: { label: "SILVER", style: "bg-gradient-to-r from-slate-400 to-gray-400 text-white shadow-sm shadow-slate-200" },
+};
+
+export function CustomerGradeBadge({ grade }: { grade: string }) {
+  const cfg = GRADE_CONFIG[grade];
+  if (!cfg) return null;
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${cfg.style}`}>
+      {cfg.label}
+    </span>
   );
 }
 

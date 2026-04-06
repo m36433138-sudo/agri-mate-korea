@@ -12,7 +12,7 @@ import { formatPrice, formatDate } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
@@ -95,7 +95,15 @@ export default function MachineDetail() {
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
-              <h1 className="text-2xl font-bold print:text-xl">{machine.model_name}</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl font-bold print:text-xl">{machine.model_name}</h1>
+                {(machine as any).ecu_mapped && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold tracking-wide bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow shadow-blue-200">
+                    <Zap className="h-3 w-3" />
+                    ECU UP{(machine as any).ecu_hp ? ` ${(machine as any).ecu_hp}HP` : ""}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground font-mono mt-1">제조번호: {machine.serial_number}</p>
             </div>
             <div className="flex gap-2 items-center">
@@ -123,6 +131,14 @@ export default function MachineDetail() {
               </>
             )}
             {machine.notes && <InfoItem label="특이사항" value={machine.notes} />}
+            {(machine as any).ecu_mapped && (
+              <InfoItem label="ECU 업그레이드" value={
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-violet-600 text-white">
+                  <Zap className="h-3 w-3" />
+                  {(machine as any).ecu_hp ? `${(machine as any).ecu_hp}HP` : "완료"}
+                </span>
+              } />
+            )}
           </div>
 
           {machine.status === "재고중" && (
@@ -503,6 +519,8 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
     machine_type: machine.machine_type, manufacturer: machine.manufacturer || "얀마",
     entry_date: machine.entry_date,
     purchase_price: String(machine.purchase_price), notes: machine.notes || "",
+    ecu_mapped: !!(machine as any).ecu_mapped,
+    ecu_hp: String((machine as any).ecu_hp || ""),
   });
 
   const mutation = useMutation({
@@ -512,7 +530,9 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
         machine_type: form.machine_type, manufacturer: form.manufacturer,
         entry_date: form.entry_date,
         purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
-      }).eq("id", machine.id);
+        ecu_mapped: form.ecu_mapped,
+        ecu_hp: form.ecu_mapped && form.ecu_hp ? parseInt(form.ecu_hp) : null,
+      } as any).eq("id", machine.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -526,7 +546,7 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>정보 수정</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div>
@@ -548,6 +568,39 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
           <div><Label>입고일</Label><Input type="date" value={form.entry_date} onChange={e => setForm(f => ({...f, entry_date: e.target.value}))} /></div>
           <div><Label>매입가 (원)</Label><Input type="number" value={form.purchase_price} onChange={e => setForm(f => ({...f, purchase_price: e.target.value}))} /></div>
           <div><Label>특이사항</Label><Input value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} /></div>
+
+          {/* ECU 맵핑/업그레이드 */}
+          <div className="rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-blue-600" />
+                <Label className="text-blue-700 font-semibold cursor-pointer" htmlFor="ecu-toggle">ECU 맵핑 / 업그레이드</Label>
+              </div>
+              <button
+                id="ecu-toggle"
+                type="button"
+                onClick={() => setForm(f => ({ ...f, ecu_mapped: !f.ecu_mapped, ecu_hp: !f.ecu_mapped ? f.ecu_hp : "" }))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.ecu_mapped ? "bg-blue-600" : "bg-gray-200"}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.ecu_mapped ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+            </div>
+            {form.ecu_mapped && (
+              <div>
+                <Label className="text-xs text-blue-600">업그레이드 마력 (HP)</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="number"
+                    value={form.ecu_hp}
+                    onChange={e => setForm(f => ({ ...f, ecu_hp: e.target.value }))}
+                    placeholder="예: 120"
+                    className="border-blue-200 focus-visible:ring-blue-400"
+                  />
+                  <span className="text-sm font-semibold text-blue-600 shrink-0">HP</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>

@@ -12,8 +12,10 @@ import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
 import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { Customer, Machine, Repair } from "@/types/database";
+import { CustomerGradeBadge } from "@/pages/CustomersList";
 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -100,8 +102,9 @@ export default function CustomerDetail() {
       <Card className="shadow-card border-0 mb-6">
         <CardContent className="p-6">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold">{customer.name}</h1>
+              {(customer as any).grade && <CustomerGradeBadge grade={(customer as any).grade} />}
               {customer.user_id && (
                 <Badge variant="secondary" className="gap-1">
                   <UserCheck className="h-3 w-3" /> 계정 연동됨
@@ -302,18 +305,31 @@ function AddDriveLinkDialog({ open, onOpenChange, customerId }: { open: boolean;
   );
 }
 
+const GRADES = ["VVIP", "VIP", "GOLD", "SILVER"];
+const GRADE_STYLES: Record<string, string> = {
+  VVIP:   "bg-gradient-to-r from-violet-600 to-purple-500 text-white",
+  VIP:    "bg-gradient-to-r from-amber-500 to-orange-400 text-white",
+  GOLD:   "bg-gradient-to-r from-yellow-400 to-amber-400 text-white",
+  SILVER: "bg-gradient-to-r from-slate-400 to-gray-400 text-white",
+};
+
 function EditCustomerDialog({ open, onOpenChange, customer }: { open: boolean; onOpenChange: (v: boolean) => void; customer: Customer }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    name: customer.name, phone: customer.phone, address: customer.address || "", notes: customer.notes || "",
+    name: customer.name,
+    phone: customer.phone,
+    address: customer.address || "",
+    notes: customer.notes || "",
+    grade: (customer as any).grade || "",
   });
 
   const mutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("customers").update({
         name: form.name, phone: form.phone, address: form.address || null, notes: form.notes || null,
-      }).eq("id", customer.id);
+        grade: form.grade || null,
+      } as any).eq("id", customer.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -334,6 +350,28 @@ function EditCustomerDialog({ open, onOpenChange, customer }: { open: boolean; o
           <div><Label>연락처</Label><Input value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} /></div>
           <div><Label>주소</Label><Input value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} /></div>
           <div><Label>비고</Label><Input value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} /></div>
+          <div>
+            <Label>고객 등급</Label>
+            <div className="flex gap-2 mt-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, grade: "" }))}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${!form.grade ? "border-foreground bg-foreground text-background" : "border-muted text-muted-foreground hover:border-foreground/40"}`}
+              >
+                없음
+              </button>
+              {GRADES.map(g => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, grade: g }))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all ${form.grade === g ? GRADE_STYLES[g] : "border border-muted text-muted-foreground hover:border-foreground/40"}`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
