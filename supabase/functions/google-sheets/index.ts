@@ -216,6 +216,29 @@ serve(async (req) => {
       });
     }
 
+    // WRITE operation — clear a row (행 내용 비우기 = 삭제)
+    if (action === "clearRow") {
+      if (!sheetName || !rowIndex) throw new Error("sheetName and rowIndex are required for clearRow");
+      const accessToken = await getAccessToken();
+      const range = encodeURIComponent(`'${sheetName}'!A${rowIndex}:R${rowIndex}`);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}:clear`;
+
+      const clearRes = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      });
+
+      if (!clearRes.ok) {
+        const errBody = await clearRes.text();
+        throw new Error(`Google Sheets clear error [${clearRes.status}]: ${errBody}`);
+      }
+
+      const result = await clearRes.json();
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // WRITE operation — clock in (출근)
     if (action === "clockIn") {
       const techName = body.techName;
