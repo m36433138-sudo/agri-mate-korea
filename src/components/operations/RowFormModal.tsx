@@ -55,7 +55,7 @@ function rowToForm(row?: SheetRow): FormData {
 function formToValues(f: FormData): string[] {
   return [
     f.status, f.name, f.machine, f.model, f.phone, f.address, f.location,
-    f.technician, f.request, f.entryDate, f.repairStart, f.repairDone,
+    f.technician, f.request, "", f.entryDate, f.repairStart, f.repairDone,
     f.exitDate, f.contact, f.contactNote, "", f.note,
   ];
 }
