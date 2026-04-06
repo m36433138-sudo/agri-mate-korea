@@ -51,6 +51,7 @@ export type Database = {
           address: string | null
           branch: string | null
           created_at: string
+          grade: string | null
           id: string
           legacy_code: string | null
           name: string
@@ -62,6 +63,7 @@ export type Database = {
           address?: string | null
           branch?: string | null
           created_at?: string
+          grade?: string | null
           id?: string
           legacy_code?: string | null
           name: string
@@ -73,6 +75,7 @@ export type Database = {
           address?: string | null
           branch?: string | null
           created_at?: string
+          grade?: string | null
           id?: string
           legacy_code?: string | null
           name?: string
@@ -275,6 +278,8 @@ export type Database = {
           classification: string | null
           created_at: string
           customer_id: string | null
+          ecu_hp: number | null
+          ecu_mapped: boolean | null
           engine_number: string | null
           entry_date: string
           id: string
@@ -293,6 +298,8 @@ export type Database = {
           classification?: string | null
           created_at?: string
           customer_id?: string | null
+          ecu_hp?: number | null
+          ecu_mapped?: boolean | null
           engine_number?: string | null
           entry_date: string
           id?: string
@@ -311,6 +318,8 @@ export type Database = {
           classification?: string | null
           created_at?: string
           customer_id?: string | null
+          ecu_hp?: number | null
+          ecu_mapped?: boolean | null
           engine_number?: string | null
           entry_date?: string
           id?: string
