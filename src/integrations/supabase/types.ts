@@ -49,8 +49,10 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          branch: string | null
           created_at: string
           id: string
+          legacy_code: string | null
           name: string
           notes: string | null
           phone: string
@@ -58,8 +60,10 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          branch?: string | null
           created_at?: string
           id?: string
+          legacy_code?: string | null
           name: string
           notes?: string | null
           phone: string
@@ -67,8 +71,10 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          branch?: string | null
           created_at?: string
           id?: string
+          legacy_code?: string | null
           name?: string
           notes?: string | null
           phone?: string
@@ -478,32 +484,44 @@ export type Database = {
       repair_history: {
         Row: {
           cost: number | null
+          cost_labor: number | null
+          cost_parts: number | null
           created_at: string
+          customer_id: string | null
           id: string
           machine_id: string
           parts_used: string | null
           repair_content: string
           repair_date: string
+          repair_type: string | null
           technician: string | null
         }
         Insert: {
           cost?: number | null
+          cost_labor?: number | null
+          cost_parts?: number | null
           created_at?: string
+          customer_id?: string | null
           id?: string
           machine_id: string
           parts_used?: string | null
           repair_content: string
           repair_date: string
+          repair_type?: string | null
           technician?: string | null
         }
         Update: {
           cost?: number | null
+          cost_labor?: number | null
+          cost_parts?: number | null
           created_at?: string
+          customer_id?: string | null
           id?: string
           machine_id?: string
           parts_used?: string | null
           repair_content?: string
           repair_date?: string
+          repair_type?: string | null
           technician?: string | null
         }
         Relationships: [

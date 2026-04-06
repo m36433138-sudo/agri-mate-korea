@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package,
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
-  ClipboardList, BarChart3, Clock, Truck, Briefcase, DatabaseZap,
+  ClipboardList, BarChart3, Clock, Truck, Briefcase,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
@@ -77,7 +77,6 @@ export function AppSidebar() {
   const systemItems: NavItem[] = [
     { title: "AI 어시스턴트", url: "/chat", icon: Sparkles },
     ...(isAdmin ? [{ title: "사용자 관리", url: "/users", icon: UserCog }] : []),
-    ...(isAdmin ? [{ title: "데이터 마이그레이션", url: "/migration", icon: DatabaseZap }] : []),
   ];
 
   return (
