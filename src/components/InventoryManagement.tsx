@@ -57,19 +57,28 @@ export default function InventoryManagement() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["inventory-stats", branch],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory")
-        .select("quantity, min_stock")
-        .eq("branch", branch);
-      if (error) throw error;
-      const totalItems = data.length;
-      const totalQty = data.reduce((s, i) => s + (i.quantity ?? 0), 0);
-      const lowStockCount = data.filter(
+      const all: { quantity: number | null; min_stock: number | null }[] = [];
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("inventory")
+          .select("quantity, min_stock")
+          .eq("branch", branch)
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        all.push(...data);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      const totalItems = all.length;
+      const totalQty = all.reduce((s, i) => s + (i.quantity ?? 0), 0);
+      const lowStockCount = all.filter(
         (i) => (i.quantity ?? 0) < (i.min_stock ?? 1)
       ).length;
       return { totalItems, totalQty, lowStockCount };
     },
-    staleTime: 1000 * 60 * 3, // 3분 캐시
+    staleTime: 1000 * 60 * 3,
   });
 
   // ② 검색 시에만 서버에서 데이터 가져옴 (최대 50개)
