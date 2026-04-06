@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Trash2 } from "lucide-react";
 
 const STATUSES: OperationStatus[] = ["입고대기", "수리중", "출고대기", "보류"];
 
@@ -70,14 +71,23 @@ interface Props {
 
 export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
   const [form, setForm] = useState<FormData>(rowToForm(row || undefined));
+  const [formBranch, setFormBranch] = useState<"장흥" | "강진">(branch);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { data: technicians = [] } = useTechnicians();
   const { toast } = useToast();
   const isEdit = !!row;
 
   useEffect(() => {
-    if (open) setForm(rowToForm(row || undefined));
-  }, [open, row]);
+    if (open) {
+      setForm(rowToForm(row || undefined));
+      setFormBranch(row?._branch as "장흥" | "강진" ?? branch);
+      setSelectedCustomerId(null);
+      setConfirmDelete(false);
+    }
+  }, [open, row, branch]);
 
   const set = (key: keyof FormData, val: string) => setForm(prev => ({ ...prev, [key]: val }));
 
@@ -88,7 +98,7 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
     }
     setSaving(true);
     try {
-      const sheetName = branch === "강진" ? "강진(입출수)" : "장흥(입출수)";
+      const sheetName = formBranch === "강진" ? "강진(입출수)" : "장흥(입출수)";
       const values = formToValues(form);
 
       if (isEdit && row) {
@@ -111,6 +121,25 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!row) return;
+    setDeleting(true);
+    try {
+      const sheetName = row._branch === "강진" ? "강진(입출수)" : "장흥(입출수)";
+      await supabase.functions.invoke("google-sheets", {
+        body: { action: "clearRow", sheetName, rowIndex: row._rowIndex },
+      });
+      toast({ title: "삭제 완료" });
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast({ title: "삭제 오류", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -118,6 +147,18 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
           <DialogTitle>{isEdit ? "작업 수정" : "새 작업 추가"}</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
+          {/* 지점 선택 */}
+          <div className="col-span-2">
+            <Label>지점</Label>
+            <div className="flex gap-2 mt-1">
+              {(["장흥", "강진"] as const).map(b => (
+                <Button key={b} type="button" size="sm"
+                  variant={formBranch === b ? "default" : "outline"}
+                  onClick={() => setFormBranch(b)} className="flex-1"
+                >{b}</Button>
+              ))}
+            </div>
+          </div>
           <div className="col-span-2">
             <Label>진행상태</Label>
             <Select value={form.status} onValueChange={v => set("status", v)}>
@@ -136,6 +177,7 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
                 set("name", c.name);
                 set("phone", c.phone || "");
                 set("address", c.address || "");
+                setSelectedCustomerId(c.id);
               }}
             />
           </div>
@@ -147,10 +189,11 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
             <Label>기계</Label>
             <MachineSearchInput
               value={form.machine}
+              customerId={selectedCustomerId}
               onChange={v => set("machine", v)}
               onSelect={m => {
-                set("machine", m.machine_type);
-                set("model", m.model_name);
+                set("machine", m.model_name);
+                set("model", m.serial_number || "");
               }}
             />
           </div>
@@ -218,9 +261,24 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
             <Input value={form.writer} onChange={e => set("writer", e.target.value)} placeholder="이름을 입력하세요" />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>취소</Button>
-          <Button onClick={handleSave} disabled={saving}>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          {isEdit && !confirmDelete && (
+            <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}
+              disabled={saving || deleting} className="sm:mr-auto">
+              <Trash2 className="h-4 w-4 mr-1" /> 삭제
+            </Button>
+          )}
+          {confirmDelete && (
+            <div className="flex items-center gap-2 sm:mr-auto">
+              <span className="text-sm text-destructive font-medium">정말 삭제하시겠습니까?</span>
+              <Button size="sm" variant="destructive" onClick={handleDelete} disabled={deleting}>
+                {deleting ? "삭제 중..." : "확인"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)}>취소</Button>
+            </div>
+          )}
+          <Button variant="outline" onClick={onClose} disabled={saving || deleting}>취소</Button>
+          <Button onClick={handleSave} disabled={saving || deleting}>
             {saving ? "저장 중..." : isEdit ? "수정" : "추가"}
           </Button>
         </DialogFooter>

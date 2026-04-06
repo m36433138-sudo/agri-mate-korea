@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Trash2 } from "lucide-react";
 
 const STATUSES = ["진행중", "완료", "보류"];
 
@@ -61,12 +62,19 @@ interface Props {
 
 export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
   const [form, setForm] = useState<FormData>(rowToForm(row || undefined));
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { toast } = useToast();
   const isEdit = !!row;
 
   useEffect(() => {
-    if (open) setForm(rowToForm(row || undefined));
+    if (open) {
+      setForm(rowToForm(row || undefined));
+      setSelectedCustomerId(null);
+      setConfirmDelete(false);
+    }
   }, [open, row]);
 
   const set = (key: keyof FormData, val: string) => setForm(prev => ({ ...prev, [key]: val }));
@@ -100,6 +108,24 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!row?._rowIndex) return;
+    setDeleting(true);
+    try {
+      await supabase.functions.invoke("google-sheets", {
+        body: { action: "clearRow", sheetName: "방문수리", rowIndex: row._rowIndex },
+      });
+      toast({ title: "삭제 완료" });
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast({ title: "삭제 오류", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -125,6 +151,7 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
                 set("name", c.name);
                 set("phone", c.phone || "");
                 set("address", c.address || "");
+                setSelectedCustomerId(c.id);
               }}
             />
           </div>
@@ -136,10 +163,11 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
             <Label>기계</Label>
             <MachineSearchInput
               value={form.machine}
+              customerId={selectedCustomerId}
               onChange={v => set("machine", v)}
               onSelect={m => {
-                set("machine", m.machine_type);
-                set("model", m.model_name);
+                set("machine", m.model_name);
+                set("model", m.serial_number || "");
               }}
             />
           </div>
@@ -156,9 +184,24 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
             <Textarea value={form.detail} onChange={e => set("detail", e.target.value)} rows={3} />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>취소</Button>
-          <Button onClick={handleSave} disabled={saving}>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          {isEdit && !confirmDelete && (
+            <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}
+              disabled={saving || deleting} className="sm:mr-auto">
+              <Trash2 className="h-4 w-4 mr-1" /> 삭제
+            </Button>
+          )}
+          {confirmDelete && (
+            <div className="flex items-center gap-2 sm:mr-auto">
+              <span className="text-sm text-destructive font-medium">정말 삭제하시겠습니까?</span>
+              <Button size="sm" variant="destructive" onClick={handleDelete} disabled={deleting}>
+                {deleting ? "삭제 중..." : "확인"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)}>취소</Button>
+            </div>
+          )}
+          <Button variant="outline" onClick={onClose} disabled={saving || deleting}>취소</Button>
+          <Button onClick={handleSave} disabled={saving || deleting}>
             {saving ? "저장 중..." : isEdit ? "수정" : "추가"}
           </Button>
         </DialogFooter>
