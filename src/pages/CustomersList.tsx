@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2, Users, ChevronRight } from "lucide-react";
+import { Plus, Search, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2, Users, ChevronRight, UserMinus } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -25,6 +25,8 @@ export default function CustomersList() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [cleanupConfirm, setCleanupConfirm] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -42,6 +44,45 @@ export default function CustomersList() {
     },
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
+
+  // 불완전 고객 정리: 전화번호/주소 둘 다 부실 + 보유기계 0대
+  const handleCleanup = async () => {
+    setCleaning(true);
+    try {
+      // 보유기계가 있는 고객 ID 목록
+      const { data: machineRows, error: me } = await supabase
+        .from("machines")
+        .select("customer_id")
+        .not("customer_id", "is", null);
+      if (me) throw me;
+      const ownedIds = new Set((machineRows ?? []).map((r: any) => r.customer_id));
+
+      // 불완전 고객 필터링: phone/address 모두 부실 + 기계 없음
+      const incomplete = (customers ?? []).filter(c => {
+        const noPhone = !c.phone || c.phone.trim().length < 4;
+        const noAddress = !c.address || c.address.trim().length < 2;
+        return noPhone && noAddress && !ownedIds.has(c.id);
+      });
+
+      if (incomplete.length === 0) {
+        toast({ title: "삭제할 고객이 없습니다.", description: "모든 고객이 유효합니다." });
+        setCleanupConfirm(false);
+        return;
+      }
+
+      const ids = incomplete.map(c => c.id);
+      const { error } = await supabase.from("customers").delete().in("id", ids);
+      if (error) throw error;
+
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      toast({ title: `${incomplete.length}명의 불완전 고객이 삭제되었습니다.` });
+    } catch (e: any) {
+      toast({ title: "정리 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setCleaning(false);
+      setCleanupConfirm(false);
+    }
+  };
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers"],
@@ -122,6 +163,9 @@ export default function CustomersList() {
           </Button>
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
             <Upload className="h-4 w-4 mr-1" /> 일괄 등록
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setCleanupConfirm(true)} disabled={cleaning || isLoading}>
+            <UserMinus className="h-4 w-4 mr-1" /> 불완전 고객 정리
           </Button>
           <Button size="sm" onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> 고객 등록
@@ -211,6 +255,29 @@ export default function CustomersList() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? "삭제 중..." : "삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 불완전 고객 일괄 정리 확인 */}
+      <AlertDialog open={cleanupConfirm} onOpenChange={v => { if (!v) setCleanupConfirm(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>불완전 고객을 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              전화번호와 주소가 모두 불완전하고 보유 기계가 없는 고객을 모두 삭제합니다.
+              이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cleaning}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCleanup}
+              disabled={cleaning}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cleaning ? "정리 중..." : "정리하기"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

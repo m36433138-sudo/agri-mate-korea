@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package,
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
-  ClipboardList, BarChart3, Clock, Truck, Briefcase,
+  ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
@@ -71,6 +71,7 @@ export function AppSidebar() {
     ...(isAdmin || hasPermission("manage_repairs") ? [{ title: "수리이력", url: "/repairs", icon: Wrench }] : []),
     ...(isAdmin || isEmployee ? [{ title: "부품관리", url: "/parts", icon: Package }] : []),
     ...(isAdmin || isEmployee ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
+    ...(isAdmin || isEmployee ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),
   ];
 
   // 시스템 그룹
