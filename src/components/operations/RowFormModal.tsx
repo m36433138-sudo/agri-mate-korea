@@ -16,12 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
 
 const STATUSES: OperationStatus[] = ["입고대기", "수리중", "출고대기", "보류"];
+const MACHINE_TYPES = ["농업용 트랙터", "콤바인", "이앙기", "기타"];
 
 interface FormData {
   status: string;
   name: string;
-  machine: string;
-  model: string;
+  machine: string;      // 기계 종류 (농업용 트랙터 / 콤바인 / 이앙기 / 기타)
+  model: string;        // 품목 (모델명, 예: YR60DZ-F)
+  serial_number: string; // 제조번호
   phone: string;
   address: string;
   location: string;
@@ -39,25 +41,53 @@ interface FormData {
 
 function rowToForm(row?: SheetRow): FormData {
   if (!row) return {
-    status: "입고대기", name: "", machine: "", model: "", phone: "", address: "",
-    location: "", technician: "", request: "", entryDate: "", repairStart: "",
-    repairDone: "", exitDate: "", contact: "", contactNote: "", note: "", writer: "",
+    status: "입고대기", name: "", machine: "", model: "", serial_number: "",
+    phone: "", address: "", location: "", technician: "", request: "",
+    entryDate: "", repairStart: "", repairDone: "", exitDate: "",
+    contact: "", contactNote: "", note: "", writer: "",
   };
   return {
     status: row.status_label || "입고대기",
-    name: row.손님성명, machine: row.기계, model: row.품목, phone: row.전화번호,
-    address: row.주소, location: row.위치, technician: row.수리기사,
-    request: row.손님요구사항, entryDate: row.입고일, repairStart: row.수리시작일,
-    repairDone: row.수리완료일, exitDate: row.출고일, contact: row.연락여부,
-    contactNote: row.연락사항, note: row.비고, writer: row.입력자 || "",
+    name: row.손님성명,
+    machine: row.기계,
+    model: row.품목,
+    serial_number: row.제조번호 || "",
+    phone: row.전화번호,
+    address: row.주소,
+    location: row.위치,
+    technician: row.수리기사,
+    request: row.손님요구사항,
+    entryDate: row.입고일,
+    repairStart: row.수리시작일,
+    repairDone: row.수리완료일,
+    exitDate: row.출고일,
+    contact: row.연락여부,
+    contactNote: row.연락사항,
+    note: row.비고,
+    writer: row.입력자 || "",
   };
 }
 
 function formToValues(f: FormData): string[] {
   return [
-    f.status, f.name, f.machine, f.model, f.phone, f.address, f.location,
-    f.technician, f.request, "", f.entryDate, f.repairStart, f.repairDone,
-    f.exitDate, f.contact, f.contactNote, "", f.note,
+    f.status,       // 0: 진행사항
+    f.name,         // 1: 손님성명
+    f.machine,      // 2: 기계 (농업용 트랙터 / 콤바인 / 이앙기 / 기타)
+    f.model,        // 3: 품목 (모델명)
+    f.phone,        // 4: 전화번호
+    f.address,      // 5: 주소
+    f.location,     // 6: 위치
+    f.technician,   // 7: 수리기사
+    f.request,      // 8: 손님요구사항
+    f.serial_number, // 9: 제조번호
+    f.entryDate,    // 10: 입고일
+    f.repairStart,  // 11: 수리시작일
+    f.repairDone,   // 12: 수리완료일
+    f.exitDate,     // 13: 출고일
+    f.contact,      // 14: 연락여부
+    f.contactNote,  // 15: 연락사항
+    "",             // 16: (빈칸)
+    f.note,         // 17: 비고
   ];
 }
 
@@ -147,6 +177,7 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
           <DialogTitle>{isEdit ? "작업 수정" : "새 작업 추가"}</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
+
           {/* 지점 선택 */}
           <div className="col-span-2">
             <Label>지점</Label>
@@ -159,6 +190,8 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
               ))}
             </div>
           </div>
+
+          {/* 진행상태 */}
           <div className="col-span-2">
             <Label>진행상태</Label>
             <Select value={form.status} onValueChange={v => set("status", v)}>
@@ -168,6 +201,8 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* 손님 성함 */}
           <div>
             <Label>손님 성함 *</Label>
             <CustomerSearchInput
@@ -181,34 +216,67 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
               }}
             />
           </div>
+
+          {/* 전화번호 */}
           <div>
             <Label>전화번호</Label>
             <Input value={form.phone} onChange={e => set("phone", e.target.value)} />
           </div>
+
+          {/* 기계 종류 — Select */}
           <div>
             <Label>기계</Label>
+            <Select value={form.machine} onValueChange={v => set("machine", v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="기계 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {MACHINE_TYPES.map(t => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 품목 (모델명) — 검색 지원 */}
+          <div>
+            <Label>품목 (모델명)</Label>
             <MachineSearchInput
-              value={form.machine}
+              value={form.model}
               customerId={selectedCustomerId}
-              onChange={v => set("machine", v)}
+              onChange={v => set("model", v)}
               onSelect={m => {
-                set("machine", m.model_name);
-                set("model", m.serial_number || "");
+                set("model", m.model_name);
+                set("serial_number", m.serial_number || "");
               }}
+              placeholder="모델명 검색 또는 직접 입력"
             />
           </div>
-          <div>
-            <Label>품목</Label>
-            <Input value={form.model} onChange={e => set("model", e.target.value)} />
+
+          {/* 제조번호 — 새 칸 */}
+          <div className="col-span-2">
+            <Label>제조번호</Label>
+            <Input
+              value={form.serial_number}
+              onChange={e => set("serial_number", e.target.value)}
+              placeholder="예: YR60DZ-123456"
+              className="font-mono"
+            />
           </div>
+
+          {/* 주소 */}
           <div>
             <Label>주소</Label>
             <Input value={form.address} onChange={e => set("address", e.target.value)} />
           </div>
+
+          {/* 위치 */}
           <div>
             <Label>위치</Label>
             <Input value={form.location} onChange={e => set("location", e.target.value)} />
           </div>
+
+          {/* 수리기사 */}
           <div>
             <Label>수리기사</Label>
             <Select value={form.technician || "_none"} onValueChange={v => set("technician", v === "_none" ? "" : v)}>
@@ -224,14 +292,20 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* 연락여부 */}
           <div>
             <Label>연락여부</Label>
             <Input value={form.contact} onChange={e => set("contact", e.target.value)} />
           </div>
+
+          {/* 손님 요구사항 */}
           <div className="col-span-2">
             <Label>손님 요구사항</Label>
             <Textarea value={form.request} onChange={e => set("request", e.target.value)} rows={2} />
           </div>
+
+          {/* 날짜 필드들 */}
           <div>
             <Label>입고일</Label>
             <Input value={form.entryDate} onChange={e => set("entryDate", e.target.value)} placeholder="2026-01-01" />
@@ -248,19 +322,26 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
             <Label>출고일</Label>
             <Input value={form.exitDate} onChange={e => set("exitDate", e.target.value)} placeholder="2026-01-01" />
           </div>
+
+          {/* 연락사항 / 견적 */}
           <div className="col-span-2">
             <Label>연락사항 / 견적</Label>
             <Input value={form.contactNote} onChange={e => set("contactNote", e.target.value)} />
           </div>
+
+          {/* 비고 */}
           <div className="col-span-2">
             <Label>비고</Label>
             <Input value={form.note} onChange={e => set("note", e.target.value)} />
           </div>
+
+          {/* 입력자 */}
           <div className="col-span-2">
             <Label>입력자</Label>
             <Input value={form.writer} onChange={e => set("writer", e.target.value)} placeholder="이름을 입력하세요" />
           </div>
         </div>
+
         <DialogFooter className="flex-col sm:flex-row gap-2">
           {isEdit && !confirmDelete && (
             <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}

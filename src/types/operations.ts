@@ -8,6 +8,7 @@ export interface SheetRow {
   위치: string;
   수리기사: string;
   손님요구사항: string;
+  제조번호: string;
   입고일: string;
   수리시작일: string;
   수리완료일: string;
@@ -136,7 +137,8 @@ export function parseRows(values: string[][], branch: "장흥" | "강진"): Shee
   const iLoc = colIdx("위치") >= 0 ? colIdx("위치") : 6;
   const iTech = colIdx("수리기사") >= 0 ? colIdx("수리기사") : 7;
   const iReq = colIdx("요구사항") >= 0 ? colIdx("요구사항") : 8;
-  const iEntry = colIdx("입고일") >= 0 ? colIdx("입고일") : 9;
+  const iSerial = colIdx("제조번호") >= 0 ? colIdx("제조번호") : 9;
+  const iEntry = colIdx("입고일") >= 0 ? colIdx("입고일") : 10;
   const iRepStart = colIdx("수리시작") >= 0 ? colIdx("수리시작") : 10;
   const iRepDone = colIdx("수리완료") >= 0 ? colIdx("수리완료") : 11;
   const iExit = colIdx("출고일") >= 0 ? colIdx("출고일") : 12;
@@ -160,6 +162,7 @@ export function parseRows(values: string[][], branch: "장흥" | "강진"): Shee
       위치: (row[iLoc] || "").trim(),
       수리기사: (row[iTech] || "").trim(),
       손님요구사항: (row[iReq] || "").trim(),
+      제조번호: (row[iSerial] || "").trim(),
       입고일: (row[iEntry] || "").trim(),
       수리시작일: (row[iRepStart] || "").trim(),
       수리완료일: (row[iRepDone] || "").trim(),

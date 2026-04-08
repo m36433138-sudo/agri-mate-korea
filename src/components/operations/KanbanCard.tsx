@@ -126,7 +126,7 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
           </span>
         </div>
 
-        {/* 기계 + 품목 */}
+        {/* 기계 + 품목 + 제조번호 */}
         <div className="flex items-start gap-2">
           <div className="w-8 flex justify-center shrink-0 pt-0.5">
             <Tractor className="h-4 w-4 text-muted-foreground" />
@@ -137,11 +137,14 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
                 {row.기계 || "기타"}
               </span>
               {row.품목 && (
-                <span className="text-base font-semibold text-foreground truncate">
+                <span className="text-base font-semibold text-foreground">
                   {row.품목}
                 </span>
               )}
             </div>
+            {row.제조번호 && (
+              <p className="text-xs text-muted-foreground font-mono mt-0.5">S/N: {row.제조번호}</p>
+            )}
           </div>
         </div>
 
