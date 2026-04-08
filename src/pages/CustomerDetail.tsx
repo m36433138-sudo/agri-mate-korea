@@ -17,10 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 import type { Customer, Machine, Repair } from "@/types/database";
 import { CustomerGradeBadge } from "@/pages/CustomersList";
 
+const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
+
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const [editOpen, setEditOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [machineOpen, setMachineOpen] = useState(false);
   const qc = useQueryClient();
   const { toast } = useToast();
 
@@ -176,7 +179,12 @@ export default function CustomerDetail() {
       </Card>
 
       <Card className="shadow-card border-0 mb-6">
-        <CardHeader className="pb-3"><CardTitle className="text-base font-semibold">보유/구매 기계</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-base font-semibold">보유/구매 기계 ({machines?.length ?? 0})</CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setMachineOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> 기계 추가
+          </Button>
+        </CardHeader>
         <CardContent>
           {machines?.length === 0 ? (
             <p className="text-sm text-muted-foreground">구매 기계가 없습니다.</p>
@@ -236,6 +244,7 @@ export default function CustomerDetail() {
 
       {customer && <EditCustomerDialog open={editOpen} onOpenChange={setEditOpen} customer={customer} />}
       <AddDriveLinkDialog open={linkOpen} onOpenChange={setLinkOpen} customerId={id!} />
+      <AddMachineForCustomerDialog open={machineOpen} onOpenChange={setMachineOpen} customerId={id!} />
     </div>
   );
 }
@@ -298,6 +307,76 @@ function AddDriveLinkDialog({ open, onOpenChange, customerId }: { open: boolean;
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => mutation.mutate()} disabled={!isValid || mutation.isPending}>
             {mutation.isPending ? "추가 중..." : "추가"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddMachineForCustomerDialog({ open, onOpenChange, customerId }: { open: boolean; onOpenChange: (v: boolean) => void; customerId: string }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    manufacturer: "얀마", model_name: "", serial_number: "", machine_type: "새기계",
+    entry_date: "", purchase_price: "", notes: "",
+  });
+
+  const valid = form.model_name && form.serial_number && form.entry_date && form.purchase_price;
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("machines").insert({
+        model_name: form.model_name, serial_number: form.serial_number,
+        machine_type: form.machine_type, manufacturer: form.manufacturer,
+        entry_date: form.entry_date, purchase_price: parseInt(form.purchase_price),
+        notes: form.notes || null, customer_id: customerId, status: "판매완료",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-machines", customerId] });
+      qc.invalidateQueries({ queryKey: ["machines"] });
+      toast({ title: "기계가 등록되었습니다." });
+      onOpenChange(false);
+      setForm({ manufacturer: "얀마", model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>기계 추가 (고객 연결)</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>제조사</Label>
+            <Select value={form.manufacturer} onValueChange={v => setForm(f => ({ ...f, manufacturer: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{MANUFACTURERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label>모델명 *</Label><Input value={form.model_name} onChange={e => setForm(f => ({ ...f, model_name: e.target.value }))} placeholder="예: YT5101" /></div>
+          <div><Label>제조번호 *</Label><Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))} placeholder="예: YT5101-001" /></div>
+          <div>
+            <Label>구분</Label>
+            <Select value={form.machine_type} onValueChange={v => setForm(f => ({ ...f, machine_type: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="새기계">새기계</SelectItem>
+                <SelectItem value="중고기계">중고기계</SelectItem>
+                <SelectItem value="타사구매">타사구매</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label>입고일 *</Label><Input type="date" value={form.entry_date} onChange={e => setForm(f => ({ ...f, entry_date: e.target.value }))} /></div>
+          <div><Label>매입가 (원) *</Label><Input type="number" value={form.purchase_price} onChange={e => setForm(f => ({ ...f, purchase_price: e.target.value }))} /></div>
+          <div><Label>특이사항</Label><Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>
+            {mutation.isPending ? "등록 중..." : "등록"}
           </Button>
         </DialogFooter>
       </DialogContent>
