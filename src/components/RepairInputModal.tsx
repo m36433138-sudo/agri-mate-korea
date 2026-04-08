@@ -28,6 +28,9 @@ export type DraftPrefill = {
   notes?: string;
   draftId?: string;
   operatingHours?: number;
+  customerName?: string;
+  machineType?: string;
+  model?: string;
   parts?: { part_code?: string; part_name: string; quantity: number; unit_price: number }[];
 };
 
@@ -103,6 +106,27 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setSelectedMachineId(machineId || "");
       setSelectedMachineName(machineName || "");
       setAppliedTemplates([]);
+
+      // Auto-search machine from draft prefill
+      if (!machineId && draftPrefill?.model) {
+        const searchModel = draftPrefill.model;
+        supabase
+          .from("machines")
+          .select("id, model_name, serial_number, customers(id, name)")
+          .ilike("model_name", `%${searchModel}%`)
+          .limit(5)
+          .then(({ data }) => {
+            if (data && data.length > 0) {
+              // Try to match by customer name too
+              const customerMatch = draftPrefill.customerName
+                ? data.find((m: any) => m.customers?.name === draftPrefill.customerName)
+                : null;
+              const picked = customerMatch || data[0];
+              setSelectedMachineId(picked.id);
+              setSelectedMachineName(`${picked.model_name} (${picked.serial_number})`);
+            }
+          });
+      }
     }
   }, [open, machineId, machineName, draftPrefill]);
 

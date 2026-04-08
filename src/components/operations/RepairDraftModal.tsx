@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
-import { Trash2, Save, Plus, Package, Wrench, ArrowRightCircle } from "lucide-react";
+import { Trash2, Save, Plus, Package, Wrench, ArrowRightCircle, ArrowUp, ArrowDown } from "lucide-react";
 import type { DraftPrefill } from "@/components/RepairInputModal";
 
 interface Props {
@@ -225,9 +225,39 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
               </Label>
 
               {parts.length > 0 && (
-                <div className="space-y-1.5 mb-3">
-                  {parts.map(p => (
-                    <div key={p.id} className="flex items-center gap-2 bg-muted/40 rounded-lg px-3 py-2 text-sm">
+                <div className="space-y-1.5 mb-3 max-h-[200px] overflow-y-auto">
+                  {parts.map((p, idx) => (
+                    <div key={p.id} className="flex items-center gap-1.5 bg-muted/40 rounded-lg px-2 py-2 text-sm">
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          onClick={() => {
+                            if (idx === 0) return;
+                            setParts(prev => {
+                              const arr = [...prev];
+                              [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+                              return arr;
+                            });
+                          }}
+                          disabled={idx === 0}
+                          className="p-0.5 hover:bg-accent rounded disabled:opacity-30"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (idx === parts.length - 1) return;
+                            setParts(prev => {
+                              const arr = [...prev];
+                              [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+                              return arr;
+                            });
+                          }}
+                          disabled={idx === parts.length - 1}
+                          className="p-0.5 hover:bg-accent rounded disabled:opacity-30"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                      </div>
                       <div className="flex-1 min-w-0">
                         {p.part_code && (
                           <span className="font-mono text-xs text-muted-foreground">[{p.part_code}] </span>
@@ -336,6 +366,9 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                   operatingHours: operatingHours ?? undefined,
                   notes: `[작업현황판] ${row.손님성명} - ${row.기계} ${row.품목}`,
                   draftId: draft.id,
+                  customerName: row.손님성명,
+                  machineType: row.기계,
+                  model: row.품목,
                   parts: parts.map(p => ({
                     part_code: p.part_code || undefined,
                     part_name: p.part_name,
