@@ -189,7 +189,7 @@ function TemplateDialog({ open, onOpenChange, templateId }: { open: boolean; onO
     setDescription("");
     setPartRows([]);
     setPartSearch("");
-    setLoaded(false);
+    setLoadedId(null);
   };
 
   // Part search — searches inventory table (부품관리)
