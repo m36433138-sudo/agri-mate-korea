@@ -777,7 +777,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="pt-4 border-t">
           <div className="flex items-center gap-2 mr-auto">
