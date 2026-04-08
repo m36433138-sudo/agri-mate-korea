@@ -217,16 +217,36 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         .single();
       if (error) throw error;
 
-      // Save repair parts
+      // Save repair parts — resolve draft parts to valid part_id UUIDs
       if (partRows.length > 0) {
-        const { error: partsError } = await supabase.from("repair_parts").insert(
-          partRows.map((r) => ({
-            repair_id: data.id,
-            part_id: r.part_id,
-            quantity: r.quantity,
-            notes: null,
-          }))
-        );
+        const resolvedParts: { repair_id: string; part_id: string; quantity: number; notes: string | null }[] = [];
+        for (const r of partRows) {
+          let partId = r.part_id;
+          // If part_id looks like a draft placeholder or part_code (not a UUID), resolve it
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(partId);
+          if (!isUuid) {
+            // Try to find by part_number (part_code)
+            const { data: existing } = await supabase
+              .from("parts")
+              .select("id")
+              .eq("part_number", r.part_number || partId)
+              .maybeSingle();
+            if (existing) {
+              partId = existing.id;
+            } else {
+              // Create a new parts record
+              const { data: created, error: createErr } = await supabase
+                .from("parts")
+                .insert({ part_number: r.part_number || partId, part_name: r.part_name, unit: r.unit || "개" })
+                .select("id")
+                .single();
+              if (createErr) throw createErr;
+              partId = created.id;
+            }
+          }
+          resolvedParts.push({ repair_id: data.id, part_id: partId, quantity: r.quantity, notes: null });
+        }
+        const { error: partsError } = await supabase.from("repair_parts").insert(resolvedParts);
         if (partsError) throw partsError;
       }
     },
