@@ -166,23 +166,41 @@ function formatNow() {
 }
 
 export async function clockIn(techName: TechnicianName) {
+  let position: GeoPosition | null = null;
+  try {
+    position = await getCurrentPosition();
+  } catch (e) {
+    console.warn("위치 정보 없이 출근 기록:", e);
+  }
+
   const { date, time } = formatNow();
   const { data, error } = await supabase.functions.invoke("google-sheets", {
     body: { action: "clockIn", techName, date, time },
   });
   if (error) throw new Error(error.message || "출근 기록 실패");
   if (data?.error) throw new Error(data.error);
-  return data;
+
+  if (position) await saveLocation(techName, "clock_in", position);
+  return { ...data, position };
 }
 
 export async function clockOut(techName: TechnicianName) {
+  let position: GeoPosition | null = null;
+  try {
+    position = await getCurrentPosition();
+  } catch (e) {
+    console.warn("위치 정보 없이 퇴근 기록:", e);
+  }
+
   const { date, time } = formatNow();
   const { data, error } = await supabase.functions.invoke("google-sheets", {
     body: { action: "clockOut", techName, date, time },
   });
   if (error) throw new Error(error.message || "퇴근 기록 실패");
   if (data?.error) throw new Error(data.error);
-  return data;
+
+  if (position) await saveLocation(techName, "clock_out", position);
+  return { ...data, position };
 }
 
 export function useOvertimeData() {
