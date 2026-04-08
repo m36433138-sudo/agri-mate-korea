@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RefreshCw, Clock, User, AlertTriangle, LogIn, LogOut } from "lucide-react";
+import { RefreshCw, Clock, User, AlertTriangle, LogIn, LogOut, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -293,8 +293,11 @@ export default function OvertimeDashboard() {
     const mutation = confirmAction.type === "in" ? clockInMutation : clockOutMutation;
     const label = confirmAction.type === "in" ? "출근" : "퇴근";
     try {
-      await mutation.mutateAsync(confirmAction.name);
-      toast({ title: `${confirmAction.name} ${label} 완료`, description: `${label} 시간이 기록되었습니다.` });
+      const result = await mutation.mutateAsync(confirmAction.name);
+      const locMsg = result?.position
+        ? ` (위치: ${result.position.latitude.toFixed(4)}, ${result.position.longitude.toFixed(4)})`
+        : " (위치 정보 없음)";
+      toast({ title: `${confirmAction.name} ${label} 완료`, description: `${label} 시간이 기록되었습니다.${locMsg}` });
     } catch (err: any) {
       toast({ title: "오류", description: err.message || `${label} 기록에 실패했습니다.`, variant: "destructive" });
     } finally {
@@ -356,6 +359,10 @@ export default function OvertimeDashboard() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               현재 시간으로 {confirmAction?.type === "in" ? "출근" : "퇴근"}을 기록하시겠습니까?
+              <span className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" />
+                위치 정보도 함께 기록됩니다
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
