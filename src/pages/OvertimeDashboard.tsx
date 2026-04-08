@@ -25,6 +25,7 @@ import {
   timeToMinutes,
   type TechnicianName,
 } from "@/hooks/useOvertimeData";
+import TechnicianMap from "@/components/TechnicianMap";
 
 const TECH_COLORS: Record<string, { bg: string; text: string; accent: string }> = {
   유호상: { bg: "bg-blue-50", text: "text-blue-700", accent: "bg-blue-500" },
@@ -350,7 +351,10 @@ export default function OvertimeDashboard() {
         ))}
       </div>
 
-      {/* Confirm Dialog */}
+      {/* Technician Map */}
+      <TechnicianMap />
+
+
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
