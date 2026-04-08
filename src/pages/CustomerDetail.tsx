@@ -17,10 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 import type { Customer, Machine, Repair } from "@/types/database";
 import { CustomerGradeBadge } from "@/pages/CustomersList";
 
+const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
+
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const [editOpen, setEditOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [machineOpen, setMachineOpen] = useState(false);
   const qc = useQueryClient();
   const { toast } = useToast();
 
@@ -176,7 +179,12 @@ export default function CustomerDetail() {
       </Card>
 
       <Card className="shadow-card border-0 mb-6">
-        <CardHeader className="pb-3"><CardTitle className="text-base font-semibold">보유/구매 기계</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-base font-semibold">보유/구매 기계 ({machines?.length ?? 0})</CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setMachineOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> 기계 추가
+          </Button>
+        </CardHeader>
         <CardContent>
           {machines?.length === 0 ? (
             <p className="text-sm text-muted-foreground">구매 기계가 없습니다.</p>
@@ -236,6 +244,7 @@ export default function CustomerDetail() {
 
       {customer && <EditCustomerDialog open={editOpen} onOpenChange={setEditOpen} customer={customer} />}
       <AddDriveLinkDialog open={linkOpen} onOpenChange={setLinkOpen} customerId={id!} />
+      <AddMachineForCustomerDialog open={machineOpen} onOpenChange={setMachineOpen} customerId={id!} />
     </div>
   );
 }
