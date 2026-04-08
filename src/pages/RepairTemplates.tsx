@@ -338,10 +338,13 @@ function TemplateDialog({ open, onOpenChange, templateId }: { open: boolean; onO
                     <button
                       key={p.id}
                       onClick={() => addPart(p)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
                     >
-                      <span className="font-mono text-xs text-muted-foreground">[{p.part_number}]</span>{" "}
-                      <span className="font-medium">{p.part_name}</span>
+                      <span>
+                        <span className="font-mono text-xs text-muted-foreground">[{p.part_code}]</span>{" "}
+                        <span className="font-medium">{p.part_name}</span>
+                      </span>
+                      <span className="text-xs text-muted-foreground">재고: {p.quantity ?? 0} ({p.branch})</span>
                     </button>
                   ))}
                 </div>
