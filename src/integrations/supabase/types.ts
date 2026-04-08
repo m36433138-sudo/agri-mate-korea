@@ -802,6 +802,36 @@ export type Database = {
           },
         ]
       }
+      technician_locations: {
+        Row: {
+          accuracy: number | null
+          action: string
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          technician_name: string
+        }
+        Insert: {
+          accuracy?: number | null
+          action: string
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          technician_name: string
+        }
+        Update: {
+          accuracy?: number | null
+          action?: string
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          technician_name?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
