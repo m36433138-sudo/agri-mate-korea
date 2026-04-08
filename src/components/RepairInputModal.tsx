@@ -498,8 +498,14 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           <DialogTitle>수리 이력 추가</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
-          <div className="space-y-5">
+        <div
+          ref={scrollRef}
+          className="flex-1 -mx-6 px-6 overflow-y-auto cursor-grab"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-muted-foreground">기본 정보</h3>
 
