@@ -12,6 +12,7 @@ import { formatPrice, formatDate } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CustomerSearchInput } from "@/components/CustomerSearchInput";
 import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
@@ -364,29 +365,10 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }:
   const qc = useQueryClient();
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [mode, setMode] = useState<"existing" | "new">("existing");
-  const [form, setForm] = useState({ customer_id: "", sale_price: "", sale_date: "" });
+  const [form, setForm] = useState({ customer_id: "", customer_name: "", sale_price: "", sale_date: "" });
   const [newCustomer, setNewCustomer] = useState({ name: "", phone: "", address: "" });
 
-  const { data: customers } = useQuery({
-    queryKey: ["customers"],
-    queryFn: async () => {
-      const all: any[] = [];
-      const PAGE = 1000;
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase.from("customers").select("*").order("name").range(from, from + PAGE - 1);
-        if (error) throw error;
-        all.push(...data);
-        if (data.length < PAGE) break;
-        from += PAGE;
-      }
-      return all;
-    },
-  });
-
   const daysInStock = Math.floor((new Date().getTime() - new Date(entryDate).getTime()) / (1000 * 60 * 60 * 24));
-
-  const selectedCustomer = mode === "existing" ? customers?.find((c) => c.id === form.customer_id) : null;
 
   const formValid = mode === "existing"
     ? form.customer_id && (!isSale || (form.sale_price && form.sale_date))
@@ -421,13 +403,13 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }:
 
   const handleClose = () => {
     setStep("form"); setMode("existing");
-    setForm({ customer_id: "", sale_price: "", sale_date: "" });
+    setForm({ customer_id: "", customer_name: "", sale_price: "", sale_date: "" });
     setNewCustomer({ name: "", phone: "", address: "" });
     onOpenChange(false);
   };
 
   const customerDisplayName = mode === "existing"
-    ? selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.phone})` : ""
+    ? form.customer_name || ""
     : `${newCustomer.name} (${newCustomer.phone}) — 신규`;
 
   return (
@@ -450,14 +432,12 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }:
                 </Button>
               </div>
               {mode === "existing" ? (
-                <Select value={form.customer_id} onValueChange={(v) => setForm((f) => ({ ...f, customer_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="고객을 선택하세요" /></SelectTrigger>
-                  <SelectContent>
-                    {customers?.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name} ({c.phone})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CustomerSearchInput
+                  value={form.customer_name}
+                  onChange={(name) => setForm(f => ({ ...f, customer_name: name, customer_id: "" }))}
+                  onSelect={(c) => setForm(f => ({ ...f, customer_id: c.id, customer_name: `${c.name} (${c.phone})` }))}
+                  placeholder="고객 이름 검색..."
+                />
               ) : (
                 <div className="space-y-3 rounded-md border p-3 bg-background">
                   <div><Label className="text-xs">이름 *</Label><Input value={newCustomer.name} onChange={(e) => setNewCustomer((p) => ({ ...p, name: e.target.value }))} /></div>
