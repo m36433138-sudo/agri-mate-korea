@@ -75,7 +75,8 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
     } finally {
       setLoading(false);
     }
-  }, [fetchDraftWithParts, row._branch, row._rowIndex, row.수리기사, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row._branch, row._rowIndex, row.수리기사]);
 
   useEffect(() => {
     if (open) loadDraft();
