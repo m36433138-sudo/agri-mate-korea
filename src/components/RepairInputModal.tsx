@@ -673,11 +673,13 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                           <button
                             key={part.id}
                             onClick={() => addPart(part)}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
                           >
-                            <span className="font-mono text-xs text-muted-foreground">[{part.part_number}]</span>{" "}
-                            <span className="font-medium">{part.part_name}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({part.unit})</span>
+                            <span>
+                              <span className="font-mono text-xs text-muted-foreground">[{part.part_code}]</span>{" "}
+                              <span className="font-medium">{part.part_name}</span>
+                            </span>
+                            <span className="text-xs text-muted-foreground">재고: {part.quantity ?? 0} ({part.branch})</span>
                           </button>
                         ))}
                       </div>
