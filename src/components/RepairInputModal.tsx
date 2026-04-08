@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,37 @@ const reorderList = <T,>(items: T[], fromIndex: number, toIndex: number) => {
 export default function RepairInputModal({ open, onOpenChange, machineId, machineName, draftPrefill, onDraftFinalized }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startY = useRef(0);
+  const startScroll = useRef(0);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("input, textarea, button, [draggable='true'], select, [role='combobox']")) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    startY.current = e.clientY;
+    startScroll.current = el.scrollTop;
+    el.style.cursor = "grabbing";
+    el.style.userSelect = "none";
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    const dy = e.clientY - startY.current;
+    scrollRef.current.scrollTop = startScroll.current - dy;
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+    const el = scrollRef.current;
+    if (el) {
+      el.style.cursor = "grab";
+      el.style.userSelect = "";
+    }
+  }, []);
 
   const [repairDate, setRepairDate] = useState(new Date().toISOString().split("T")[0]);
   const [repairContent, setRepairContent] = useState("");
@@ -467,7 +498,14 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           <DialogTitle>수리 이력 추가</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <div
+          ref={scrollRef}
+          className="flex-1 -mx-6 px-6 overflow-y-auto cursor-grab"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
           <div className="space-y-5">
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-muted-foreground">기본 정보</h3>
@@ -740,7 +778,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="pt-4 border-t">
           <div className="flex items-center gap-2 mr-auto">
