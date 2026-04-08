@@ -662,43 +662,45 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                 <div className="space-y-2 mt-3">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs text-muted-foreground">사용 부품 목록 ({partRows.length}건)</Label>
-                    <span className="text-[11px] text-muted-foreground">핸들을 드래그해서 순서를 바꿀 수 있습니다</span>
+                    <span className="text-[11px] text-muted-foreground">드래그 또는 스크롤로 순서 변경</span>
                   </div>
-                  {partRows.map((row, index) => (
-                    <div
-                      key={`${row.part_id}-${index}`}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => handlePartDrop(index)}
-                      className={`flex items-center gap-2 p-2 rounded-md border ${
-                        draggedPartIndex === index ? "bg-accent/60 border-primary/30" : "bg-muted/50"
-                      }`}
-                    >
+                  <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1">
+                    {partRows.map((row, index) => (
                       <div
-                        draggable
-                        onDragStart={() => setDraggedPartIndex(index)}
-                        onDragEnd={() => setDraggedPartIndex(null)}
-                        className="shrink-0 cursor-grab rounded-md p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
-                        title="드래그하여 순서 변경"
+                        key={`${row.part_id}-${index}`}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={() => handlePartDrop(index)}
+                        className={`flex items-center gap-2 p-2 rounded-md border ${
+                          draggedPartIndex === index ? "bg-accent/60 border-primary/30" : "bg-muted/50"
+                        }`}
                       >
-                        <GripVertical className="h-4 w-4" />
+                        <div
+                          draggable
+                          onDragStart={() => setDraggedPartIndex(index)}
+                          onDragEnd={() => setDraggedPartIndex(null)}
+                          className="shrink-0 cursor-grab rounded-md p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
+                          title="드래그하여 순서 변경"
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{row.part_name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{row.part_number}</p>
+                        </div>
+                        <Input
+                          type="number"
+                          value={row.quantity}
+                          onChange={(e) => updatePartRow(index, "quantity", Number(e.target.value) || 1)}
+                          className="w-20 h-8 text-sm text-center"
+                          min={1}
+                        />
+                        <span className="text-xs text-muted-foreground w-8">{row.unit}</span>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removePartRow(index)}>
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{row.part_name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{row.part_number}</p>
-                      </div>
-                      <Input
-                        type="number"
-                        value={row.quantity}
-                        onChange={(e) => updatePartRow(index, "quantity", Number(e.target.value) || 1)}
-                        className="w-20 h-8 text-sm text-center"
-                        min={1}
-                      />
-                      <span className="text-xs text-muted-foreground w-8">{row.unit}</span>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removePartRow(index)}>
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
