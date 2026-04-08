@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Trash2, Search, ListChecks, X, GripVertical } from "lucide-react";
+import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2 } from "lucide-react";
 import { formatPrice } from "@/lib/formatters";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -595,32 +595,41 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                   {!templates?.length ? (
                     <p className="text-sm text-muted-foreground text-center py-4">등록된 템플릿이 없습니다.</p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {templates.map((template: any) => {
-                        const applied = appliedTemplates.some((item) => item.id === template.id);
+                    <div className="max-h-[200px] overflow-y-auto pr-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {templates.map((template: any) => {
+                          const applied = appliedTemplates.some((item) => item.id === template.id);
 
-                        return (
-                          <button
-                            key={template.id}
-                            onClick={() => !applied && applyTemplate(template)}
-                            disabled={applied}
-                            className={`text-left p-3 rounded-lg border transition-colors ${
-                              applied ? "bg-primary/5 border-primary/30 opacity-60" : "hover:bg-accent hover:border-primary/20"
-                            }`}
-                          >
-                            <p className="text-sm font-medium flex items-center gap-1.5">
-                              <ListChecks className="h-3.5 w-3.5 text-primary" />
-                              {template.template_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {(template.repair_template_items || [])
-                                .map((item: any) => item.parts?.part_name)
-                                .filter(Boolean)
-                                .join(", ") || "부품 없음"}
-                            </p>
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={template.id}
+                              onClick={() => !applied && applyTemplate(template)}
+                              disabled={applied}
+                              className={`text-left p-3 rounded-lg border transition-all ${
+                                applied
+                                  ? "bg-destructive/10 border-destructive/40 ring-1 ring-destructive/30"
+                                  : "hover:bg-accent hover:border-primary/20"
+                              }`}
+                            >
+                              <p className="text-sm font-medium flex items-center gap-1.5">
+                                {applied ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-destructive" />
+                                ) : (
+                                  <ListChecks className="h-3.5 w-3.5 text-primary" />
+                                )}
+                                {template.template_name}
+                                {applied && <span className="text-[10px] text-destructive font-bold ml-auto">적용됨</span>}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {(template.repair_template_items || [])
+                                  .map((item: any) => item.parts?.part_name)
+                                  .filter(Boolean)
+                                  .join(", ") || "부품 없음"}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </TabsContent>
