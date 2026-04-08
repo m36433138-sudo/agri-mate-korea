@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package,
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
-  ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2,
+  ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
