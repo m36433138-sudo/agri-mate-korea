@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Trash2, Search, ListChecks, X, GripVertical } from "lucide-react";
+import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2 } from "lucide-react";
 import { formatPrice } from "@/lib/formatters";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
