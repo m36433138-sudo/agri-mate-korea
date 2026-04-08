@@ -506,6 +506,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
+          <div className="space-y-5">
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-muted-foreground">기본 정보</h3>
 
