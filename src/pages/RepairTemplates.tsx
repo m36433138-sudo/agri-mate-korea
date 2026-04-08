@@ -194,27 +194,51 @@ function TemplateDialog({ open, onOpenChange, templateId }: { open: boolean; onO
     setLoaded(false);
   };
 
-  // Part search
+  // Part search — searches inventory table (부품관리)
   const searchParts = async (q: string) => {
     setPartSearch(q);
     if (!q.trim()) { setPartResults([]); return; }
     const like = `%${q}%`;
     const { data } = await supabase
-      .from("parts")
-      .select("*")
-      .or(`part_name.ilike.${like},part_number.ilike.${like}`)
-      .limit(10);
+      .from("inventory")
+      .select("id, part_code, part_name, quantity, branch")
+      .or(`part_code.ilike.${like},part_name.ilike.${like}`)
+      .order("part_code")
+      .limit(15);
     setPartResults(data || []);
   };
 
-  const addPart = (part: any) => {
-    if (partRows.some((r) => r.part_id === part.id)) {
+  const addPart = async (inv: any) => {
+    // Find or create a matching record in the parts table (needed for FK)
+    const { data: existing } = await supabase
+      .from("parts")
+      .select("id, part_name, part_number, unit")
+      .eq("part_number", inv.part_code)
+      .maybeSingle();
+
+    let partRecord: { id: string; part_name: string; part_number: string; unit: string };
+    if (existing) {
+      partRecord = { id: existing.id, part_name: existing.part_name, part_number: existing.part_number, unit: existing.unit || "개" };
+    } else {
+      const { data: created, error } = await supabase
+        .from("parts")
+        .insert({ part_name: inv.part_name, part_number: inv.part_code })
+        .select("id, part_name, part_number, unit")
+        .single();
+      if (error || !created) {
+        toast({ title: "부품 등록 오류", description: error?.message, variant: "destructive" });
+        return;
+      }
+      partRecord = { id: created.id, part_name: created.part_name, part_number: created.part_number, unit: created.unit || "개" };
+    }
+
+    if (partRows.some((r) => r.part_id === partRecord.id)) {
       toast({ title: "이미 추가된 부품입니다." });
       return;
     }
     setPartRows((prev) => [
       ...prev,
-      { part_id: part.id, part_name: part.part_name, part_number: part.part_number, unit: part.unit || "개", quantity: 1, notes: "" },
+      { part_id: partRecord.id, part_name: partRecord.part_name, part_number: partRecord.part_number, unit: partRecord.unit, quantity: 1, notes: "" },
     ]);
     setPartSearch("");
     setPartResults([]);
@@ -314,10 +338,13 @@ function TemplateDialog({ open, onOpenChange, templateId }: { open: boolean; onO
                     <button
                       key={p.id}
                       onClick={() => addPart(p)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
                     >
-                      <span className="font-mono text-xs text-muted-foreground">[{p.part_number}]</span>{" "}
-                      <span className="font-medium">{p.part_name}</span>
+                      <span>
+                        <span className="font-mono text-xs text-muted-foreground">[{p.part_code}]</span>{" "}
+                        <span className="font-medium">{p.part_name}</span>
+                      </span>
+                      <span className="text-xs text-muted-foreground">재고: {p.quantity ?? 0} ({p.branch})</span>
                     </button>
                   ))}
                 </div>
