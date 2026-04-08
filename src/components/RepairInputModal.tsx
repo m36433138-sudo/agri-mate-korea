@@ -266,29 +266,53 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
     const like = `%${q}%`;
     const { data } = await supabase
-      .from("parts")
-      .select("*")
-      .or(`part_name.ilike.${like},part_number.ilike.${like}`)
-      .limit(10);
+      .from("inventory")
+      .select("id, part_code, part_name, quantity, branch")
+      .or(`part_code.ilike.${like},part_name.ilike.${like}`)
+      .order("part_code")
+      .limit(15);
 
     setPartResults(data || []);
   };
 
-  const addPart = (part: any) => {
-    const existing = partRows.findIndex((row) => row.part_id === part.id && !row.fromTemplate);
+  const addPart = async (inv: any) => {
+    // Find or create a matching record in the parts table (needed for FK)
+    const { data: existing } = await supabase
+      .from("parts")
+      .select("id, part_name, part_number, unit")
+      .eq("part_number", inv.part_code)
+      .maybeSingle();
 
-    if (existing >= 0) {
+    let partRecord: { id: string; part_name: string; part_number: string; unit: string };
+    if (existing) {
+      partRecord = { id: existing.id, part_name: existing.part_name, part_number: existing.part_number, unit: existing.unit || "개" };
+    } else {
+      const { data: created, error } = await supabase
+        .from("parts")
+        .insert({ part_name: inv.part_name, part_number: inv.part_code })
+        .select("id, part_name, part_number, unit")
+        .single();
+      if (error || !created) {
+        toast({ title: "부품 등록 오류", description: error?.message, variant: "destructive" });
+        return;
+      }
+      partRecord = { id: created.id, part_name: created.part_name, part_number: created.part_number, unit: created.unit || "개" };
+    }
+
+    const existingIndex = partRows.findIndex((row) => row.part_id === partRecord.id && !row.fromTemplate);
+
+    if (existingIndex >= 0) {
       setPartRows((prev) =>
-        prev.map((row, index) => (index === existing ? { ...row, quantity: row.quantity + 1 } : row)),
+        prev.map((row, index) => (index === existingIndex ? { ...row, quantity: row.quantity + 1 } : row)),
       );
     } else {
       setPartRows((prev) => [
         ...prev,
         {
-          part_id: part.id,
-          part_name: part.part_name,
-          part_number: part.part_number,
-          unit: part.unit || "개",
+          part_id: partRecord.id,
+          part_name: partRecord.part_name,
+          part_number: partRecord.part_number,
+          unit: partRecord.unit,
           quantity: 1,
         },
       ]);
@@ -649,11 +673,13 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                           <button
                             key={part.id}
                             onClick={() => addPart(part)}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
                           >
-                            <span className="font-mono text-xs text-muted-foreground">[{part.part_number}]</span>{" "}
-                            <span className="font-medium">{part.part_name}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({part.unit})</span>
+                            <span>
+                              <span className="font-mono text-xs text-muted-foreground">[{part.part_code}]</span>{" "}
+                              <span className="font-medium">{part.part_name}</span>
+                            </span>
+                            <span className="text-xs text-muted-foreground">재고: {part.quantity ?? 0} ({part.branch})</span>
                           </button>
                         ))}
                       </div>
