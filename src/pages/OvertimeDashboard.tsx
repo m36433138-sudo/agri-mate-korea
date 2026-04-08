@@ -351,7 +351,10 @@ export default function OvertimeDashboard() {
         ))}
       </div>
 
-      {/* Confirm Dialog */}
+      {/* Technician Map */}
+      <TechnicianMap />
+
+
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
