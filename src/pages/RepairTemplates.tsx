@@ -152,12 +152,12 @@ function TemplateDialog({ open, onOpenChange, templateId }: { open: boolean; onO
   const [partRows, setPartRows] = useState<PartRow[]>([]);
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState<any[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [loadedId, setLoadedId] = useState<string | null>(null);
 
   // Load template data if editing
   useQuery({
     queryKey: ["template-detail", templateId],
-    enabled: !!templateId && open,
+    enabled: !!templateId && open && loadedId !== templateId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("repair_templates")
@@ -165,21 +165,19 @@ function TemplateDialog({ open, onOpenChange, templateId }: { open: boolean; onO
         .eq("id", templateId!)
         .single();
       if (error) throw error;
-      if (!loaded) {
-        setName(data.template_name);
-        setDescription(data.description || "");
-        setPartRows(
-          (data.repair_template_items as any[]).map((item: any) => ({
-            part_id: item.part_id,
-            part_name: item.parts?.part_name || "",
-            part_number: item.parts?.part_number || "",
-            unit: item.parts?.unit || "개",
-            quantity: item.quantity,
-            notes: item.notes || "",
-          }))
-        );
-        setLoaded(true);
-      }
+      setName(data.template_name);
+      setDescription(data.description || "");
+      setPartRows(
+        (data.repair_template_items as any[]).map((item: any) => ({
+          part_id: item.part_id,
+          part_name: item.parts?.part_name || "",
+          part_number: item.parts?.part_number || "",
+          unit: item.parts?.unit || "개",
+          quantity: item.quantity,
+          notes: item.notes || "",
+        }))
+      );
+      setLoadedId(templateId);
       return data;
     },
   });
@@ -191,7 +189,7 @@ function TemplateDialog({ open, onOpenChange, templateId }: { open: boolean; onO
     setDescription("");
     setPartRows([]);
     setPartSearch("");
-    setLoaded(false);
+    setLoadedId(null);
   };
 
   // Part search — searches inventory table (부품관리)
