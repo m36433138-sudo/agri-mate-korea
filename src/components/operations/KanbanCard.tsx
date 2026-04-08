@@ -1,5 +1,9 @@
+import { useState } from "react";
 import { SheetRow, getStatus, OperationStatus, getTechnicianColor, getMachineTypeColor, formatSheetDate, parseSheetDate } from "@/types/operations";
-import { AlertTriangle, CircleAlert, User, Wrench, ClipboardList, Pencil, ArrowRight, Package, FileText } from "lucide-react";
+import {
+  AlertTriangle, CircleAlert, Phone, MapPin, Wrench, Pencil, ArrowRight,
+  Package, FileText, ChevronDown, ChevronUp, Tractor, User,
+} from "lucide-react";
 import { RepairNote } from "@/hooks/useRepairNotes";
 
 const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: OperationStatus | "완료" } | null> = {
@@ -11,12 +15,12 @@ const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: Operati
   보류: null,
 };
 
-const TRANSITION_COLORS: Record<string, string> = {
-  입고완료: "text-yellow-700 border-yellow-300 hover:bg-yellow-50",
-  수리시작: "text-blue-700 border-blue-300 hover:bg-blue-50",
-  수리완료: "text-teal-700 border-teal-300 hover:bg-teal-50",
-  "출고대기로": "text-green-700 border-green-300 hover:bg-green-50",
-  출고완료: "text-emerald-700 border-emerald-300 hover:bg-emerald-50",
+const TRANSITION_STYLE: Record<string, string> = {
+  입고완료:    "text-amber-700  bg-amber-50   border-amber-200  hover:bg-amber-100",
+  수리시작:    "text-blue-700   bg-blue-50    border-blue-200   hover:bg-blue-100",
+  수리완료:    "text-teal-700   bg-teal-50    border-teal-200   hover:bg-teal-100",
+  "출고대기로": "text-green-700  bg-green-50   border-green-200  hover:bg-green-100",
+  출고완료:    "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
 };
 
 interface Props {
@@ -35,6 +39,7 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
   const machineColor = getMachineTypeColor(row.기계);
   const transition = STATUS_TRANSITIONS[status];
   const now = Date.now();
+  const [reqOpen, setReqOpen] = useState(false);
 
   const pendingNotes = notes.filter(n => !n.is_done);
   const doneNotes = notes.filter(n => n.is_done);
@@ -51,102 +56,174 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
 
   return (
     <div
-      className="bg-white rounded-xl shadow-sm border border-border/60 p-3.5 space-y-2 transition-shadow hover:shadow-md"
-      style={{ borderLeftWidth: 4, borderLeftColor: color }}
+      className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-border/50 overflow-hidden"
+      style={{ borderLeftWidth: 5, borderLeftColor: color }}
     >
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${machineColor.bg} ${machineColor.text}`}>
-          {row.기계 || "기타"}
+      {/* ── 상단: 지점 + 경고 + 액션 버튼 ── */}
+      <div className="flex items-center gap-1.5 px-3.5 pt-3 pb-0">
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${
+          row._branch === "장흥"
+            ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+            : "bg-violet-50 text-violet-700 ring-violet-600/20"
+        }`}>
+          {row._branch}
         </span>
-        {row.품목 && <span className="text-xs text-muted-foreground">{row.품목}</span>}
-        {showEntryWarning && <AlertTriangle className="h-3.5 w-3.5 text-orange-500 ml-auto" />}
-        {showExitWarning && <CircleAlert className="h-3.5 w-3.5 text-red-500 ml-auto" />}
-        <div className="ml-auto flex items-center gap-1">
-          {/* 수리내역 버튼 */}
+        {showEntryWarning && (
+          <span className="flex items-center gap-0.5 text-[10px] text-orange-600 font-medium">
+            <AlertTriangle className="h-3 w-3" /> 장기입고
+          </span>
+        )}
+        {showExitWarning && (
+          <span className="flex items-center gap-0.5 text-[10px] text-red-600 font-medium">
+            <CircleAlert className="h-3 w-3" /> 출고지연
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-0.5">
+          {/* 수리내역 */}
           {onRepairDraft && (status === "수리중" || status === "수리완료" || status === "수리대기") && (
             <button
               onClick={() => onRepairDraft(row)}
-              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-md transition-colors hover:bg-blue-50 ${hasDraft ? "text-blue-600" : "text-muted-foreground/40"}`}
+              className={`p-1.5 rounded-lg transition-colors ${hasDraft ? "text-blue-600 bg-blue-50 hover:bg-blue-100" : "text-muted-foreground/40 hover:bg-muted/50"}`}
               title="수리내역 기록"
             >
               <FileText className="h-3.5 w-3.5" />
-              {hasDraft && <span className="text-[10px] font-bold">●</span>}
             </button>
           )}
-          {/* 조달 뱃지 */}
+          {/* 조달 */}
           {onNotes && (
             <button
               onClick={() => onNotes(row)}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md transition-colors hover:bg-orange-50"
+              className={`p-1.5 rounded-lg transition-colors relative ${pendingNotes.length > 0 ? "text-orange-500 bg-orange-50 hover:bg-orange-100" : "text-muted-foreground/40 hover:bg-muted/50"}`}
               title="조달/필요사항"
             >
-              <Package className={`h-3.5 w-3.5 ${pendingNotes.length > 0 ? "text-orange-500" : "text-muted-foreground/40"}`} />
+              <Package className="h-3.5 w-3.5" />
               {pendingNotes.length > 0 && (
-                <span className="text-[10px] font-bold text-orange-500 tabular-nums">{pendingNotes.length}</span>
-              )}
-              {pendingNotes.length === 0 && doneNotes.length > 0 && (
-                <span className="text-[10px] text-muted-foreground/40">✓</span>
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-orange-500 text-white rounded-full text-[8px] font-bold flex items-center justify-center">
+                  {pendingNotes.length}
+                </span>
               )}
             </button>
           )}
+          {/* 수정 */}
           {onEdit && (
-            <button onClick={() => onEdit(row)} className="p-1 rounded hover:bg-muted/50 transition-colors" title="수정">
+            <button onClick={() => onEdit(row)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors" title="수정">
               <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <User className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-lg font-bold text-foreground truncate">{row.손님성명}</span>
-      </div>
+      {/* ── 핵심 정보 영역 ── */}
+      <div className="px-3.5 pt-2.5 pb-3 space-y-2.5">
 
-      {row.수리기사 && (
-        <div className="flex items-center gap-1.5">
-          <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          <span
-            className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium text-white"
-            style={{ backgroundColor: getTechnicianColor(row.수리기사) }}
-          >
-            {row.수리기사}
+        {/* 성함 — 가장 크게 */}
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <User className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-xl font-extrabold text-foreground tracking-tight leading-none">
+            {row.손님성명}
           </span>
         </div>
-      )}
 
-      {row.손님요구사항 && (
-        <div className="flex items-start gap-1.5">
-          <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-sm text-foreground leading-snug whitespace-pre-wrap">{row.손님요구사항}</p>
+        {/* 기계 + 품목 */}
+        <div className="flex items-start gap-2">
+          <div className="w-8 flex justify-center shrink-0 pt-0.5">
+            <Tractor className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-bold ${machineColor.bg} ${machineColor.text}`}>
+                {row.기계 || "기타"}
+              </span>
+              {row.품목 && (
+                <span className="text-base font-semibold text-foreground truncate">
+                  {row.품목}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-      )}
 
-      {row.입력자 && (
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">입력: {row.입력자}</span>
-        </div>
-      )}
+        {/* 전화번호 */}
+        {row.전화번호 && (
+          <div className="flex items-center gap-2">
+            <div className="w-8 flex justify-center shrink-0">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <a href={`tel:${row.전화번호}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors tabular-nums">
+              {row.전화번호}
+            </a>
+          </div>
+        )}
 
-      <div className="border-t border-border/40 pt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-        <div className="flex gap-3">
-          {row.입고일 && <span>입고 {formatSheetDate(row.입고일)}</span>}
-          {row.수리완료일 && <span>완료 {formatSheetDate(row.수리완료일)}</span>}
+        {/* 주소 */}
+        {row.주소 && (
+          <div className="flex items-start gap-2">
+            <div className="w-8 flex justify-center shrink-0 pt-0.5">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span className="text-sm text-foreground leading-snug">{row.주소}</span>
+          </div>
+        )}
+
+        {/* 수리기사 */}
+        {row.수리기사 && (
+          <div className="flex items-center gap-2">
+            <div className="w-8 flex justify-center shrink-0">
+              <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span
+              className="inline-flex items-center rounded-lg px-2.5 py-0.5 text-xs font-bold text-white"
+              style={{ backgroundColor: getTechnicianColor(row.수리기사) }}
+            >
+              {row.수리기사}
+            </span>
+          </div>
+        )}
+
+        {/* 손님 요구사항 — 토글 */}
+        {row.손님요구사항 && (
+          <div>
+            <button
+              onClick={() => setReqOpen(v => !v)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {reqOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              손님 요구사항
+            </button>
+            {reqOpen && (
+              <div className="mt-1.5 ml-1 pl-3 border-l-2 border-muted text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {row.손님요구사항}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 날짜 + 입력자 */}
+        <div className="flex items-center justify-between pt-0.5 border-t border-border/40">
+          <div className="flex gap-3 text-[11px] text-muted-foreground">
+            {row.입고일 && <span>입고 {formatSheetDate(row.입고일)}</span>}
+            {row.수리완료일 && <span>완료 {formatSheetDate(row.수리완료일)}</span>}
+            {row.출고일 && <span>출고 {formatSheetDate(row.출고일)}</span>}
+          </div>
+          {row.입력자 && (
+            <span className="text-[11px] text-muted-foreground/60">{row.입력자}</span>
+          )}
         </div>
-        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
-          row._branch === "장흥" ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20" : "bg-violet-50 text-violet-700 ring-violet-600/20"
-        }`}>
-          {row._branch}
-        </span>
       </div>
 
+      {/* ── 상태 전환 버튼 ── */}
       {transition && (
-        <button
-          onClick={() => onMarkComplete(row)}
-          className={`w-full mt-1 text-xs font-medium py-1.5 rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${TRANSITION_COLORS[transition.label] || "text-muted-foreground border-border hover:bg-muted/50"}`}
-        >
-          {transition.label}
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        <div className="px-3.5 pb-3">
+          <button
+            onClick={() => onMarkComplete(row)}
+            className={`w-full text-sm font-semibold py-2 rounded-xl border flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${TRANSITION_STYLE[transition.label] || "text-muted-foreground border-border hover:bg-muted/50"}`}
+          >
+            {transition.label}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
       )}
     </div>
   );
