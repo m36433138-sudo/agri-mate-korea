@@ -359,6 +359,10 @@ export default function OvertimeDashboard() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               현재 시간으로 {confirmAction?.type === "in" ? "출근" : "퇴근"}을 기록하시겠습니까?
+              <span className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" />
+                위치 정보도 함께 기록됩니다
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
