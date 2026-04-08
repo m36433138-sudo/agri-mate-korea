@@ -102,6 +102,37 @@ const reorderList = <T,>(items: T[], fromIndex: number, toIndex: number) => {
 export default function RepairInputModal({ open, onOpenChange, machineId, machineName, draftPrefill, onDraftFinalized }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startY = useRef(0);
+  const startScroll = useRef(0);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("input, textarea, button, [draggable='true'], select, [role='combobox']")) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    startY.current = e.clientY;
+    startScroll.current = el.scrollTop;
+    el.style.cursor = "grabbing";
+    el.style.userSelect = "none";
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    const dy = e.clientY - startY.current;
+    scrollRef.current.scrollTop = startScroll.current - dy;
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+    const el = scrollRef.current;
+    if (el) {
+      el.style.cursor = "grab";
+      el.style.userSelect = "";
+    }
+  }, []);
 
   const [repairDate, setRepairDate] = useState(new Date().toISOString().split("T")[0]);
   const [repairContent, setRepairContent] = useState("");
