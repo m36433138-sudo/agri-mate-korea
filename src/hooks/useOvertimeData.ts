@@ -2,6 +2,49 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCallback } from "react";
 
+export interface GeoPosition {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+}
+
+function getCurrentPosition(): Promise<GeoPosition> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("이 브라우저는 위치 서비스를 지원하지 않습니다."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        }),
+      (err) => {
+        const messages: Record<number, string> = {
+          1: "위치 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.",
+          2: "위치 정보를 가져올 수 없습니다.",
+          3: "위치 요청 시간이 초과되었습니다.",
+        };
+        reject(new Error(messages[err.code] || "위치를 가져올 수 없습니다."));
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+}
+
+async function saveLocation(techName: string, action: "clock_in" | "clock_out", position: GeoPosition) {
+  const { error } = await supabase.from("technician_locations").insert({
+    technician_name: techName,
+    action,
+    latitude: position.latitude,
+    longitude: position.longitude,
+    accuracy: position.accuracy,
+  });
+  if (error) console.error("위치 저장 실패:", error);
+}
+
 const TECHNICIANS = ["유호상", "마성수", "김영일", "이재현", "이동진", "주희로"] as const;
 export type TechnicianName = (typeof TECHNICIANS)[number];
 export { TECHNICIANS };
