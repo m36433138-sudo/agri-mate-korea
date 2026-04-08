@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
-import { Trash2, Save, Plus, Package, Wrench, ArrowRightCircle } from "lucide-react";
+import { Trash2, Save, Plus, Package, Wrench, ArrowRightCircle, ArrowUp, ArrowDown } from "lucide-react";
 import type { DraftPrefill } from "@/components/RepairInputModal";
 
 interface Props {
