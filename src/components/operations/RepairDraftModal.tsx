@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
-import { Trash2, Save, Plus, Package, Wrench, ArrowRightCircle, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, Save, Plus, Package, Wrench, ArrowRightCircle, GripVertical } from "lucide-react";
 import type { DraftPrefill } from "@/components/RepairInputModal";
 
 interface Props {
@@ -22,6 +22,13 @@ interface Props {
   row: SheetRow;
   onTransferToRepair?: (prefill: DraftPrefill) => void;
 }
+
+const reorderList = <T,>(items: T[], fromIndex: number, toIndex: number) => {
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+};
 
 export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Props) {
   const { fetchDraftWithParts, upsertDraft, addDraftPart, removeDraftPart } = useRepairDrafts();
@@ -36,8 +43,8 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
   const [laborCost, setLaborCost] = useState(0);
   const [operatingHours, setOperatingHours] = useState<number | null>(null);
   const [technician, setTechnician] = useState(row.수리기사 || "");
+  const [draggedPartIndex, setDraggedPartIndex] = useState<number | null>(null);
 
-  // New part form
   const [newPartName, setNewPartName] = useState("");
   const [newPartCode, setNewPartCode] = useState("");
   const [newPartQty, setNewPartQty] = useState(1);
@@ -62,12 +69,13 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
         setOperatingHours(null);
         setTechnician(row.수리기사 || "");
       }
+      setDraggedPartIndex(null);
     } catch {
       toast({ title: "불러오기 실패", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [row._branch, row._rowIndex, row.수리기사]);
+  }, [fetchDraftWithParts, row._branch, row._rowIndex, row.수리기사, toast]);
 
   useEffect(() => {
     if (open) loadDraft();
@@ -87,7 +95,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
         labor_cost: laborCost,
         operating_hours: operatingHours,
       });
-      setDraft(prev => prev ? { ...prev, ...result } : result as RepairDraft);
+      setDraft((prev) => (prev ? { ...prev, ...result } : result as RepairDraft));
       toast({ title: "임시 저장 완료" });
     } catch (err: any) {
       toast({ title: "저장 실패", description: err.message, variant: "destructive" });
@@ -101,7 +109,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
       toast({ title: "부품명을 입력하세요", variant: "destructive" });
       return;
     }
-    // Ensure draft exists first
+
     let draftId = draft?.id;
     if (!draftId) {
       const result = await upsertDraft.mutateAsync({
@@ -118,6 +126,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
       draftId = result.id;
       setDraft(result as RepairDraft);
     }
+
     try {
       await addDraftPart.mutateAsync({
         draft_id: draftId,
@@ -126,7 +135,6 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
         quantity: newPartQty,
         unit_price: newPartPrice,
       });
-      // Reload parts
       const updated = await fetchDraftWithParts(row._branch, row._rowIndex);
       if (updated) setParts(updated.parts || []);
       setNewPartName("");
@@ -142,7 +150,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
   const handleRemovePart = async (id: string) => {
     try {
       await removeDraftPart.mutateAsync(id);
-      setParts(prev => prev.filter(p => p.id !== id));
+      setParts((prev) => prev.filter((part) => part.id !== id));
     } catch {
       toast({ title: "삭제 실패", variant: "destructive" });
     }
@@ -153,11 +161,21 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
     setNewPartName(item.part_name);
   };
 
-  const partsCost = parts.reduce((sum, p) => sum + p.quantity * p.unit_price, 0);
+  const handlePartDrop = (dropIndex: number) => {
+    if (draggedPartIndex === null || draggedPartIndex === dropIndex) {
+      setDraggedPartIndex(null);
+      return;
+    }
+
+    setParts((prev) => reorderList(prev, draggedPartIndex, dropIndex));
+    setDraggedPartIndex(null);
+  };
+
+  const partsCost = parts.reduce((sum, part) => sum + part.quantity * part.unit_price, 0);
   const totalCost = partsCost + laborCost;
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -170,7 +188,6 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
           <div className="py-8 text-center text-muted-foreground">불러오는 중...</div>
         ) : (
           <div className="space-y-4">
-            {/* 기본 정보 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">기계</Label>
@@ -183,11 +200,10 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                     <SelectValue placeholder="기사 선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    {technicians.map(t => (
-                      <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                    {technicians.map((item) => (
+                      <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
                     ))}
-                    {/* 기존에 입력된 기사가 목록에 없을 때 */}
-                    {technician && !technicians.find(t => t.name === technician) && (
+                    {technician && !technicians.find((item) => item.name === technician) && (
                       <SelectItem value={technician}>{technician} (기존)</SelectItem>
                     )}
                   </SelectContent>
@@ -198,19 +214,18 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                 <Input
                   type="number"
                   value={operatingHours ?? ""}
-                  onChange={e => setOperatingHours(e.target.value ? Number(e.target.value) : null)}
+                  onChange={(e) => setOperatingHours(e.target.value ? Number(e.target.value) : null)}
                   placeholder="예: 1500"
                   className="h-9"
                 />
               </div>
             </div>
 
-            {/* 수리 내역 */}
             <div>
               <Label className="text-xs">수리 내역</Label>
               <Textarea
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 placeholder="수리 내용을 기록하세요..."
               />
@@ -218,59 +233,49 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
 
             <Separator />
 
-            {/* 사용 부품 목록 */}
             <div>
-              <Label className="text-xs font-semibold flex items-center gap-1.5 mb-2">
-                <Package className="h-3.5 w-3.5" /> 사용 부품
-              </Label>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <Package className="h-3.5 w-3.5" /> 사용 부품
+                </Label>
+                {parts.length > 0 && (
+                  <span className="text-[11px] text-muted-foreground">핸들을 드래그해서 순서를 바꿀 수 있습니다</span>
+                )}
+              </div>
 
               {parts.length > 0 && (
-                <div className="space-y-1.5 mb-3 max-h-[200px] overflow-y-auto">
-                  {parts.map((p, idx) => (
-                    <div key={p.id} className="flex items-center gap-1.5 bg-muted/40 rounded-lg px-2 py-2 text-sm">
-                      <div className="flex flex-col gap-0.5 shrink-0">
-                        <button
-                          onClick={() => {
-                            if (idx === 0) return;
-                            setParts(prev => {
-                              const arr = [...prev];
-                              [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
-                              return arr;
-                            });
-                          }}
-                          disabled={idx === 0}
-                          className="p-0.5 hover:bg-accent rounded disabled:opacity-30"
-                        >
-                          <ArrowUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (idx === parts.length - 1) return;
-                            setParts(prev => {
-                              const arr = [...prev];
-                              [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
-                              return arr;
-                            });
-                          }}
-                          disabled={idx === parts.length - 1}
-                          className="p-0.5 hover:bg-accent rounded disabled:opacity-30"
-                        >
-                          <ArrowDown className="h-3 w-3" />
-                        </button>
+                <div className="space-y-1.5 mb-3 max-h-[220px] overflow-y-auto">
+                  {parts.map((part, index) => (
+                    <div
+                      key={part.id}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => handlePartDrop(index)}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                        draggedPartIndex === index ? "bg-accent/60 border-primary/30" : "bg-muted/40"
+                      }`}
+                    >
+                      <div
+                        draggable
+                        onDragStart={() => setDraggedPartIndex(index)}
+                        onDragEnd={() => setDraggedPartIndex(null)}
+                        className="shrink-0 cursor-grab rounded-md p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
+                        title="드래그하여 순서 변경"
+                      >
+                        <GripVertical className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        {p.part_code && (
-                          <span className="font-mono text-xs text-muted-foreground">[{p.part_code}] </span>
+                        {part.part_code && (
+                          <span className="font-mono text-xs text-muted-foreground">[{part.part_code}] </span>
                         )}
-                        <span className="font-medium">{p.part_name}</span>
+                        <span className="font-medium">{part.part_name}</span>
                       </div>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {p.quantity}개 × {p.unit_price.toLocaleString()}원
+                        {part.quantity}개 × {part.unit_price.toLocaleString()}원
                       </span>
                       <span className="text-xs font-medium whitespace-nowrap">
-                        = {(p.quantity * p.unit_price).toLocaleString()}원
+                        = {(part.quantity * part.unit_price).toLocaleString()}원
                       </span>
-                      <button onClick={() => handleRemovePart(p.id)} className="p-1 hover:bg-destructive/10 rounded">
+                      <button onClick={() => handleRemovePart(part.id)} className="p-1 hover:bg-destructive/10 rounded">
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </button>
                     </div>
@@ -278,7 +283,6 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                 </div>
               )}
 
-              {/* 부품 추가 폼 */}
               <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
                 <p className="text-xs font-medium text-muted-foreground">부품 추가</p>
                 <PartCodeAutocomplete
@@ -290,7 +294,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                   <div>
                     <Input
                       value={newPartCode}
-                      onChange={e => setNewPartCode(e.target.value)}
+                      onChange={(e) => setNewPartCode(e.target.value)}
                       placeholder="부품코드"
                       className="h-8 text-xs"
                     />
@@ -298,7 +302,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                   <div>
                     <Input
                       value={newPartName}
-                      onChange={e => setNewPartName(e.target.value)}
+                      onChange={(e) => setNewPartName(e.target.value)}
                       placeholder="부품명 *"
                       className="h-8 text-xs"
                     />
@@ -309,7 +313,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                     <Input
                       type="number"
                       value={newPartQty}
-                      onChange={e => setNewPartQty(Number(e.target.value) || 1)}
+                      onChange={(e) => setNewPartQty(Number(e.target.value) || 1)}
                       placeholder="수량"
                       className="h-8 text-xs"
                       min={1}
@@ -319,7 +323,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                     <Input
                       type="number"
                       value={newPartPrice || ""}
-                      onChange={e => setNewPartPrice(Number(e.target.value) || 0)}
+                      onChange={(e) => setNewPartPrice(Number(e.target.value) || 0)}
                       placeholder="단가"
                       className="h-8 text-xs"
                     />
@@ -333,14 +337,13 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
 
             <Separator />
 
-            {/* 비용 요약 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">공임비</Label>
                 <Input
                   type="number"
                   value={laborCost || ""}
-                  onChange={e => setLaborCost(Number(e.target.value) || 0)}
+                  onChange={(e) => setLaborCost(Number(e.target.value) || 0)}
                   placeholder="공임비 (원)"
                 />
               </div>
@@ -367,13 +370,14 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
                   notes: `[작업현황판] ${row.손님성명} - ${row.기계} ${row.품목}`,
                   draftId: draft.id,
                   customerName: row.손님성명,
+                  customerPhone: row.전화번호,
                   machineType: row.기계,
                   model: row.품목,
-                  parts: parts.map(p => ({
-                    part_code: p.part_code || undefined,
-                    part_name: p.part_name,
-                    quantity: p.quantity,
-                    unit_price: p.unit_price,
+                  parts: parts.map((part) => ({
+                    part_code: part.part_code || undefined,
+                    part_name: part.part_name,
+                    quantity: part.quantity,
+                    unit_price: part.unit_price,
                   })),
                 };
                 onTransferToRepair(prefill);

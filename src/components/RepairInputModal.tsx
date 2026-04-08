@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Trash2, Search, ListChecks, X } from "lucide-react";
+import { Plus, Trash2, Search, ListChecks, X, GripVertical } from "lucide-react";
 import { formatPrice } from "@/lib/formatters";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -18,7 +18,7 @@ type PartRow = {
   part_number: string;
   unit: string;
   quantity: number;
-  fromTemplate?: string; // template id
+  fromTemplate?: string;
 };
 
 export type DraftPrefill = {
@@ -29,6 +29,7 @@ export type DraftPrefill = {
   draftId?: string;
   operatingHours?: number;
   customerName?: string;
+  customerPhone?: string;
   machineType?: string;
   model?: string;
   parts?: { part_code?: string; part_name: string; quantity: number; unit_price: number }[];
@@ -43,6 +44,61 @@ type Props = {
   onDraftFinalized?: (draftId: string) => void;
 };
 
+type MachineCandidate = {
+  id: string;
+  model_name: string;
+  serial_number: string;
+  machine_type: string | null;
+  customer_id: string | null;
+};
+
+const sanitizeToken = (value?: string | null) =>
+  (value || "").trim().replace(/[,%]/g, " ").replace(/\s+/g, " ");
+
+const normalizeText = (value?: string | null) =>
+  (value || "").replace(/[\s-]/g, "").toLowerCase();
+
+const getTextScore = (
+  source: string | null | undefined,
+  target: string | null | undefined,
+  exactPoints: number,
+  partialPoints: number,
+) => {
+  const sourceText = normalizeText(source);
+  const targetText = normalizeText(target);
+
+  if (!sourceText || !targetText) return 0;
+  if (sourceText === targetText) return exactPoints;
+  if (sourceText.includes(targetText) || targetText.includes(sourceText)) return partialPoints;
+  return 0;
+};
+
+const getMachineMatchScore = (
+  machine: MachineCandidate,
+  draftPrefill: DraftPrefill | null | undefined,
+  customerIds: Set<string>,
+) => {
+  let score = 0;
+
+  score += getTextScore(machine.serial_number, draftPrefill?.model, 120, 90);
+  score += getTextScore(machine.model_name, draftPrefill?.machineType, 100, 70);
+  score += getTextScore(machine.model_name, draftPrefill?.model, 60, 40);
+  score += getTextScore(machine.machine_type, draftPrefill?.machineType, 40, 25);
+
+  if (machine.customer_id && customerIds.has(machine.customer_id)) {
+    score += 80;
+  }
+
+  return score;
+};
+
+const reorderList = <T,>(items: T[], fromIndex: number, toIndex: number) => {
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+};
+
 export default function RepairInputModal({ open, onOpenChange, machineId, machineName, draftPrefill, onDraftFinalized }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -54,18 +110,16 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [operatingHours, setOperatingHours] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Machine search (if not pre-filled)
   const [machineSearch, setMachineSearch] = useState("");
   const [selectedMachineId, setSelectedMachineId] = useState(machineId || "");
   const [selectedMachineName, setSelectedMachineName] = useState(machineName || "");
   const [machineResults, setMachineResults] = useState<any[]>([]);
 
-  // Parts
   const [partRows, setPartRows] = useState<PartRow[]>([]);
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState<any[]>([]);
+  const [draggedPartIndex, setDraggedPartIndex] = useState<number | null>(null);
 
-  // Templates
   const [appliedTemplates, setAppliedTemplates] = useState<{ id: string; name: string }[]>([]);
 
   const { data: templates } = useQuery({
@@ -81,65 +135,20 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     },
   });
 
-  useEffect(() => {
-    if (open) {
-      setRepairDate(new Date().toISOString().split("T")[0]);
-      setRepairContent(draftPrefill?.repairContent || "");
-      setTechnician(draftPrefill?.technician || "");
-      setLaborCost(draftPrefill?.laborCost ? String(draftPrefill.laborCost) : "");
-      setOperatingHours(draftPrefill?.operatingHours ? String(draftPrefill.operatingHours) : "");
-      setNotes(draftPrefill?.notes || "");
-      // Prefill parts from draft
-      if (draftPrefill?.parts && draftPrefill.parts.length > 0) {
-        setPartRows(draftPrefill.parts.map((p, i) => ({
-          part_id: p.part_code || `draft-${i}`,
-          part_name: p.part_name,
-          part_number: p.part_code || "",
-          unit: "개",
-          quantity: p.quantity,
-        })));
-      } else {
-        setPartRows([]);
-      }
-      setPartSearch("");
-      setMachineSearch("");
-      setSelectedMachineId(machineId || "");
-      setSelectedMachineName(machineName || "");
-      setAppliedTemplates([]);
-
-      // Auto-search machine from draft prefill
-      if (!machineId && draftPrefill?.model) {
-        const searchModel = draftPrefill.model;
-        supabase
-          .from("machines")
-          .select("id, model_name, serial_number, customers(id, name)")
-          .ilike("model_name", `%${searchModel}%`)
-          .limit(5)
-          .then(({ data }) => {
-            if (data && data.length > 0) {
-              // Try to match by customer name too
-              const customerMatch = draftPrefill.customerName
-                ? data.find((m: any) => m.customers?.name === draftPrefill.customerName)
-                : null;
-              const picked = customerMatch || data[0];
-              setSelectedMachineId(picked.id);
-              setSelectedMachineName(`${picked.model_name} (${picked.serial_number})`);
-            }
-          });
-      }
-    }
-  }, [open, machineId, machineName, draftPrefill]);
-
-  // Machine search
   const searchMachines = async (q: string) => {
     setMachineSearch(q);
-    if (!q.trim()) { setMachineResults([]); return; }
+    if (!q.trim()) {
+      setMachineResults([]);
+      return;
+    }
+
     const like = `%${q}%`;
     const { data } = await supabase
       .from("machines")
-      .select("id, model_name, serial_number")
-      .or(`model_name.ilike.${like},serial_number.ilike.${like}`)
+      .select("id, model_name, serial_number, machine_type")
+      .or(`model_name.ilike.${like},serial_number.ilike.${like},machine_type.ilike.${like}`)
       .limit(8);
+
     setMachineResults(data || []);
   };
 
@@ -150,38 +159,147 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     setMachineResults([]);
   };
 
-  // Part search
+  useEffect(() => {
+    let cancelled = false;
+
+    if (open) {
+      const fallbackMachineQuery = [draftPrefill?.machineType, draftPrefill?.model].filter(Boolean).join(" ");
+
+      setRepairDate(new Date().toISOString().split("T")[0]);
+      setRepairContent(draftPrefill?.repairContent || "");
+      setTechnician(draftPrefill?.technician || "");
+      setLaborCost(draftPrefill?.laborCost ? String(draftPrefill.laborCost) : "");
+      setOperatingHours(draftPrefill?.operatingHours ? String(draftPrefill.operatingHours) : "");
+      setNotes(draftPrefill?.notes || "");
+      setPartRows(
+        draftPrefill?.parts?.length
+          ? draftPrefill.parts.map((p, i) => ({
+              part_id: p.part_code || `draft-${i}`,
+              part_name: p.part_name,
+              part_number: p.part_code || "",
+              unit: "개",
+              quantity: p.quantity,
+            }))
+          : [],
+      );
+      setPartSearch("");
+      setMachineSearch(machineId ? "" : fallbackMachineQuery);
+      setSelectedMachineId(machineId || "");
+      setSelectedMachineName(machineName || "");
+      setMachineResults([]);
+      setAppliedTemplates([]);
+      setDraggedPartIndex(null);
+
+      const resolveDraftMachine = async () => {
+        if (machineId || !draftPrefill) return;
+
+        const tokens = [draftPrefill.machineType, draftPrefill.model]
+          .map((token) => sanitizeToken(token))
+          .filter(Boolean);
+
+        if (tokens.length === 0) return;
+
+        let matchedCustomerIds = new Set<string>();
+
+        if (draftPrefill.customerName || draftPrefill.customerPhone) {
+          try {
+            const customerFilters: string[] = [];
+            const customerName = sanitizeToken(draftPrefill.customerName);
+            const customerPhone = sanitizeToken(draftPrefill.customerPhone);
+
+            if (customerName) customerFilters.push(`name.ilike.%${customerName}%`);
+            if (customerPhone) customerFilters.push(`phone.ilike.%${customerPhone}%`);
+
+            if (customerFilters.length > 0) {
+              const { data: customers } = await supabase
+                .from("customers")
+                .select("id")
+                .or(customerFilters.join(","))
+                .limit(10);
+
+              matchedCustomerIds = new Set((customers || []).map((customer) => customer.id));
+            }
+          } catch {
+            matchedCustomerIds = new Set<string>();
+          }
+        }
+
+        const machineFilters = tokens.flatMap((token) => [
+          `model_name.ilike.%${token}%`,
+          `serial_number.ilike.%${token}%`,
+          `machine_type.ilike.%${token}%`,
+        ]);
+
+        const { data, error } = await supabase
+          .from("machines")
+          .select("id, model_name, serial_number, machine_type, customer_id")
+          .or(machineFilters.join(","))
+          .limit(20);
+
+        if (cancelled || error || !data?.length) return;
+
+        const ranked = (data as MachineCandidate[])
+          .map((machine) => ({
+            machine,
+            score: getMachineMatchScore(machine, draftPrefill, matchedCustomerIds),
+          }))
+          .sort((a, b) => b.score - a.score);
+
+        if (!ranked[0] || ranked[0].score <= 0 || cancelled) return;
+        pickMachine(ranked[0].machine);
+      };
+
+      void resolveDraftMachine();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, machineId, machineName, draftPrefill]);
+
   const searchParts = async (q: string) => {
     setPartSearch(q);
-    if (!q.trim()) { setPartResults([]); return; }
+    if (!q.trim()) {
+      setPartResults([]);
+      return;
+    }
+
     const like = `%${q}%`;
     const { data } = await supabase
       .from("parts")
       .select("*")
       .or(`part_name.ilike.${like},part_number.ilike.${like}`)
       .limit(10);
+
     setPartResults(data || []);
   };
 
   const addPart = (part: any) => {
-    const existing = partRows.findIndex((r) => r.part_id === part.id && !r.fromTemplate);
+    const existing = partRows.findIndex((row) => row.part_id === part.id && !row.fromTemplate);
+
     if (existing >= 0) {
       setPartRows((prev) =>
-        prev.map((r, i) => (i === existing ? { ...r, quantity: r.quantity + 1 } : r))
+        prev.map((row, index) => (index === existing ? { ...row, quantity: row.quantity + 1 } : row)),
       );
     } else {
       setPartRows((prev) => [
         ...prev,
-        { part_id: part.id, part_name: part.part_name, part_number: part.part_number, unit: part.unit || "개", quantity: 1 },
+        {
+          part_id: part.id,
+          part_name: part.part_name,
+          part_number: part.part_number,
+          unit: part.unit || "개",
+          quantity: 1,
+        },
       ]);
     }
+
     setPartSearch("");
     setPartResults([]);
   };
 
-  // Apply template
   const applyTemplate = (template: any) => {
-    if (appliedTemplates.some((t) => t.id === template.id)) return;
+    if (appliedTemplates.some((item) => item.id === template.id)) return;
 
     const items: PartRow[] = (template.repair_template_items || []).map((item: any) => ({
       part_id: item.parts?.id || item.part_id,
@@ -192,17 +310,21 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       fromTemplate: template.id,
     }));
 
-    // Merge: if same part exists from same template, sum quantities
     setPartRows((prev) => {
       const merged = [...prev];
+
       for (const item of items) {
-        const existingIdx = merged.findIndex((r) => r.part_id === item.part_id);
-        if (existingIdx >= 0) {
-          merged[existingIdx] = { ...merged[existingIdx], quantity: merged[existingIdx].quantity + item.quantity };
+        const existingIndex = merged.findIndex((row) => row.part_id === item.part_id);
+        if (existingIndex >= 0) {
+          merged[existingIndex] = {
+            ...merged[existingIndex],
+            quantity: merged[existingIndex].quantity + item.quantity,
+          };
         } else {
           merged.push(item);
         }
       }
+
       return merged;
     });
 
@@ -210,21 +332,32 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   };
 
   const removeTemplate = (templateId: string) => {
-    setPartRows((prev) => prev.filter((r) => r.fromTemplate !== templateId));
-    setAppliedTemplates((prev) => prev.filter((t) => t.id !== templateId));
+    setPartRows((prev) => prev.filter((row) => row.fromTemplate !== templateId));
+    setAppliedTemplates((prev) => prev.filter((template) => template.id !== templateId));
   };
 
-  const updatePartRow = (i: number, field: keyof PartRow, value: any) => {
-    setPartRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  const updatePartRow = (index: number, field: keyof PartRow, value: any) => {
+    setPartRows((prev) => prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row)));
   };
 
-  const removePartRow = (i: number) => setPartRows((prev) => prev.filter((_, idx) => idx !== i));
+  const removePartRow = (index: number) => {
+    setPartRows((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
+  };
 
-  const totalCost = (parseInt(laborCost) || 0);
+  const handlePartDrop = (dropIndex: number) => {
+    if (draggedPartIndex === null || draggedPartIndex === dropIndex) {
+      setDraggedPartIndex(null);
+      return;
+    }
+
+    setPartRows((prev) => reorderList(prev, draggedPartIndex, dropIndex));
+    setDraggedPartIndex(null);
+  };
+
+  const totalCost = parseInt(laborCost) || 0;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Save repair
       const { data, error } = await supabase
         .from("repairs")
         .insert({
@@ -239,37 +372,49 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         })
         .select("id")
         .single();
+
       if (error) throw error;
 
-      // Save repair parts — resolve draft parts to valid part_id UUIDs
       if (partRows.length > 0) {
         const resolvedParts: { repair_id: string; part_id: string; quantity: number; notes: string | null }[] = [];
-        for (const r of partRows) {
-          let partId = r.part_id;
-          // If part_id looks like a draft placeholder or part_code (not a UUID), resolve it
+
+        for (const row of partRows) {
+          let partId = row.part_id;
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(partId);
+
           if (!isUuid) {
-            // Try to find by part_number (part_code)
             const { data: existing } = await supabase
               .from("parts")
               .select("id")
-              .eq("part_number", r.part_number || partId)
+              .eq("part_number", row.part_number || partId)
               .maybeSingle();
+
             if (existing) {
               partId = existing.id;
             } else {
-              // Create a new parts record
-              const { data: created, error: createErr } = await supabase
+              const { data: created, error: createError } = await supabase
                 .from("parts")
-                .insert({ part_number: r.part_number || partId, part_name: r.part_name, unit: r.unit || "개" })
+                .insert({
+                  part_number: row.part_number || partId,
+                  part_name: row.part_name,
+                  unit: row.unit || "개",
+                })
                 .select("id")
                 .single();
-              if (createErr) throw createErr;
+
+              if (createError) throw createError;
               partId = created.id;
             }
           }
-          resolvedParts.push({ repair_id: data.id, part_id: partId, quantity: r.quantity, notes: null });
+
+          resolvedParts.push({
+            repair_id: data.id,
+            part_id: partId,
+            quantity: row.quantity,
+            notes: null,
+          });
         }
+
         const { error: partsError } = await supabase.from("repair_parts").insert(resolvedParts);
         if (partsError) throw partsError;
       }
@@ -278,14 +423,15 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       qc.invalidateQueries({ queryKey: ["repairs"] });
       qc.invalidateQueries({ queryKey: ["all-repairs"] });
       qc.invalidateQueries({ queryKey: ["repairs-recent"] });
-      // Finalize draft if exists
+
       if (draftPrefill?.draftId && onDraftFinalized) {
         onDraftFinalized(draftPrefill.draftId);
       }
+
       toast({ title: "수리 이력이 저장되었습니다." });
       onOpenChange(false);
     },
-    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+    onError: (error: any) => toast({ title: "오류", description: error.message, variant: "destructive" }),
   });
 
   const valid = selectedMachineId && repairDate && repairContent;
@@ -299,11 +445,31 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-5">
-            {/* Section A: Basic Info */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-muted-foreground">기본 정보</h3>
 
-              {/* Machine selection */}
+              {draftPrefill?.customerName && !machineId && (
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <Label className="text-xs">고객</Label>
+                      <p className="text-sm font-medium">{draftPrefill.customerName}</p>
+                      {draftPrefill.customerPhone && (
+                        <p className="text-xs text-muted-foreground">{draftPrefill.customerPhone}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-xs">작업표 기계</Label>
+                      <p className="text-sm font-medium">{draftPrefill.machineType || "-"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs">작업표 품목</Label>
+                      <p className="text-sm font-medium">{draftPrefill.model || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {machineId ? (
                 <div>
                   <Label>기계</Label>
@@ -315,7 +481,16 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                   {selectedMachineId ? (
                     <div className="flex items-center gap-2">
                       <Input value={selectedMachineName} disabled className="bg-muted flex-1" />
-                      <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => { setSelectedMachineId(""); setSelectedMachineName(""); }}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => {
+                          setSelectedMachineId("");
+                          setSelectedMachineName("");
+                          setMachineSearch([draftPrefill?.machineType, draftPrefill?.model].filter(Boolean).join(" "));
+                        }}
+                      >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -324,7 +499,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="모델명 또는 제조번호 검색..."
+                          placeholder="모델명, 제조번호, 기종 검색..."
                           value={machineSearch}
                           onChange={(e) => searchMachines(e.target.value)}
                           className="pl-9"
@@ -332,10 +507,19 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                       </div>
                       {machineResults.length > 0 && (
                         <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
-                          {machineResults.map((m) => (
-                            <button key={m.id} onClick={() => pickMachine(m)} className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors">
-                              <span className="font-medium">{m.model_name}</span>
-                              <span className="ml-2 text-xs text-muted-foreground font-mono">{m.serial_number}</span>
+                          {machineResults.map((machine) => (
+                            <button
+                              key={machine.id}
+                              onClick={() => pickMachine(machine)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{machine.model_name}</span>
+                                {machine.machine_type && (
+                                  <span className="text-xs text-muted-foreground">{machine.machine_type}</span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground font-mono">{machine.serial_number}</span>
                             </button>
                           ))}
                         </div>
@@ -358,7 +542,12 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
               <div>
                 <Label>수리 내용 *</Label>
-                <Textarea value={repairContent} onChange={(e) => setRepairContent(e.target.value)} placeholder="수리 내용을 입력하세요" rows={2} />
+                <Textarea
+                  value={repairContent}
+                  onChange={(e) => setRepairContent(e.target.value)}
+                  placeholder="수리 내용을 입력하세요"
+                  rows={2}
+                />
               </div>
 
               <div>
@@ -367,22 +556,28 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               </div>
               <div>
                 <Label>사용시간 (Hr)</Label>
-                <Input type="number" value={operatingHours} onChange={(e) => setOperatingHours(e.target.value)} placeholder="예: 1500" />
+                <Input
+                  type="number"
+                  value={operatingHours}
+                  onChange={(e) => setOperatingHours(e.target.value)}
+                  placeholder="예: 1500"
+                />
               </div>
             </div>
 
-            {/* Section B: Parts */}
             <div className="space-y-3 pt-4 border-t">
               <h3 className="text-sm font-semibold text-muted-foreground">사용 부품</h3>
 
-              {/* Applied template chips */}
               {appliedTemplates.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {appliedTemplates.map((t) => (
-                    <span key={t.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                  {appliedTemplates.map((template) => (
+                    <span
+                      key={template.id}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium"
+                    >
                       <ListChecks className="h-3 w-3" />
-                      {t.name}
-                      <button onClick={() => removeTemplate(t.id)} className="hover:bg-primary/20 rounded-full p-0.5">
+                      {template.name}
+                      <button onClick={() => removeTemplate(template.id)} className="hover:bg-primary/20 rounded-full p-0.5">
                         <X className="h-3 w-3" />
                       </button>
                     </span>
@@ -401,12 +596,13 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                     <p className="text-sm text-muted-foreground text-center py-4">등록된 템플릿이 없습니다.</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {templates.map((t: any) => {
-                        const applied = appliedTemplates.some((a) => a.id === t.id);
+                      {templates.map((template: any) => {
+                        const applied = appliedTemplates.some((item) => item.id === template.id);
+
                         return (
                           <button
-                            key={t.id}
-                            onClick={() => !applied && applyTemplate(t)}
+                            key={template.id}
+                            onClick={() => !applied && applyTemplate(template)}
                             disabled={applied}
                             className={`text-left p-3 rounded-lg border transition-colors ${
                               applied ? "bg-primary/5 border-primary/30 opacity-60" : "hover:bg-accent hover:border-primary/20"
@@ -414,10 +610,13 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                           >
                             <p className="text-sm font-medium flex items-center gap-1.5">
                               <ListChecks className="h-3.5 w-3.5 text-primary" />
-                              {t.template_name}
+                              {template.template_name}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              {(t.repair_template_items || []).map((item: any) => item.parts?.part_name).filter(Boolean).join(", ") || "부품 없음"}
+                              {(template.repair_template_items || [])
+                                .map((item: any) => item.parts?.part_name)
+                                .filter(Boolean)
+                                .join(", ") || "부품 없음"}
                             </p>
                           </button>
                         );
@@ -437,15 +636,15 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                     />
                     {partResults.length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
-                        {partResults.map((p: any) => (
+                        {partResults.map((part: any) => (
                           <button
-                            key={p.id}
-                            onClick={() => addPart(p)}
+                            key={part.id}
+                            onClick={() => addPart(part)}
                             className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
                           >
-                            <span className="font-mono text-xs text-muted-foreground">[{p.part_number}]</span>{" "}
-                            <span className="font-medium">{p.part_name}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({p.unit})</span>
+                            <span className="font-mono text-xs text-muted-foreground">[{part.part_number}]</span>{" "}
+                            <span className="font-medium">{part.part_name}</span>
+                            <span className="text-xs text-muted-foreground ml-1">({part.unit})</span>
                           </button>
                         ))}
                       </div>
@@ -459,12 +658,30 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                 </TabsContent>
               </Tabs>
 
-              {/* Combined parts list */}
               {partRows.length > 0 && (
                 <div className="space-y-2 mt-3">
-                  <Label className="text-xs text-muted-foreground">사용 부품 목록 ({partRows.length}건)</Label>
-                  {partRows.map((row, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs text-muted-foreground">사용 부품 목록 ({partRows.length}건)</Label>
+                    <span className="text-[11px] text-muted-foreground">핸들을 드래그해서 순서를 바꿀 수 있습니다</span>
+                  </div>
+                  {partRows.map((row, index) => (
+                    <div
+                      key={`${row.part_id}-${index}`}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => handlePartDrop(index)}
+                      className={`flex items-center gap-2 p-2 rounded-md border ${
+                        draggedPartIndex === index ? "bg-accent/60 border-primary/30" : "bg-muted/50"
+                      }`}
+                    >
+                      <div
+                        draggable
+                        onDragStart={() => setDraggedPartIndex(index)}
+                        onDragEnd={() => setDraggedPartIndex(null)}
+                        className="shrink-0 cursor-grab rounded-md p-1 text-muted-foreground hover:bg-accent active:cursor-grabbing"
+                        title="드래그하여 순서 변경"
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{row.part_name}</p>
                         <p className="text-xs text-muted-foreground font-mono">{row.part_number}</p>
@@ -472,12 +689,12 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                       <Input
                         type="number"
                         value={row.quantity}
-                        onChange={(e) => updatePartRow(i, "quantity", Number(e.target.value) || 1)}
+                        onChange={(e) => updatePartRow(index, "quantity", Number(e.target.value) || 1)}
                         className="w-20 h-8 text-sm text-center"
                         min={1}
                       />
                       <span className="text-xs text-muted-foreground w-8">{row.unit}</span>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removePartRow(i)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removePartRow(index)}>
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </div>
