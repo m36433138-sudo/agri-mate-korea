@@ -20,7 +20,6 @@ async function getAccessToken(): Promise<string> {
   if (!saJson) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not configured");
 
   const sa = JSON.parse(saJson);
-  const now = Math.floor(Date.now() / 1000);
 
   // Build JWT header and claim
   const header = { alg: "RS256", typ: "JWT" };
