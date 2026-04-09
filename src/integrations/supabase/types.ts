@@ -14,6 +14,167 @@ export type Database = {
   }
   public: {
     Tables: {
+      assets_equipment: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          purchase_date: string | null
+          purchase_price: number | null
+          serial_number: string | null
+          status: string
+          vendor: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          serial_number?: string | null
+          status?: string
+          vendor?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          serial_number?: string | null
+          status?: string
+          vendor?: string | null
+        }
+        Relationships: []
+      }
+      assets_properties: {
+        Row: {
+          address: string | null
+          area: number | null
+          area_unit: string
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          notes: string | null
+          property_type: string
+          purchase_date: string | null
+          purchase_price: number | null
+        }
+        Insert: {
+          address?: string | null
+          area?: number | null
+          area_unit?: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          notes?: string | null
+          property_type?: string
+          purchase_date?: string | null
+          purchase_price?: number | null
+        }
+        Update: {
+          address?: string | null
+          area?: number | null
+          area_unit?: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          notes?: string | null
+          property_type?: string
+          purchase_date?: string | null
+          purchase_price?: number | null
+        }
+        Relationships: []
+      }
+      assets_vehicle_maintenance: {
+        Row: {
+          cost: number | null
+          created_at: string
+          date: string
+          id: string
+          maintenance_type: string
+          mileage: number | null
+          notes: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          date: string
+          id?: string
+          maintenance_type: string
+          mileage?: number | null
+          notes?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          date?: string
+          id?: string
+          maintenance_type?: string
+          mileage?: number | null
+          notes?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_vehicle_maintenance_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "assets_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assets_vehicles: {
+        Row: {
+          created_at: string
+          current_mileage: number | null
+          id: string
+          name: string
+          notes: string | null
+          plate_number: string | null
+          purchase_date: string | null
+          purchase_price: number | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          current_mileage?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          plate_number?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          current_mileage?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          plate_number?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
       customer_drive_links: {
         Row: {
           created_at: string | null
