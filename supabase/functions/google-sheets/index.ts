@@ -595,6 +595,29 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // WRITE operation — clear a row (delete content)
+    if (action === "clearRow") {
+      if (!sheetName || !rowIndex) throw new Error("sheetName and rowIndex are required for clearRow");
+      const accessToken = await getAccessToken();
+      const range = encodeURIComponent(`'${sheetName}'!A${rowIndex}:R${rowIndex}`);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=USER_ENTERED`;
+
+      const writeRes = await fetch(url, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]] }),
+      });
+
+      if (!writeRes.ok) {
+        const errBody = await writeRes.text();
+        throw new Error(`Google Sheets clearRow error [${writeRes.status}]: ${errBody}`);
+      }
+
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // READ operation
     if (!tab) throw new Error("Tab name is required");
