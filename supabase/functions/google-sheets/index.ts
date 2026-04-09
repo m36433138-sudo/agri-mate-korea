@@ -5,8 +5,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// OAuth 토큰 캐시 (Edge Function warm 상태 동안 재사용 - 최대 1시간 유효)
+let _cachedToken: string | null = null;
+let _tokenExpiresAt = 0; // unix timestamp (seconds)
+
 // Get OAuth2 access token from service account
 async function getAccessToken(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  // 만료 5분 전까지 캐시 재사용
+  if (_cachedToken && now < _tokenExpiresAt - 300) {
+    return _cachedToken;
+  }
   const saJson = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
   if (!saJson) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not configured");
 
@@ -70,7 +79,10 @@ async function getAccessToken(): Promise<string> {
   }
 
   const tokenData = await tokenRes.json();
-  return tokenData.access_token;
+  // 캐시에 저장 (expires_in은 보통 3600초)
+  _cachedToken = tokenData.access_token;
+  _tokenExpiresAt = now + (tokenData.expires_in ?? 3600);
+  return _cachedToken!;
 }
 
 serve(async (req) => {
