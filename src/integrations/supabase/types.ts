@@ -850,6 +850,39 @@ export type Database = {
         }
         Relationships: []
       }
+      vendors: {
+        Row: {
+          business_number: string | null
+          created_at: string
+          id: string
+          items: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          representative: string | null
+        }
+        Insert: {
+          business_number?: string | null
+          created_at?: string
+          id?: string
+          items?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          representative?: string | null
+        }
+        Update: {
+          business_number?: string | null
+          created_at?: string
+          id?: string
+          items?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          representative?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
