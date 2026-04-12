@@ -638,12 +638,12 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
         if (error) throw error;
         // 연동된 계정이 있으면 프로필도 동기화 (팀, 이름)
         if (editTarget!.user_id) {
-          const profileUpdates: Record<string, any> = {};
-          if (form.team) profileUpdates.team = form.team;
-          if (form.name) profileUpdates.display_name = form.name;
-          if (form.phone) profileUpdates.phone = form.phone;
-          if (Object.keys(profileUpdates).length > 0) {
-            await supabase.from("profiles").update(profileUpdates).eq("id", editTarget!.user_id);
+          const updates: { team?: string; display_name?: string; phone?: string } = {};
+          if (form.team) updates.team = form.team;
+          if (form.name) updates.display_name = form.name;
+          if (form.phone) updates.phone = form.phone;
+          if (Object.keys(updates).length > 0) {
+            await supabase.from("profiles").update(updates).eq("id", editTarget!.user_id);
           }
         }
       } else {
