@@ -93,16 +93,16 @@ export default function BankingPage() {
   const totalIn = filteredTx.reduce((a, b) => a + b.inAmt, 0);
   const totalOut = filteredTx.reduce((a, b) => a + b.outAmt, 0);
 
-  const S: Record<string, React.CSSProperties> = {
-    page: { fontFamily: "'Pretendard Variable', sans-serif", background: "#060F1E", minHeight: "100vh", color: "#E2E8F0" },
-    card: { background: "#0B1D30", border: "1px solid #1E3A5F", borderRadius: 12, padding: 20 },
-    btn: (active: boolean, color = "#1D4ED8") => ({
+  const S = {
+    page: { fontFamily: "'Pretendard Variable', sans-serif", background: "#060F1E", minHeight: "100vh", color: "#E2E8F0" } as React.CSSProperties,
+    card: { background: "#0B1D30", border: "1px solid #1E3A5F", borderRadius: 12, padding: 20 } as React.CSSProperties,
+    btn: (active: boolean, color = "#1D4ED8"): React.CSSProperties => ({
       padding: "7px 16px", borderRadius: 8, border: "none", cursor: "pointer",
       fontSize: 13, fontWeight: active ? 700 : 500,
       background: active ? `linear-gradient(135deg,${color},${color}BB)` : "transparent",
       color: active ? "#fff" : "#94A3B8", transition: "all 0.15s",
-    }) as React.CSSProperties,
-    badge: (c: string) => ({ fontSize: 11, padding: "3px 9px", borderRadius: 20, background: c + "22", color: c, fontWeight: 600 }) as React.CSSProperties,
+    }),
+    badge: (c: string): React.CSSProperties => ({ fontSize: 11, padding: "3px 9px", borderRadius: 20, background: c + "22", color: c, fontWeight: 600 }),
     inp: { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid #1E3A5F", background: "#060F1E", color: "#E2E8F0", fontSize: 13, outline: "none" } as React.CSSProperties,
   };
 

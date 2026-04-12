@@ -258,8 +258,9 @@ serve(async (req) => {
 
       // First, read column A to find the next empty row
       const readRange = encodeURIComponent(`'${techName}'!A:A`);
-      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}?key=${Deno.env.get("GOOGLE_SHEETS_API_KEY")}`;
-      const readRes = await fetch(readUrl);
+      const clockInToken = await getAccessToken();
+      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}`;
+      const readRes = await fetch(readUrl, { headers: { Authorization: `Bearer ${clockInToken}` } });
       if (!readRes.ok) throw new Error(`Failed to read sheet: ${await readRes.text()}`);
       const readData = await readRes.json();
       const lastRow = (readData.values?.length || 0) + 1;
@@ -312,8 +313,8 @@ serve(async (req) => {
 
       // Read column A to find the last row with today's date
       const readRange = encodeURIComponent(`'${techName}'!A:C`);
-      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}?key=${Deno.env.get("GOOGLE_SHEETS_API_KEY")}`;
-      const readRes = await fetch(readUrl);
+      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}`;
+      const readRes = await fetch(readUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!readRes.ok) throw new Error(`Failed to read sheet: ${await readRes.text()}`);
       const readData = await readRes.json();
       const rows = readData.values || [];
@@ -370,16 +371,16 @@ serve(async (req) => {
 
       // 1. Read 고객목록
       const custRange = encodeURIComponent("'고객목록'") + "!A:D";
-      const custUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${custRange}?key=${apiKey}`;
-      const custRes = await fetch(custUrl);
+      const custUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${custRange}`;
+      const custRes = await fetch(custUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!custRes.ok) throw new Error(`Failed to read 고객목록: ${await custRes.text()}`);
       const custData = await custRes.json();
       const custRows = (custData.values || []).slice(1); // skip header
 
       // 2. Read 보유기계
       const machRange = encodeURIComponent("'보유기계'") + "!A:I";
-      const machUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${machRange}?key=${apiKey}`;
-      const machRes = await fetch(machUrl);
+      const machUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${machRange}`;
+      const machRes = await fetch(machUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!machRes.ok) throw new Error(`Failed to read 보유기계: ${await machRes.text()}`);
       const machData = await machRes.json();
       const machRows = (machData.values || []).slice(1); // skip header
