@@ -16,11 +16,11 @@ const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: Operati
 };
 
 const TRANSITION_STYLE: Record<string, string> = {
-  입고완료:    "text-amber-700  bg-amber-50   border-amber-200  hover:bg-amber-100",
-  수리시작:    "text-blue-700   bg-blue-50    border-blue-200   hover:bg-blue-100",
-  수리완료:    "text-teal-700   bg-teal-50    border-teal-200   hover:bg-teal-100",
-  "출고대기로": "text-green-700  bg-green-50   border-green-200  hover:bg-green-100",
-  출고완료:    "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
+  입고완료:    "text-amber-400   bg-amber-950/40  border-amber-800/60  hover:bg-amber-950/70",
+  수리시작:    "text-blue-400    bg-blue-950/40   border-blue-800/60   hover:bg-blue-950/70",
+  수리완료:    "text-teal-400    bg-teal-950/40   border-teal-800/60   hover:bg-teal-950/70",
+  "출고대기로": "text-green-400   bg-green-950/40  border-green-800/60  hover:bg-green-950/70",
+  출고완료:    "text-emerald-400 bg-emerald-950/40 border-emerald-800/60 hover:bg-emerald-950/70",
 };
 
 interface Props {
@@ -56,15 +56,15 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-border/50 overflow-hidden"
+      className="bg-card rounded-2xl border border-border/60 overflow-hidden hover:border-border transition-colors"
       style={{ borderLeftWidth: 5, borderLeftColor: color }}
     >
       {/* ── 상단: 지점 + 경고 + 액션 버튼 ── */}
       <div className="flex items-center gap-1.5 px-3.5 pt-3 pb-0">
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${
           row._branch === "장흥"
-            ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
-            : "bg-violet-50 text-violet-700 ring-violet-600/20"
+            ? "bg-emerald-950/60 text-emerald-400 ring-emerald-500/30"
+            : "bg-violet-950/60 text-violet-400 ring-violet-500/30"
         }`}>
           {row._branch}
         </span>

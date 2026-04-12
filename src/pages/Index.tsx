@@ -27,10 +27,9 @@ function GlassCard({
   return (
     <div
       className={`
-        rounded-3xl border border-border/50
-        bg-white/85 backdrop-blur-md
-        shadow-[0_1px_3px_0_rgb(0,0,0,0.04),0_1px_2px_-1px_rgb(0,0,0,0.03)]
-        ${hover ? "hover:shadow-[0_8px_30px_-6px_rgb(0,0,0,0.08)] hover:border-border/70 transition-all duration-300" : ""}
+        rounded-2xl border border-border/60
+        bg-card
+        ${hover ? "hover:border-border hover:bg-card/80 transition-all duration-200" : ""}
         ${className}
       `}
     >
