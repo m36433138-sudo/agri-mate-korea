@@ -544,8 +544,8 @@ serve(async (req) => {
       const accessToken = await getAccessToken();
 
       const readRange = encodeURIComponent(`'${tabName}'!A:S`);
-      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}?key=${apiKey}`;
-      const readRes = await fetch(readUrl);
+      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${readRange}`;
+      const readRes = await fetch(readUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!readRes.ok) throw new Error(`Failed to read ${tabName}: ${await readRes.text()}`);
       const readData = await readRes.json();
       const rows = (readData.values || []).slice(1); // skip header
