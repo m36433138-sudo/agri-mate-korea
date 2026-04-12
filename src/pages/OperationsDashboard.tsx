@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGoogleSheets";
-import { SheetRow, getStatus, OperationStatus } from "@/types/operations";
-import { KanbanCard } from "@/components/operations/KanbanCard";
+import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, formatSheetDate } from "@/types/operations";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
 import { RepairDraftModal } from "@/components/operations/RepairDraftModal";
@@ -9,49 +8,56 @@ import RepairInputModal from "@/components/RepairInputModal";
 import type { DraftPrefill } from "@/components/RepairInputModal";
 import { useRepairNotes } from "@/hooks/useRepairNotes";
 import { useRepairDrafts } from "@/hooks/useRepairDrafts";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { RefreshCw, AlertCircle, Plus, PackageOpen, Wrench, Clock, CheckCircle2, Truck, PauseCircle, Package } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  RefreshCw, AlertCircle, Plus, PackageOpen, Wrench, CheckCircle2,
+  Truck, PauseCircle, Package, Phone, MapPin, Pencil, FileText,
+  ArrowRight, ChevronDown, ChevronUp,
+} from "lucide-react";
 
 type Branch = "전체" | "장흥" | "강진";
-type Section = "입출고" | "수리";
 
-const ENTRY_EXIT_COLUMNS: { status: OperationStatus; label: string; color: string }[] = [
-  { status: "입고대기", label: "입고대기", color: "#f97316" },
-  { status: "출고대기", label: "출고대기", color: "#16a34a" },
-];
+const STATUS_META: Record<OperationStatus, { label: string; color: string; rowBg: string; badge: string }> = {
+  입고대기: { label: "입고대기", color: "#f97316", rowBg: "hsl(25 80% 50% / 0.06)", badge: "bg-orange-950/60 text-orange-400 ring-orange-500/30" },
+  수리대기: { label: "수리대기", color: "#eab308", rowBg: "hsl(48 96% 50% / 0.05)", badge: "bg-yellow-950/60 text-yellow-400 ring-yellow-500/30" },
+  수리중:   { label: "수리중",   color: "#3b82f6", rowBg: "hsl(217 91% 58% / 0.06)", badge: "bg-blue-950/60 text-blue-400 ring-blue-500/30" },
+  수리완료: { label: "수리완료", color: "#14b8a6", rowBg: "hsl(174 84% 40% / 0.06)", badge: "bg-teal-950/60 text-teal-400 ring-teal-500/30" },
+  출고대기: { label: "출고대기", color: "#16a34a", rowBg: "hsl(142 71% 45% / 0.06)", badge: "bg-green-950/60 text-green-400 ring-green-500/30" },
+  보류:     { label: "보류",     color: "#6b7280", rowBg: "hsl(220 9% 46% / 0.05)", badge: "bg-zinc-900/60 text-zinc-400 ring-zinc-500/30" },
+};
 
-const REPAIR_COLUMNS: { status: OperationStatus; label: string; color: string }[] = [
-  { status: "수리대기", label: "수리대기", color: "#eab308" },
-  { status: "수리중", label: "수리중", color: "#3b82f6" },
-  { status: "수리완료", label: "수리완료", color: "#14b8a6" },
-  { status: "보류", label: "보류", color: "#6b7280" },
-];
+const STATUS_ORDER: OperationStatus[] = ["입고대기", "수리대기", "수리중", "수리완료", "출고대기", "보류"];
 
 const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: OperationStatus | "완료" } | null> = {
-  입고대기: { label: "입고완료 → 수리대기", next: "수리대기" },
+  입고대기: { label: "입고완료", next: "수리대기" },
   수리대기: { label: "수리시작", next: "수리중" },
-  수리중: { label: "수리완료", next: "수리완료" },
+  수리중:   { label: "수리완료", next: "수리완료" },
   수리완료: { label: "출고대기로", next: "출고대기" },
   출고대기: { label: "출고완료", next: "완료" },
-  보류: null,
+  보류:     null,
 };
+
+function StatusBadge({ status }: { status: OperationStatus }) {
+  const m = STATUS_META[status];
+  return (
+    <span className={`inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-md ring-1 ring-inset whitespace-nowrap ${m.badge}`}>
+      {m.label}
+    </span>
+  );
+}
 
 export default function OperationsDashboard() {
   const { allData, isLoading, error, lastUpdated, refresh } = useGoogleSheets();
   const [branch, setBranch] = useState<Branch>("전체");
+  const [statusFilter, setStatusFilter] = useState<OperationStatus | "전체">("전체");
   const [techFilter, setTechFilter] = useState("전체");
-  const [section, setSection] = useState<Section>("입출고");
-  const [mobileTab, setMobileTab] = useState<OperationStatus>("입고대기");
   const [confirmRow, setConfirmRow] = useState<SheetRow | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ label: string; next: OperationStatus | "완료" } | null>(null);
   const [isMarking, setIsMarking] = useState(false);
@@ -61,38 +67,35 @@ export default function OperationsDashboard() {
   const [draftRow, setDraftRow] = useState<SheetRow | null>(null);
   const [repairModalOpen, setRepairModalOpen] = useState(false);
   const [draftPrefill, setDraftPrefill] = useState<DraftPrefill | null>(null);
-  const { allNotes, getNotesForRow, pendingCount } = useRepairNotes();
-  const { drafts, getDraftForRow, finalizeDraft } = useRepairDrafts();
-  const isMobile = useIsMobile();
+  const [expandedReq, setExpandedReq] = useState<Set<string>>(new Set());
+  const { getNotesForRow, pendingCount } = useRepairNotes();
+  const { getDraftForRow, finalizeDraft } = useRepairDrafts();
   const { toast } = useToast();
-
-  const branchData = useMemo(() => {
-    let rows = allData;
-    if (branch === "장흥") rows = rows.filter(r => r._branch === "장흥");
-    if (branch === "강진") rows = rows.filter(r => r._branch === "강진");
-    if (techFilter !== "전체") rows = rows.filter(r => r.수리기사 === techFilter);
-    return rows;
-  }, [allData, branch, techFilter]);
 
   const technicians = useMemo(() => {
     const set = new Set(allData.map(r => r.수리기사).filter(Boolean));
     return ["전체", ...Array.from(set).sort()];
   }, [allData]);
 
-  const columnData = useMemo(() => {
-    const map: Record<OperationStatus, SheetRow[]> = { 입고대기: [], 수리대기: [], 수리중: [], 수리완료: [], 출고대기: [], 보류: [] };
-    branchData.forEach(row => {
-      const s = getStatus(row);
-      if (map[s]) map[s].push(row);
+  const filtered = useMemo(() => {
+    let rows = allData;
+    if (branch !== "전체") rows = rows.filter(r => r._branch === branch);
+    if (techFilter !== "전체") rows = rows.filter(r => r.수리기사 === techFilter);
+    if (statusFilter !== "전체") rows = rows.filter(r => getStatus(r) === statusFilter);
+    // 상태 순서대로 정렬
+    return rows.slice().sort((a, b) => {
+      return STATUS_ORDER.indexOf(getStatus(a)) - STATUS_ORDER.indexOf(getStatus(b));
     });
-    return map;
-  }, [branchData]);
+  }, [allData, branch, techFilter, statusFilter]);
 
-  const currentColumns = section === "입출고" ? ENTRY_EXIT_COLUMNS : REPAIR_COLUMNS;
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { 전체: allData.length };
+    STATUS_ORDER.forEach(s => { c[s] = allData.filter(r => getStatus(r) === s).length; });
+    return c;
+  }, [allData]);
 
   const handleTransition = (row: SheetRow) => {
-    const status = getStatus(row);
-    const transition = STATUS_TRANSITIONS[status];
+    const transition = STATUS_TRANSITIONS[getStatus(row)];
     if (!transition) return;
     setConfirmRow(row);
     setConfirmAction(transition);
@@ -108,7 +111,7 @@ export default function OperationsDashboard() {
         toast({ title: "출고 완료", description: `${confirmRow.손님성명}님의 작업이 완료 처리되었습니다.` });
       } else {
         await updateRowStatus(sheetName, confirmRow._rowIndex, confirmAction.next);
-        toast({ title: "상태 변경 완료", description: `${confirmRow.손님성명}님 → ${confirmAction.next}` });
+        toast({ title: "상태 변경", description: `${confirmRow.손님성명}님 → ${confirmAction.next}` });
       }
       refresh();
     } catch (err: any) {
@@ -120,207 +123,307 @@ export default function OperationsDashboard() {
     }
   };
 
-  const handleEdit = (row: SheetRow) => {
-    setEditRow(row);
-    setFormOpen(true);
+  const toggleReq = (key: string) => {
+    setExpandedReq(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
   };
-
-  const handleNotes = (row: SheetRow) => {
-    setNoteRow(row);
-  };
-
-  const handleRepairDraft = (row: SheetRow) => {
-    setDraftRow(row);
-  };
-
-  const handleAdd = () => {
-    setEditRow(null);
-    setFormOpen(true);
-  };
-
-  const formBranch = editRow?._branch ?? (branch === "전체" ? "장흥" : branch);
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">작업현황판</h1>
+      <div className="space-y-4">
         <div className="rounded-xl border border-destructive/50 bg-destructive/5 p-6 text-center space-y-3">
           <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
           <p className="text-destructive font-medium">데이터를 불러오지 못했습니다</p>
           <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
           <Button onClick={refresh} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" /> 다시 시도
+            <RefreshCw className="h-4 w-4 mr-1.5" /> 다시 시도
           </Button>
         </div>
       </div>
     );
   }
 
-  // 요약 통계
-  const summaryStats = [
-    { label: "입고대기", count: columnData["입고대기"].length, icon: Truck, color: "text-orange-500", bg: "bg-orange-50" },
-    { label: "수리중", count: columnData["수리중"].length, icon: Wrench, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "수리완료", count: columnData["수리완료"].length, icon: CheckCircle2, color: "text-teal-500", bg: "bg-teal-50" },
-    { label: "출고대기", count: columnData["출고대기"].length, icon: PackageOpen, color: "text-green-600", bg: "bg-green-50" },
-    { label: "보류", count: columnData["보류"].length, icon: PauseCircle, color: "text-gray-400", bg: "bg-gray-50" },
-    { label: "조달필요", count: pendingCount, icon: Package, color: "text-orange-600", bg: "bg-orange-50" },
-  ];
+  const formBranch = editRow?._branch ?? (branch === "전체" ? "장흥" : branch);
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          {lastUpdated && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {lastUpdated.toLocaleTimeString("ko-KR")} 기준
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="h-4 w-4 mr-1" /> 추가
-          </Button>
-          <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} /> 새로고침
-          </Button>
-        </div>
-      </div>
 
-      {/* 요약 통계 카드 */}
-      {!isLoading && (
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {summaryStats.map(s => (
-            <Card key={s.label} className="border-0 shadow-card">
-              <CardContent className="p-3 flex items-center gap-2">
-                <div className={`p-1.5 rounded-lg ${s.bg} shrink-0`}>
-                  <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground truncate">{s.label}</p>
-                  <p className={`text-lg font-bold tabular-nums leading-none mt-0.5 ${s.count > 0 ? "" : "text-muted-foreground/40"}`}>{s.count}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Section toggle + Filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <Tabs value={section} onValueChange={v => { setSection(v as Section); setMobileTab(v === "입출고" ? "입고대기" : "수리대기"); }}>
-          <TabsList>
-            <TabsTrigger value="입출고" className="gap-1.5">
-              <PackageOpen className="h-4 w-4" /> 입출고
-              <span className="ml-1 text-[10px] opacity-70 bg-background/50 rounded px-1">
-                {(columnData["입고대기"].length + columnData["출고대기"].length)}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger value="수리" className="gap-1.5">
-              <Wrench className="h-4 w-4" /> 수리
-              <span className="ml-1 text-[10px] opacity-70 bg-background/50 rounded px-1">
-                {(columnData["수리대기"].length + columnData["수리중"].length + columnData["수리완료"].length + columnData["보류"].length)}
-              </span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <Tabs value={branch} onValueChange={v => setBranch(v as Branch)}>
-          <TabsList>
-            <TabsTrigger value="전체">전체</TabsTrigger>
-            <TabsTrigger value="장흥">장흥</TabsTrigger>
-            <TabsTrigger value="강진">강진</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <Select value={techFilter} onValueChange={setTechFilter}>
-          <SelectTrigger className="w-[140px] h-9">
-            <SelectValue placeholder="수리기사" />
-          </SelectTrigger>
-          <SelectContent>
-            {technicians.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {isLoading ? (
-        <div className={`grid gap-4 ${section === "입출고" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-4"}`}>
-          {currentColumns.map((_, i) => (
-            <div key={i} className="space-y-3">
-              <Skeleton className="h-8 rounded-lg" />
-              <Skeleton className="h-32 rounded-xl" />
-              <Skeleton className="h-32 rounded-xl" />
-            </div>
-          ))}
-        </div>
-      ) : isMobile ? (
-        <>
-          <Tabs value={mobileTab} onValueChange={v => setMobileTab(v as OperationStatus)}>
-            <TabsList className={`w-full grid ${section === "입출고" ? "grid-cols-2" : "grid-cols-4"}`}>
-              {currentColumns.map(col => (
-                <TabsTrigger key={col.status} value={col.status} className="text-xs px-1">
-                  {col.label} <span className="ml-1 text-[10px] opacity-70">{columnData[col.status].length}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          <div className="space-y-2">
-            {columnData[mobileTab].length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-8">항목이 없습니다</p>
-            ) : (
-              columnData[mobileTab].map((row, i) => (
-                <KanbanCard
-                  key={`${row._branch}-${row._rowIndex}-${i}`}
-                  row={row}
-                  color={currentColumns.find(c => c.status === mobileTab)!.color}
-                  onMarkComplete={handleTransition}
-                  onEdit={handleEdit}
-                  onNotes={handleNotes}
-                  onRepairDraft={handleRepairDraft}
-                  notes={getNotesForRow(row._branch, row._rowIndex)}
-                  hasDraft={!!getDraftForRow(row._branch, row._rowIndex)}
-                />
-              ))
-            )}
-          </div>
-        </>
-      ) : (
-        <div className={`grid gap-4 items-start ${section === "입출고" ? "grid-cols-2" : "grid-cols-4"}`}>
-          {currentColumns.map(col => (
-            <div key={col.status} className="space-y-2">
-              <div className="flex items-center gap-2 px-1 pb-1">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: col.color }} />
-                <span className="font-semibold text-base">{col.label}</span>
-                <span className="ml-auto text-sm font-medium rounded-full px-2 py-0.5" style={{ backgroundColor: col.color + "18", color: col.color }}>
-                  {columnData[col.status].length}
+      {/* ── 상단 요약 카운터 ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {/* 상태 필터 탭 (카운트 표시) */}
+        <div className="flex flex-wrap gap-1.5">
+          {(["전체", ...STATUS_ORDER] as const).map(s => {
+            const active = statusFilter === s;
+            const color = s !== "전체" ? STATUS_META[s].color : undefined;
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s as any)}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                  active
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
+                }`}
+                style={active && color ? { borderColor: color + "88", color, background: color + "18" } : undefined}
+              >
+                {s}
+                <span className={`ml-1.5 text-[10px] ${active ? "opacity-90" : "opacity-50"}`}>
+                  {counts[s] ?? 0}
                 </span>
-              </div>
-              <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-                {columnData[col.status].length === 0 ? (
-                  <p className="text-center text-xs text-muted-foreground py-6 bg-muted/30 rounded-xl">없음</p>
-                ) : (
-                  columnData[col.status].map((row, i) => (
-                    <KanbanCard
-                      key={`${row._branch}-${row._rowIndex}-${i}`}
-                      row={row}
-                      color={col.color}
-                      onMarkComplete={handleTransition}
-                      onEdit={handleEdit}
-                      onNotes={handleNotes}
-                      onRepairDraft={handleRepairDraft}
-                      notes={getNotesForRow(row._branch, row._rowIndex)}
-                      hasDraft={!!getDraftForRow(row._branch, row._rowIndex)}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          ))}
+              </button>
+            );
+          })}
         </div>
+
+        <div className="flex items-center gap-2">
+          {/* 지점 */}
+          <div className="flex rounded-lg border border-border/50 overflow-hidden text-xs">
+            {(["전체", "장흥", "강진"] as Branch[]).map(b => (
+              <button key={b} onClick={() => setBranch(b)}
+                className={`px-3 py-1.5 font-semibold transition-colors ${branch === b ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                {b}
+              </button>
+            ))}
+          </div>
+
+          {/* 기사 */}
+          <Select value={techFilter} onValueChange={setTechFilter}>
+            <SelectTrigger className="w-[110px] h-8 text-xs">
+              <SelectValue placeholder="수리기사" />
+            </SelectTrigger>
+            <SelectContent>
+              {technicians.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          <Button onClick={() => { setEditRow(null); setFormOpen(true); }} size="sm" className="h-8 text-xs">
+            <Plus className="h-3.5 w-3.5 mr-1" /> 추가
+          </Button>
+          <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading} className="h-8 text-xs">
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+      </div>
+
+      {/* 마지막 업데이트 */}
+      {lastUpdated && (
+        <p className="text-[11px] text-muted-foreground">
+          마지막 갱신: {lastUpdated.toLocaleTimeString("ko-KR")} · 총 {filtered.length}건
+        </p>
       )}
 
-      {/* Confirm dialog for status transitions */}
+      {/* ── 테이블 ── */}
+      <div className="rounded-xl border border-border/60 overflow-hidden">
+        {/* 헤더 */}
+        <div
+          className="grid text-[11px] font-semibold text-muted-foreground uppercase tracking-wide"
+          style={{
+            gridTemplateColumns: "110px 52px 90px 1fr 120px 110px 1fr 80px 110px",
+            background: "hsl(var(--card))",
+            borderBottom: "1px solid hsl(var(--border) / 0.6)",
+            padding: "10px 14px",
+          }}
+        >
+          <span>상태</span>
+          <span>지점</span>
+          <span>성함</span>
+          <span>기계 / 품목</span>
+          <span>S/N</span>
+          <span>전화번호</span>
+          <span>주소 / 요구사항</span>
+          <span>기사</span>
+          <span className="text-right">액션</span>
+        </div>
+
+        {/* 로딩 */}
+        {isLoading && (
+          <div className="p-4 space-y-2">
+            {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+          </div>
+        )}
+
+        {/* 빈 상태 */}
+        {!isLoading && filtered.length === 0 && (
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            조건에 맞는 항목이 없습니다.
+          </div>
+        )}
+
+        {/* 데이터 행 */}
+        {!isLoading && filtered.map((row, idx) => {
+          const status = getStatus(row);
+          const meta = STATUS_META[status];
+          const transition = STATUS_TRANSITIONS[status];
+          const machineColor = getMachineTypeColor(row.기계);
+          const rowKey = `${row._branch}-${row._rowIndex}`;
+          const reqExpanded = expandedReq.has(rowKey);
+          const pendingNotes = getNotesForRow(row._branch, row._rowIndex).filter(n => !n.is_done);
+          const hasDraft = !!getDraftForRow(row._branch, row._rowIndex);
+
+          return (
+            <div
+              key={rowKey + idx}
+              className="group border-b border-border/30 last:border-0 transition-colors hover:brightness-110"
+              style={{ background: meta.rowBg, borderLeft: `3px solid ${meta.color}` }}
+            >
+              {/* 메인 행 */}
+              <div
+                className="grid items-center"
+                style={{
+                  gridTemplateColumns: "110px 52px 90px 1fr 120px 110px 1fr 80px 110px",
+                  padding: "9px 14px",
+                  gap: 0,
+                }}
+              >
+                {/* 상태 */}
+                <div><StatusBadge status={status} /></div>
+
+                {/* 지점 */}
+                <div>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ring-1 ring-inset ${
+                    row._branch === "장흥"
+                      ? "bg-emerald-950/60 text-emerald-400 ring-emerald-500/30"
+                      : "bg-violet-950/60 text-violet-400 ring-violet-500/30"
+                  }`}>{row._branch}</span>
+                </div>
+
+                {/* 성함 */}
+                <div className="font-bold text-sm text-foreground truncate pr-2">
+                  {row.손님성명 || "-"}
+                </div>
+
+                {/* 기계 / 품목 */}
+                <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                  {row.기계 && (
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded shrink-0 ${machineColor.bg} ${machineColor.text}`}>
+                      {row.기계}
+                    </span>
+                  )}
+                  {row.품목 && (
+                    <span className="text-xs text-foreground/80 truncate font-mono">{row.품목}</span>
+                  )}
+                </div>
+
+                {/* S/N */}
+                <div className="text-[11px] font-mono text-muted-foreground truncate pr-2">
+                  {row.제조번호 || "-"}
+                </div>
+
+                {/* 전화번호 */}
+                <div>
+                  {row.전화번호 ? (
+                    <a href={`tel:${row.전화번호}`}
+                      className="text-xs text-foreground/80 hover:text-primary transition-colors flex items-center gap-1 tabular-nums">
+                      <Phone className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      {row.전화번호}
+                    </a>
+                  ) : <span className="text-muted-foreground/40 text-xs">-</span>}
+                </div>
+
+                {/* 주소 / 요구사항 */}
+                <div className="pr-2 min-w-0">
+                  {row.주소 && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{row.주소}</span>
+                    </div>
+                  )}
+                  {row.손님요구사항 && (
+                    <button
+                      onClick={() => toggleReq(rowKey)}
+                      className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground mt-0.5 transition-colors"
+                    >
+                      {reqExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      요구사항
+                    </button>
+                  )}
+                </div>
+
+                {/* 기사 */}
+                <div className="text-xs text-muted-foreground truncate pr-1">
+                  {row.수리기사 || "-"}
+                </div>
+
+                {/* 액션 */}
+                <div className="flex items-center justify-end gap-1">
+                  {/* 조달 */}
+                  <button
+                    onClick={() => setNoteRow(row)}
+                    className={`p-1.5 rounded-lg transition-colors relative ${
+                      pendingNotes.length > 0
+                        ? "text-orange-400 bg-orange-950/50 hover:bg-orange-950/80"
+                        : "text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground"
+                    }`}
+                    title="조달"
+                  >
+                    <Package className="h-3.5 w-3.5" />
+                    {pendingNotes.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-orange-500 text-white rounded-full text-[8px] font-bold flex items-center justify-center">
+                        {pendingNotes.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* 수리내역 */}
+                  {(status === "수리중" || status === "수리완료" || status === "수리대기") && (
+                    <button
+                      onClick={() => setDraftRow(row)}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        hasDraft
+                          ? "text-blue-400 bg-blue-950/50 hover:bg-blue-950/80"
+                          : "text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground"
+                      }`}
+                      title="수리내역"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+
+                  {/* 수정 */}
+                  <button
+                    onClick={() => { setEditRow(row); setFormOpen(true); }}
+                    className="p-1.5 rounded-lg text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground transition-colors"
+                    title="수정"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+
+                  {/* 상태 전환 */}
+                  {transition && (
+                    <button
+                      onClick={() => handleTransition(row)}
+                      className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap"
+                      style={{
+                        color: meta.color,
+                        borderColor: meta.color + "55",
+                        background: meta.color + "15",
+                      }}
+                      title={transition.label}
+                    >
+                      {transition.label}
+                      <ArrowRight className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 요구사항 확장 영역 */}
+              {reqExpanded && row.손님요구사항 && (
+                <div className="px-[calc(110px+52px+90px+14px+14px)] pb-2.5">
+                  <div className="text-xs text-foreground/80 bg-card/60 rounded-lg px-3 py-2 border border-border/30 leading-relaxed whitespace-pre-wrap">
+                    {row.손님요구사항}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Confirm dialog */}
       <AlertDialog open={!!confirmRow && !!confirmAction} onOpenChange={open => { if (!open) { setConfirmRow(null); setConfirmAction(null); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -328,9 +431,9 @@ export default function OperationsDashboard() {
               {confirmAction?.next === "완료" ? "출고 완료 처리하시겠습니까?" : `${confirmAction?.label} 처리하시겠습니까?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmRow && `${confirmRow.손님성명}님의 ${confirmRow.기계} ${confirmRow.품목}`}
+              {confirmRow && `${confirmRow.손님성명}님 · ${confirmRow.기계} ${confirmRow.품목}`}
               {confirmAction?.next !== "완료" && confirmAction && (
-                <span className="block mt-1 font-medium">→ {confirmAction.next}</span>
+                <span className="block mt-1 font-medium text-foreground">→ {confirmAction.next}</span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -343,7 +446,6 @@ export default function OperationsDashboard() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Add/Edit modal */}
       <RowFormModal
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditRow(null); }}
@@ -352,16 +454,10 @@ export default function OperationsDashboard() {
         branch={formBranch as "장흥" | "강진"}
       />
 
-      {/* 조달/필요사항 모달 */}
       {noteRow && (
-        <RepairNoteModal
-          open={!!noteRow}
-          onClose={() => setNoteRow(null)}
-          row={noteRow}
-        />
+        <RepairNoteModal open={!!noteRow} onClose={() => setNoteRow(null)} row={noteRow} />
       )}
 
-      {/* 수리내역 임시저장 모달 */}
       {draftRow && (
         <RepairDraftModal
           open={!!draftRow}
@@ -374,7 +470,6 @@ export default function OperationsDashboard() {
         />
       )}
 
-      {/* 수리이력 등록 모달 (draft에서 전환) */}
       <RepairInputModal
         open={repairModalOpen}
         onOpenChange={setRepairModalOpen}
@@ -385,13 +480,12 @@ export default function OperationsDashboard() {
         }}
       />
 
-      {/* Floating refresh */}
       <button
         onClick={refresh}
-        className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-50"
+        className="fixed bottom-6 right-6 w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-50"
         title="새로고침"
       >
-        <RefreshCw className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
+        <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
       </button>
     </div>
   );
