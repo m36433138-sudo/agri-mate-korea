@@ -2,6 +2,7 @@ import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package,
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
   ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin, Landmark,
+  Calculator, Banknote,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
@@ -73,6 +74,8 @@ export function AppSidebar() {
     ...(isAdmin || isEmployee ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
     ...(isAdmin || isEmployee ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),
     ...(isAdmin || isEmployee ? [{ title: "자산관리", url: "/assets", icon: Landmark }] : []),
+    ...(isAdmin ? [{ title: "회계관리", url: "/accounting", icon: Calculator }] : []),
+    ...(isAdmin ? [{ title: "뱅킹연동", url: "/banking", icon: Banknote }] : []),
   ];
 
   // 시스템 그룹
