@@ -110,21 +110,24 @@ export function AppSidebar() {
 // 로고 헤더
 function LogoHeader({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className={`px-4 py-5 ${collapsed ? "px-2" : ""}`}>
+    <div className={`px-3 py-4 ${collapsed ? "px-2" : ""}`}>
       {!collapsed ? (
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground shrink-0">
-            <Cpu className="h-5 w-5" />
+          <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #2563EB, #1D4ED8)", boxShadow: "0 0 12px #2563EB44" }}>
+            <Cpu className="h-4 w-4 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-sidebar-foreground leading-none">AgriMate</h1>
-            <span className="text-[10px] text-sidebar-foreground/40 font-medium tracking-widest uppercase">PRO</span>
+            <h1 className="text-[13px] font-bold text-sidebar-foreground leading-none tracking-tight">AgriMate</h1>
+            <span className="text-[9px] font-semibold tracking-[0.15em] uppercase"
+              style={{ color: "#3B82F6" }}>광문농기</span>
           </div>
         </div>
       ) : (
         <div className="flex justify-center">
-          <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground">
-            <Cpu className="h-5 w-5" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #2563EB, #1D4ED8)", boxShadow: "0 0 10px #2563EB33" }}>
+            <Cpu className="h-4 w-4 text-white" />
           </div>
         </div>
       )}

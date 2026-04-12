@@ -45,15 +45,15 @@ function Breadcrumb() {
         <>
           <Link
             to={parentPath}
-            className="text-muted-foreground hover:text-foreground transition-colors truncate"
+            className="text-muted-foreground hover:text-foreground/80 transition-colors truncate text-xs"
           >
             {parentLabel}
           </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-          <span className="font-semibold text-foreground truncate">{currentLabel}</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+          <span className="font-semibold text-foreground/90 truncate text-sm">{currentLabel}</span>
         </>
       ) : (
-        <span className="font-semibold text-foreground">{currentLabel}</span>
+        <span className="font-semibold text-foreground/90 text-sm">{currentLabel}</span>
       )}
     </div>
   );
@@ -67,7 +67,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* 헤더 */}
-          <header className="h-14 flex items-center border-b bg-card/80 backdrop-blur-sm px-4 gap-3 sticky top-0 z-30">
+          <header className="h-13 flex items-center px-4 gap-3 sticky top-0 z-30 glass-header" style={{ height: 52 }}>
             <SidebarTrigger className="shrink-0" />
             <div className="w-px h-5 bg-border shrink-0" />
             <Breadcrumb />

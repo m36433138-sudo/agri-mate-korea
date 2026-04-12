@@ -6,45 +6,56 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 224 28% 12%;
+    /* ── 배경 / 텍스트 ── */
+    --background: 222 47% 7%;          /* #060F1E */
+    --foreground: 213 31% 91%;         /* #E2E8F0 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 224 28% 12%;
+    /* ── 카드 ── */
+    --card: 220 55% 10%;               /* #0B1A2E */
+    --card-foreground: 213 31% 91%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 28% 12%;
+    /* ── 팝오버 ── */
+    --popover: 220 60% 9%;
+    --popover-foreground: 213 31% 91%;
 
-    --primary: 142 64% 34%;
+    /* ── 주요 색상: 블루 ── */
+    --primary: 217 91% 58%;            /* #3B82F6 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 16% 95%;
-    --secondary-foreground: 224 28% 12%;
+    /* ── 보조 ── */
+    --secondary: 220 52% 14%;          /* #0E1E38 */
+    --secondary-foreground: 213 31% 91%;
 
-    --muted: 220 16% 94%;
-    --muted-foreground: 220 12% 50%;
+    /* ── 음소거 ── */
+    --muted: 220 45% 16%;
+    --muted-foreground: 215 20% 46%;   /* #64748B */
 
-    --accent: 220 14% 92%;
-    --accent-foreground: 224 28% 12%;
+    /* ── 강조 ── */
+    --accent: 220 52% 18%;
+    --accent-foreground: 213 31% 91%;
 
+    /* ── 위험 ── */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 16% 90%;
-    --input: 220 16% 90%;
-    --ring: 142 64% 34%;
+    /* ── 테두리 / 입력 ── */
+    --border: 216 45% 18%;             /* #1A2F4A */
+    --input: 216 45% 18%;
+    --ring: 217 91% 58%;
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
 
-    --sidebar-background: 150 30% 8%;
-    --sidebar-foreground: 140 20% 90%;
-    --sidebar-primary: 142 64% 50%;
+    /* ── 사이드바 ── */
+    --sidebar-background: 222 52% 6%;  /* #050D1A */
+    --sidebar-foreground: 213 25% 85%;
+    --sidebar-primary: 217 91% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 150 20% 14%;
-    --sidebar-accent-foreground: 140 20% 90%;
-    --sidebar-border: 150 20% 14%;
-    --sidebar-ring: 142 64% 50%;
+    --sidebar-accent: 220 52% 13%;
+    --sidebar-accent-foreground: 213 25% 85%;
+    --sidebar-border: 216 40% 14%;
+    --sidebar-ring: 217 91% 58%;
 
+    /* ── 상태 색상 ── */
     --status-stock: 142 76% 36%;
     --status-sold: 215 16% 47%;
     --type-new: 217 91% 60%;
@@ -67,32 +78,73 @@
     @apply bg-background text-foreground;
     font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 테이블 헤더 */
+  thead tr th {
+    @apply text-muted-foreground;
+  }
+
+  /* 입력 플레이스홀더 */
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(215 20% 35%);
+  }
+
+  /* 스크롤바 */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(216 45% 20%);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(216 45% 28%);
+  }
+
+  /* 포커스 링 */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.7);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* 버튼/링크 클릭 */
+  button:active:not(:disabled),
+  a:active {
+    transform: scale(0.98);
   }
 }
 
 /* ── 페이지 진입 애니메이션 ── */
 @keyframes page-enter {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .page-enter {
-  animation: page-enter 0.22s ease-out both;
+  animation: page-enter 0.2s ease-out both;
 }
 
-/* ── 클릭 Ripple 애니메이션 ── */
+/* ── Ripple ── */
 @keyframes ripple-expand {
-  from { transform: scale(0); opacity: 0.35; }
+  from { transform: scale(0); opacity: 0.3; }
   to   { transform: scale(4); opacity: 0; }
 }
 .ripple-effect {
   position: absolute;
   border-radius: 50%;
-  background: hsl(var(--primary) / 0.18);
+  background: hsl(var(--primary) / 0.15);
   animation: ripple-expand 0.55s ease-out forwards;
   pointer-events: none;
 }
 
-/* ── Glow Card (마우스 추적 내부 발광) ── */
+/* ── Glow Card ── */
 .glow-card {
   position: relative;
   overflow: hidden;
@@ -103,12 +155,12 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    280px circle at var(--glow-x, 50%) var(--glow-y, 50%),
-    hsl(142 64% 34% / 0.09),
+    260px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    hsl(217 91% 58% / 0.07),
     transparent 70%
   );
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.3s ease;
   pointer-events: none;
   z-index: 0;
 }
@@ -120,74 +172,44 @@
   z-index: 1;
 }
 
-/* ── 전역 인터랙션 개선 ── */
-@layer base {
-  /* 버튼/링크 클릭 시 살짝 눌리는 느낌 */
-  button:active:not(:disabled),
-  a:active {
-    transform: scale(0.98);
-  }
-
-  /* 스크롤바 슬림하게 */
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
-    border-radius: 99px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.4);
-  }
-
-  /* 포커스 링 통일 */
-  *:focus-visible {
-    outline: 2px solid hsl(var(--primary));
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
+/* ── 카드 표준 그림자 ── */
+.card-shadow {
+  box-shadow:
+    0 1px 3px hsl(0 0% 0% / 0.4),
+    0 0 0 1px hsl(216 45% 18% / 0.8);
 }
 
+/* ── 유리 효과 헤더 ── */
+.glass-header {
+  background: hsl(222 47% 7% / 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid hsl(216 45% 18%);
+}
+
+/* ── 그라데이션 배지 공통 ── */
+.badge-blue {
+  background: linear-gradient(135deg, #1D4ED8, #2563EB);
+  color: #fff;
+}
+.badge-green {
+  background: linear-gradient(135deg, #15803D, #16A34A);
+  color: #fff;
+}
+
+/* ── 인쇄 ── */
 @media print {
-  .print\:hidden,
-  header,
-  nav,
+  .print\:hidden, header, nav,
   [data-sidebar],
   [data-radix-popper-content-wrapper],
   .sonner-toast-container {
     display: none !important;
   }
-
   body {
     background: white !important;
     color: black !important;
     font-size: 12px;
   }
-
-  main {
-    padding: 0 !important;
-  }
-
-  .min-h-screen {
-    min-height: auto !important;
-  }
-
-  .shadow-card {
-    box-shadow: none !important;
-    border: 1px solid #ddd !important;
-  }
-
-  [class*="badge"] {
-    border: 1px solid #999 !important;
-    color: black !important;
-    background: #f5f5f5 !important;
-  }
-
-  .print\\:break-before {
-    page-break-before: always;
-  }
+  main { padding: 0 !important; }
+  .min-h-screen { min-height: auto !important; }
 }
