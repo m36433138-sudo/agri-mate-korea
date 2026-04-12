@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Search, Plus, Settings, Shield, ShieldCheck, User,
   Briefcase, Wrench, ClipboardList, Pencil, Trash2,
-  UserCheck, Calendar, MapPin, Phone, Banknote, Link2,
+  UserCheck, Calendar, MapPin, Phone, Banknote, Link2, UserPlus, Unlink,
 } from "lucide-react";
 import type { AppRole } from "@/hooks/useUserRole";
 import type { Customer } from "@/types/database";
@@ -90,9 +90,11 @@ function AccountsTab() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [permOpen, setPermOpen] = useState<string | null>(null);
+  const [linkEmployeeFor, setLinkEmployeeFor] = useState<string | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  // 사용자 목록 + 연동 직원 정보
   const { data: users, isLoading } = useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
@@ -102,7 +104,15 @@ function AccountsTab() {
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
       const roleMap: Record<string, string> = {};
       roles?.forEach((r: any) => { roleMap[r.user_id] = r.role; });
-      return profiles.map((p: any) => ({ ...p, role: roleMap[p.id] || "customer" }));
+      // 직원 연동 정보
+      const { data: employees } = await supabase.from("employees").select("id, name, team, user_id").not("user_id", "is", null);
+      const empByUserId: Record<string, { id: string; name: string; team: string | null }> = {};
+      employees?.forEach((e: any) => { if (e.user_id) empByUserId[e.user_id] = e; });
+      return profiles.map((p: any) => ({
+        ...p,
+        role: roleMap[p.id] || "customer",
+        linkedEmployee: empByUserId[p.id] || null,
+      }));
     },
   });
 
@@ -128,8 +138,32 @@ function AccountsTab() {
     mutationFn: async ({ userId, team }: { userId: string; team: string | null }) => {
       const { error } = await supabase.from("profiles").update({ team }).eq("id", userId);
       if (error) throw error;
+      // 연동된 직원 레코드 팀도 동기화
+      const { data: emp } = await supabase.from("employees").select("id").eq("user_id", userId).maybeSingle();
+      if (emp) {
+        await supabase.from("employees").update({ team }).eq("id", emp.id);
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast({ title: "팀이 변경되었습니다." }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["all-users"] });
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      toast({ title: "팀이 변경되었습니다." });
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  // 직원 연동 해제
+  const unlinkMutation = useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      const { error } = await supabase.from("employees").update({ user_id: null }).eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["all-users"] });
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["unlinked-employees"] });
+      toast({ title: "직원 연동이 해제되었습니다." });
+    },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
 
@@ -192,6 +226,7 @@ function AccountsTab() {
                   <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">연락처</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">팀</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">역할</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">직원연동</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">설정</th>
                 </tr>
               </thead>
@@ -228,6 +263,28 @@ function AccountsTab() {
                           </SelectContent>
                         </Select>
                       </td>
+                      <td className="p-3 hidden md:table-cell">
+                        {u.role === "employee" && (
+                          u.linkedEmployee ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] flex items-center gap-0.5 text-green-700 bg-green-50 px-1.5 py-0.5 rounded-md">
+                                <Link2 className="h-3 w-3" /> {u.linkedEmployee.name}
+                              </span>
+                              <button
+                                className="text-muted-foreground hover:text-destructive transition-colors"
+                                title="연동 해제"
+                                onClick={() => { if (confirm(`${u.linkedEmployee.name} 직원 연동을 해제하시겠습니까?`)) unlinkMutation.mutate({ userId: u.id }); }}
+                              >
+                                <Unlink className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setLinkEmployeeFor(u.id)}>
+                              <Link2 className="h-3 w-3 mr-1" /> 연동
+                            </Button>
+                          )
+                        )}
+                      </td>
                       <td className="p-3 text-right">
                         {u.role === "employee" && (
                           <Button variant="ghost" size="sm" onClick={() => setPermOpen(u.id)}>
@@ -246,7 +303,77 @@ function AccountsTab() {
 
       <CreateAccountDialog open={createOpen} onOpenChange={setCreateOpen} />
       {permOpen && <PermissionsDialog employeeId={permOpen} onClose={() => setPermOpen(null)} />}
+      {linkEmployeeFor && <LinkEmployeeDialog userId={linkEmployeeFor} onClose={() => setLinkEmployeeFor(null)} />}
     </div>
+  );
+}
+
+// ─── 직원 연동 다이얼로그 ─────────────────────────────────────
+function LinkEmployeeDialog({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [selectedEmpId, setSelectedEmpId] = useState("");
+
+  const { data: unlinkedEmployees } = useQuery({
+    queryKey: ["unlinked-employees"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("employees").select("*").is("user_id", null).order("name");
+      if (error) throw error;
+      return data as Employee[];
+    },
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedEmpId) throw new Error("직원을 선택하세요.");
+      const emp = unlinkedEmployees?.find(e => e.id === selectedEmpId);
+      // 직원 레코드에 user_id 연결
+      const { error } = await supabase.from("employees").update({ user_id: userId }).eq("id", selectedEmpId);
+      if (error) throw error;
+      // 프로필 팀 동기화
+      if (emp?.team) {
+        await supabase.from("profiles").update({ team: emp.team }).eq("id", userId);
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["all-users"] });
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["unlinked-employees"] });
+      toast({ title: "직원이 연동되었습니다." });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader><DialogTitle>직원 레코드 연동</DialogTitle></DialogHeader>
+        {!unlinkedEmployees || unlinkedEmployees.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">연동 가능한 직원이 없습니다. 직원 관리에서 먼저 등록해주세요.</p>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Label>직원 선택</Label>
+              <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
+                <SelectTrigger><SelectValue placeholder="직원을 선택하세요" /></SelectTrigger>
+                <SelectContent>
+                  {unlinkedEmployees.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.name} {e.team ? `(${e.team})` : ""} {e.position ? `- ${e.position}` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>취소</Button>
+          <Button onClick={() => linkMutation.mutate()} disabled={!selectedEmpId || linkMutation.isPending}>
+            {linkMutation.isPending ? "연동 중..." : "연동"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -256,6 +383,7 @@ function EmployeesTab() {
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [showResidentNumber, setShowResidentNumber] = useState<string | null>(null);
+  const [createAccountFor, setCreateAccountFor] = useState<Employee | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -372,10 +500,18 @@ function EmployeesTab() {
                               {emp.team}
                             </span>
                           )}
-                          {linkedProfile && (
+                          {linkedProfile ? (
                             <span className="text-[11px] flex items-center gap-0.5 text-green-700 bg-green-50 px-1.5 py-0.5 rounded-md">
-                              <Link2 className="h-3 w-3" /> 계정연동
+                              <Link2 className="h-3 w-3" /> 계정연동 ({linkedProfile.email})
                             </span>
+                          ) : (
+                            <Button
+                              variant="ghost" size="sm"
+                              className="h-6 text-[11px] px-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-md"
+                              onClick={() => setCreateAccountFor(emp)}
+                            >
+                              <UserPlus className="h-3 w-3 mr-0.5" /> 계정 생성
+                            </Button>
                           )}
                         </div>
                         <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
@@ -431,6 +567,15 @@ function EmployeesTab() {
         onOpenChange={v => { setAddOpen(v); if (!v) setEditTarget(null); }}
         editTarget={editTarget}
       />
+
+      {/* 직원에서 바로 계정 생성 */}
+      {createAccountFor && (
+        <CreateAccountDialog
+          open={true}
+          onOpenChange={v => { if (!v) setCreateAccountFor(null); }}
+          prefillEmployee={createAccountFor}
+        />
+      )}
     </div>
   );
 }
@@ -454,7 +599,6 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
   const isEdit = !!editTarget;
   const [form, setForm] = useState<EmployeeForm>(emptyForm());
 
-  // editTarget이나 open이 바뀔 때 폼 초기화
   useEffect(() => {
     if (open && editTarget) {
       setForm({
@@ -492,6 +636,16 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
       if (isEdit) {
         const { error } = await supabase.from("employees").update(payload).eq("id", editTarget!.id);
         if (error) throw error;
+        // 연동된 계정이 있으면 프로필도 동기화 (팀, 이름)
+        if (editTarget!.user_id) {
+          const profileUpdates: Record<string, any> = {};
+          if (form.team) profileUpdates.team = form.team;
+          if (form.name) profileUpdates.display_name = form.name;
+          if (form.phone) profileUpdates.phone = form.phone;
+          if (Object.keys(profileUpdates).length > 0) {
+            await supabase.from("profiles").update(profileUpdates).eq("id", editTarget!.user_id);
+          }
+        }
       } else {
         const { error } = await supabase.from("employees").insert(payload);
         if (error) throw error;
@@ -500,6 +654,8 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.invalidateQueries({ queryKey: ["unlinked-employees"] });
+      qc.invalidateQueries({ queryKey: ["all-users"] });
+      qc.invalidateQueries({ queryKey: ["profiles-basic"] });
       toast({ title: isEdit ? "직원 정보가 수정되었습니다." : "직원이 등록되었습니다." });
       onOpenChange(false);
     },
@@ -511,10 +667,14 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
       <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{isEdit ? "직원 정보 수정" : "직원 등록"}</DialogTitle>
+          {isEdit && editTarget?.user_id && (
+            <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+              <Link2 className="h-3 w-3" /> 계정 연동됨 — 이름, 팀, 연락처 변경 시 계정 정보도 함께 업데이트됩니다.
+            </p>
+          )}
         </DialogHeader>
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-4 py-1">
-            {/* 기본 정보 */}
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><Label>이름 *</Label><Input value={form.name} onChange={f("name")} placeholder="홍길동" /></div>
               <div><Label>연락처</Label><Input value={form.phone} onChange={f("phone")} placeholder="010-0000-0000" /></div>
@@ -526,8 +686,6 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
                 <p className="text-xs text-muted-foreground mt-1">화면에는 앞 7자리만 표시됩니다.</p>
               </div>
             </div>
-
-            {/* 직책 / 팀 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>팀</Label>
@@ -543,14 +701,10 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
               </div>
               <div><Label>직책</Label><Input value={form.position} onChange={f("position")} placeholder="기사, 과장..." /></div>
             </div>
-
-            {/* 급여 */}
             <div>
               <Label>급여 (월, 원)</Label>
               <Input value={form.salary} onChange={f("salary")} placeholder="3000000" type="number" />
             </div>
-
-            {/* 비고 */}
             <div>
               <Label>비고</Label>
               <Input value={form.notes} onChange={f("notes")} placeholder="특이사항 등" />
@@ -569,13 +723,32 @@ function EmployeeFormDialog({ open, onOpenChange, editTarget }: {
 }
 
 // ─── 계정 생성 다이얼로그 ────────────────────────────────────
-function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function CreateAccountDialog({ open, onOpenChange, prefillEmployee }: {
+  open: boolean; onOpenChange: (v: boolean) => void; prefillEmployee?: Employee | null;
+}) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({
     loginId: "", email: "", password: "", display_name: "", phone: "",
     role: "employee" as AppRole, team: "" as TeamType | "", customer_id: "", employee_id: "",
   });
+
+  // prefillEmployee가 있으면 자동 채우기
+  useEffect(() => {
+    if (open && prefillEmployee) {
+      setForm({
+        loginId: "", email: "", password: "",
+        display_name: prefillEmployee.name,
+        phone: prefillEmployee.phone || "",
+        role: "employee",
+        team: (prefillEmployee.team as TeamType) || "",
+        customer_id: "",
+        employee_id: prefillEmployee.id,
+      });
+    } else if (open && !prefillEmployee) {
+      setForm({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "employee", team: "", customer_id: "", employee_id: "" });
+    }
+  }, [open, prefillEmployee]);
 
   const isCustomerRole = form.role === "customer";
   const isEmployeeRole = form.role === "employee";
@@ -598,10 +771,9 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     },
   });
 
-  // 계정 미연동 직원 목록
   const { data: unlinkedEmployees } = useQuery({
     queryKey: ["unlinked-employees"],
-    enabled: open && isEmployeeRole,
+    enabled: open && isEmployeeRole && !prefillEmployee,
     queryFn: async () => {
       const { data, error } = await supabase.from("employees").select("*").is("user_id", null).order("name");
       if (error) throw error;
@@ -685,9 +857,9 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       qc.invalidateQueries({ queryKey: ["unlinked-employees"] });
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["profiles-basic"] });
       toast({ title: "계정이 생성되었습니다.", description: isCustomerRole ? `로그인 ID: ${form.loginId}` : form.team ? `팀: ${form.team}` : "" });
       onOpenChange(false);
-      setForm({ loginId: "", email: "", password: "", display_name: "", phone: "", role: "employee", team: "", customer_id: "", employee_id: "" });
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
@@ -695,23 +867,34 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
-        <DialogHeader><DialogTitle>계정 생성</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>
+            {prefillEmployee ? `${prefillEmployee.name} 계정 생성` : "계정 생성"}
+          </DialogTitle>
+          {prefillEmployee && (
+            <p className="text-xs text-muted-foreground mt-1">
+              직원 관리의 "{prefillEmployee.name}" 레코드와 자동 연동됩니다.
+            </p>
+          )}
+        </DialogHeader>
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-4 py-1">
-            <div>
-              <Label>역할</Label>
-              <Select value={form.role} onValueChange={v => handleRoleChange(v as AppRole)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">관리자</SelectItem>
-                  <SelectItem value="employee">직원</SelectItem>
-                  <SelectItem value="customer">고객</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!prefillEmployee && (
+              <div>
+                <Label>역할</Label>
+                <Select value={form.role} onValueChange={v => handleRoleChange(v as AppRole)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">관리자</SelectItem>
+                    <SelectItem value="employee">직원</SelectItem>
+                    <SelectItem value="customer">고객</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            {/* 직원 연동 */}
-            {isEmployeeRole && (
+            {/* 직원 연동 - prefill이 없을 때만 표시 */}
+            {isEmployeeRole && !prefillEmployee && (
               <>
                 {unlinkedEmployees && unlinkedEmployees.length > 0 && (
                   <div>
@@ -747,6 +930,14 @@ function CreateAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                   </div>
                 </div>
               </>
+            )}
+
+            {/* prefill 직원일 때 팀 표시 */}
+            {isEmployeeRole && prefillEmployee && form.team && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 text-sm">
+                <span className="text-muted-foreground">팀:</span>
+                <span className="font-medium">{form.team}</span>
+              </div>
             )}
 
             {/* 고객 연동 */}
@@ -823,6 +1014,15 @@ function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClos
     },
   });
 
+  // 연동된 직원 정보
+  const { data: linkedEmployee } = useQuery({
+    queryKey: ["linked-employee", employeeId],
+    queryFn: async () => {
+      const { data } = await supabase.from("employees").select("id, name, team, position").eq("user_id", employeeId).maybeSingle();
+      return data;
+    },
+  });
+
   const toggleMutation = useMutation({
     mutationFn: async ({ permKey, allowed }: { permKey: string; allowed: boolean }) => {
       const existing = perms?.find((p: any) => p.permission_key === permKey);
@@ -853,6 +1053,11 @@ function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClos
               <span className={`text-xs px-2 py-0.5 rounded-full ${teamCfg.bg} ${teamCfg.color}`}>{profile?.team}</span>
             )}
           </DialogTitle>
+          {linkedEmployee && (
+            <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+              <Link2 className="h-3 w-3" /> 직원 레코드: {linkedEmployee.name} {linkedEmployee.position ? `(${linkedEmployee.position})` : ""}
+            </p>
+          )}
         </DialogHeader>
         {isLoading ? <Skeleton className="h-32 w-full" /> : (
           <div className="space-y-4">
