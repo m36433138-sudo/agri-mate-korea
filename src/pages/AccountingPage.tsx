@@ -182,15 +182,15 @@ export default function AccountingPage() {
     }]);
   };
 
-  const S: Record<string, React.CSSProperties> = {
-    page: { fontFamily: "'Pretendard Variable', sans-serif", background: "#060F1E", minHeight: "100vh", color: "#E2E8F0" },
-    card: { background: "#0B1D30", border: "1px solid #1E3A5F", borderRadius: 12, padding: 20 },
-    btn: (active: boolean, color = "#1D4ED8") => ({
+  const S = {
+    page: { fontFamily: "'Pretendard Variable', sans-serif", background: "#060F1E", minHeight: "100vh", color: "#E2E8F0" } as React.CSSProperties,
+    card: { background: "#0B1D30", border: "1px solid #1E3A5F", borderRadius: 12, padding: 20 } as React.CSSProperties,
+    btn: (active: boolean, color = "#1D4ED8"): React.CSSProperties => ({
       padding: "7px 16px", borderRadius: 8, border: "none", cursor: "pointer",
       fontSize: 13, fontWeight: active ? 700 : 500,
       background: active ? `linear-gradient(135deg,${color},${color}BB)` : "transparent",
       color: active ? "#fff" : "#94A3B8", transition: "all 0.15s",
-    }) as React.CSSProperties,
+    }),
   };
 
   const tabs = [
