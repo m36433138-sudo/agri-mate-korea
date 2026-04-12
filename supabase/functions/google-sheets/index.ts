@@ -630,15 +630,17 @@ serve(async (req) => {
       });
     }
 
-    // READ operation
+    // READ operation — use service account OAuth for restricted sheets
     if (!tab) throw new Error("Tab name is required");
-    if (!apiKey) throw new Error("GOOGLE_SHEETS_API_KEY is not configured");
 
+    const accessToken = await getAccessToken();
     const range = encodeURIComponent(`'${tab}'!A:R`);
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
-    console.log("Fetching URL:", url.replace(apiKey, "REDACTED"));
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`;
+    console.log("Fetching URL (OAuth):", url);
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     if (!response.ok) {
       const errorBody = await response.text();
       throw new Error(`Google Sheets API error [${response.status}]: ${errorBody}`);
