@@ -140,7 +140,7 @@ function NavGroup({ label, items, collapsed }: { label: string; items: NavItem[]
   return (
     <SidebarGroup className="py-1">
       {!collapsed && (
-        <SidebarGroupLabel className="text-sidebar-foreground/35 text-[10px] uppercase tracking-widest font-semibold px-4 mb-1">
+        <SidebarGroupLabel className="text-sidebar-foreground/55 text-[10px] uppercase tracking-widest font-semibold px-4 mb-1">
           {label}
         </SidebarGroupLabel>
       )}
@@ -152,7 +152,7 @@ function NavGroup({ label, items, collapsed }: { label: string; items: NavItem[]
                 <NavLink
                   to={item.url}
                   end={item.url === "/" || item.url === "/my-page"}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg mx-1 hover:bg-sidebar-accent transition-colors duration-150 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg mx-1 hover:bg-sidebar-accent transition-colors duration-150 text-sidebar-foreground/85 hover:text-sidebar-foreground"
                   activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                 >
                   <item.icon className="h-[17px] w-[17px] shrink-0" style={{ strokeWidth: 1.8 }} />
@@ -199,7 +199,7 @@ function FooterMenu({ collapsed, profile, role, onLogout }: {
         <SidebarMenuButton
           onClick={onLogout}
           tooltip={collapsed ? "로그아웃" : undefined}
-          className="flex items-center gap-2.5 mx-1 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors duration-150"
+          className="flex items-center gap-2.5 mx-1 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/65 hover:text-sidebar-foreground/90 transition-colors duration-150"
         >
           <LogOut className="h-[17px] w-[17px] shrink-0" style={{ strokeWidth: 1.8 }} />
           {!collapsed && <span className="text-sm">로그아웃</span>}
