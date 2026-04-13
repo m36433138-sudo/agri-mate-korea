@@ -28,12 +28,12 @@ import {
 import TechnicianMap from "@/components/TechnicianMap";
 
 const TECH_COLORS: Record<string, { bg: string; text: string; accent: string }> = {
-  유호상: { bg: "bg-blue-50", text: "text-blue-700", accent: "bg-blue-500" },
-  마성수: { bg: "bg-emerald-50", text: "text-emerald-700", accent: "bg-emerald-500" },
-  김영일: { bg: "bg-amber-50", text: "text-amber-700", accent: "bg-amber-500" },
-  이재현: { bg: "bg-purple-50", text: "text-purple-700", accent: "bg-purple-500" },
-  이동진: { bg: "bg-rose-50", text: "text-rose-700", accent: "bg-rose-500" },
-  주희로: { bg: "bg-cyan-50", text: "text-cyan-700", accent: "bg-cyan-500" },
+  유호상: { bg: "bg-blue-500/10", text: "text-blue-400", accent: "bg-blue-500" },
+  마성수: { bg: "bg-emerald-500/10", text: "text-emerald-400", accent: "bg-emerald-500" },
+  김영일: { bg: "bg-amber-500/10", text: "text-amber-400", accent: "bg-amber-500" },
+  이재현: { bg: "bg-purple-500/10", text: "text-purple-400", accent: "bg-purple-500" },
+  이동진: { bg: "bg-rose-500/10", text: "text-rose-400", accent: "bg-rose-500" },
+  주희로: { bg: "bg-cyan-500/10", text: "text-cyan-400", accent: "bg-cyan-500" },
 };
 
 function TechnicianCard({
@@ -140,7 +140,7 @@ function TechnicianCard({
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+            className="flex-1 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
             onClick={onClockIn}
             disabled={isClocking}
           >
@@ -150,7 +150,7 @@ function TechnicianCard({
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-rose-600 border-rose-300 hover:bg-rose-50"
+            className="flex-1 text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
             onClick={onClockOut}
             disabled={isClocking}
           >
@@ -181,7 +181,7 @@ function MonthlyTable({ data }: { data: TechnicianData }) {
           {data.monthlySummary.map((row) => (
             <tr
               key={row.month}
-              className={`border-b ${row.month === currentMonthLabel ? "bg-green-50" : ""}`}
+              className={`border-b ${row.month === currentMonthLabel ? "bg-emerald-500/10" : ""}`}
             >
               <td className="py-2 px-3">{row.month}</td>
               <td className="py-2 px-3 text-right font-mono">{row.y2025 || "-"}</td>
@@ -257,7 +257,7 @@ function DailyTable({ data }: { data: TechnicianData }) {
           <tbody>
             {filtered.map((r, i) => {
               const mins = r.dailyTotalMinutes;
-              const rowBg = mins > 180 ? "bg-orange-50" : mins > 120 ? "bg-yellow-50" : "";
+              const rowBg = mins > 180 ? "bg-orange-500/10" : mins > 120 ? "bg-yellow-500/10" : "";
               return (
                 <tr key={i} className={`border-b ${rowBg}`}>
                   <td className="py-2 px-3">{r.date}</td>
