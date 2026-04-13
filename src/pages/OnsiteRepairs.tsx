@@ -49,17 +49,17 @@ function parseOnsiteRows(values: string[][]): OnsiteRow[] {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string; bg: string }> = {
-  "진행중": { label: "진행중", color: "text-blue-700", dot: "bg-blue-500", bg: "bg-blue-50 ring-blue-200" },
-  "완료":   { label: "완료",   color: "text-green-700", dot: "bg-green-500", bg: "bg-green-50 ring-green-200" },
-  "보류":   { label: "보류",   color: "text-amber-700", dot: "bg-amber-400", bg: "bg-amber-50 ring-amber-200" },
+  "진행중": { label: "진행중", color: "text-blue-400", dot: "bg-blue-500", bg: "bg-blue-500/15 ring-blue-500/30" },
+  "완료":   { label: "완료",   color: "text-green-400", dot: "bg-green-500", bg: "bg-green-500/15 ring-green-500/30" },
+  "보류":   { label: "보류",   color: "text-amber-400", dot: "bg-amber-400", bg: "bg-amber-500/15 ring-amber-500/30" },
 };
 
 function getStatusCfg(status: string) {
-  if (!status) return { label: "미정", color: "text-gray-500", dot: "bg-gray-300", bg: "bg-gray-50 ring-gray-200" };
+  if (!status) return { label: "미정", color: "text-muted-foreground", dot: "bg-muted-foreground", bg: "bg-muted ring-border" };
   for (const [key, cfg] of Object.entries(STATUS_CONFIG)) {
     if (status.includes(key)) return cfg;
   }
-  return { label: status, color: "text-gray-500", dot: "bg-gray-300", bg: "bg-gray-50 ring-gray-200" };
+  return { label: status, color: "text-muted-foreground", dot: "bg-muted-foreground", bg: "bg-muted ring-border" };
 }
 
 function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) => void }) {
@@ -72,7 +72,7 @@ function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) =>
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-border/50 overflow-hidden"
+      className="bg-card rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-border/50 overflow-hidden"
       style={{ borderLeftWidth: 5, borderLeftColor: statusColor }}
     >
       <div className="px-4 pt-3.5 pb-3 space-y-2.5">
@@ -105,7 +105,7 @@ function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) =>
           <Tractor className="h-4 w-4 text-muted-foreground shrink-0" />
           <div className="flex items-center gap-2 flex-wrap">
             {row.기계 && (
-              <span className="inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-bold bg-green-100 text-green-700">
+              <span className="inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-bold bg-emerald-500/15 text-emerald-400">
                 {row.기계}
               </span>
             )}
