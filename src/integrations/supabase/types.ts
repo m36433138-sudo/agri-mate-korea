@@ -963,6 +963,66 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          related_customer_id: string | null
+          related_machine_id: string | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          related_customer_id?: string | null
+          related_machine_id?: string | null
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          related_customer_id?: string | null
+          related_machine_id?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_related_customer_id_fkey"
+            columns: ["related_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_related_machine_id_fkey"
+            columns: ["related_machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       technician_locations: {
         Row: {
           accuracy: number | null
