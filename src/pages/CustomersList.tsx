@@ -220,7 +220,7 @@ export default function CustomersList() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm truncate">{c.name}</p>
-                      {(c as any).grade && <CustomerGradeBadge grade={(c as any).grade} />}
+                      {c.grade && <CustomerGradeBadge grade={c.grade} />}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {c.phone}

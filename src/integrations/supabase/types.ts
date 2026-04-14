@@ -963,6 +963,56 @@ export type Database = {
           },
         ]
       }
+      sheet_assignments: {
+        Row: {
+          assigned_at: string
+          branch: string
+          customer_name: string | null
+          employee_id: string | null
+          employee_name: string
+          id: string
+          machine_type: string | null
+          model: string | null
+          row_index: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          branch: string
+          customer_name?: string | null
+          employee_id?: string | null
+          employee_name: string
+          id?: string
+          machine_type?: string | null
+          model?: string | null
+          row_index: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          branch?: string
+          customer_name?: string | null
+          employee_id?: string | null
+          employee_name?: string
+          id?: string
+          machine_type?: string | null
+          model?: string | null
+          row_index?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           category: string
