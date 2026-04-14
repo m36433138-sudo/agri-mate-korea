@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGoogleSheets";
+import { supabase } from "@/integrations/supabase/client";
 import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, formatSheetDate } from "@/types/operations";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
@@ -106,13 +107,44 @@ export default function OperationsDashboard() {
     setIsMarking(true);
     try {
       const sheetName = confirmRow._branch === "장흥" ? "장흥(입출수)" : "강진(입출수)";
-      if (confirmAction.next === "완료") {
+      const newStatus = confirmAction.next;
+
+      if (newStatus === "완료") {
         await markRowComplete(sheetName, confirmRow._rowIndex, confirmRow._doneCol);
         toast({ title: "출고 완료", description: `${confirmRow.손님성명}님의 작업이 완료 처리되었습니다.` });
       } else {
-        await updateRowStatus(sheetName, confirmRow._rowIndex, confirmAction.next);
-        toast({ title: "상태 변경", description: `${confirmRow.손님성명}님 → ${confirmAction.next}` });
+        await updateRowStatus(sheetName, confirmRow._rowIndex, newStatus);
+        toast({ title: "상태 변경", description: `${confirmRow.손님성명}님 → ${newStatus}` });
       }
+
+      // sheet_assignments upsert — 수리기사가 있을 때만
+      if (confirmRow.수리기사) {
+        try {
+          // employees 테이블에서 해당 기사 ID 조회
+          const { data: emp } = await supabase
+            .from("employees")
+            .select("id")
+            .eq("name", confirmRow.수리기사)
+            .maybeSingle();
+
+          await (supabase as any)
+            .from("sheet_assignments")
+            .upsert({
+              branch: confirmRow._branch,
+              row_index: confirmRow._rowIndex,
+              employee_name: confirmRow.수리기사,
+              employee_id: emp?.id ?? null,
+              status: newStatus === "완료" ? "완료" : newStatus,
+              customer_name: confirmRow.손님성명 || null,
+              machine_type: confirmRow.기계 || null,
+              model: confirmRow.품목 || null,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: "branch,row_index" });
+        } catch {
+          // sheet_assignments 실패해도 주 기능에는 영향 없음
+        }
+      }
+
       refresh();
     } catch (err: any) {
       toast({ title: "오류", description: err.message || "상태 변경에 실패했습니다.", variant: "destructive" });
