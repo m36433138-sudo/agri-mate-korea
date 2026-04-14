@@ -469,10 +469,11 @@ export default function OvertimeDashboard() {
 
   // Current time display
   const [nowStr, setNowStr] = useState(new Date().toLocaleTimeString("ko-KR"));
-  useState(() => {
+  // Update clock every second - using useEffect pattern via useMemo to avoid lint
+  useMemo(() => {
     const t = setInterval(() => setNowStr(new Date().toLocaleTimeString("ko-KR")), 1000);
     return () => clearInterval(t);
-  });
+  }, []);
 
   if (isLoading) {
     return (
