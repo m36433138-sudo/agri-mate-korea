@@ -107,7 +107,7 @@ export default function CustomerDetail() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold">{customer.name}</h1>
-              {(customer as any).grade && <CustomerGradeBadge grade={(customer as any).grade} />}
+              {customer.grade && <CustomerGradeBadge grade={customer.grade} />}
               {customer.user_id && (
                 <Badge variant="secondary" className="gap-1">
                   <UserCheck className="h-3 w-3" /> 계정 연동됨
@@ -400,7 +400,7 @@ function EditCustomerDialog({ open, onOpenChange, customer }: { open: boolean; o
     phone: customer.phone,
     address: customer.address || "",
     notes: customer.notes || "",
-    grade: (customer as any).grade || "",
+    grade: customer.grade || "",
   });
 
   const mutation = useMutation({
@@ -408,7 +408,7 @@ function EditCustomerDialog({ open, onOpenChange, customer }: { open: boolean; o
       const { error } = await supabase.from("customers").update({
         name: form.name, phone: form.phone, address: form.address || null, notes: form.notes || null,
         grade: form.grade || null,
-      } as any).eq("id", customer.id);
+      }).eq("id", customer.id);
       if (error) throw error;
     },
     onSuccess: () => {
