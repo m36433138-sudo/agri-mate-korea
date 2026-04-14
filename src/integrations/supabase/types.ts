@@ -175,6 +175,77 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_records: {
+        Row: {
+          afternoon_ot_minutes: number
+          clock_in: string | null
+          clock_out: string | null
+          created_at: string
+          date: string
+          employee_id: string
+          id: string
+          is_holiday: boolean
+          is_modified: boolean
+          is_settled: boolean
+          latitude_in: number | null
+          latitude_out: number | null
+          longitude_in: number | null
+          longitude_out: number | null
+          modification_reason: string | null
+          morning_ot_minutes: number
+          overtime_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          afternoon_ot_minutes?: number
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          date: string
+          employee_id: string
+          id?: string
+          is_holiday?: boolean
+          is_modified?: boolean
+          is_settled?: boolean
+          latitude_in?: number | null
+          latitude_out?: number | null
+          longitude_in?: number | null
+          longitude_out?: number | null
+          modification_reason?: string | null
+          morning_ot_minutes?: number
+          overtime_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          afternoon_ot_minutes?: number
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          date?: string
+          employee_id?: string
+          id?: string
+          is_holiday?: boolean
+          is_modified?: boolean
+          is_settled?: boolean
+          latitude_in?: number | null
+          latitude_out?: number | null
+          longitude_in?: number | null
+          longitude_out?: number | null
+          modification_reason?: string | null
+          morning_ot_minutes?: number
+          overtime_minutes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_drive_links: {
         Row: {
           created_at: string | null
@@ -275,6 +346,7 @@ export type Database = {
           join_date: string | null
           name: string
           notes: string | null
+          overtime_hourly_rate: number | null
           phone: string | null
           position: string | null
           resident_number: string | null
@@ -289,6 +361,7 @@ export type Database = {
           join_date?: string | null
           name: string
           notes?: string | null
+          overtime_hourly_rate?: number | null
           phone?: string | null
           position?: string | null
           resident_number?: string | null
@@ -303,6 +376,7 @@ export type Database = {
           join_date?: string | null
           name?: string
           notes?: string | null
+          overtime_hourly_rate?: number | null
           phone?: string | null
           position?: string | null
           resident_number?: string | null
@@ -590,6 +664,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      overtime_settlements: {
+        Row: {
+          bonus_amount: number
+          created_at: string
+          employee_id: string
+          hourly_rate: number
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          settled_by: string | null
+          total_overtime_minutes: number
+          total_payment: number
+        }
+        Insert: {
+          bonus_amount?: number
+          created_at?: string
+          employee_id: string
+          hourly_rate?: number
+          id?: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          settled_by?: string | null
+          total_overtime_minutes?: number
+          total_payment?: number
+        }
+        Update: {
+          bonus_amount?: number
+          created_at?: string
+          employee_id?: string
+          hourly_rate?: number
+          id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          settled_by?: string | null
+          total_overtime_minutes?: number
+          total_payment?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overtime_settlements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       parts: {
         Row: {
