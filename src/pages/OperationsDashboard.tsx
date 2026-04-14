@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGoogleSheets";
+import { supabase } from "@/integrations/supabase/client";
 import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, formatSheetDate } from "@/types/operations";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
