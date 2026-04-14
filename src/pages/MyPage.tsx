@@ -6,10 +6,26 @@ import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Tractor, Wrench, User } from "lucide-react";
+import { MyAssignments } from "@/components/MyAssignments";
 import type { Customer, Machine, Repair } from "@/types/database";
 
 export default function MyPage() {
-  const { userId, profile } = useUserRole();
+  const { userId, role, profile } = useUserRole();
+
+  // 직원인 경우 employees 테이블에서 employee_id 조회
+  const { data: employee } = useQuery({
+    queryKey: ["my-employee", userId],
+    enabled: !!userId && (role === "admin" || role === "employee"),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, name")
+        .eq("user_id", userId!)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+  });
 
   // First find the customer record linked to this user
   const { data: customer, isLoading: customerLoading } = useQuery({
@@ -84,6 +100,11 @@ export default function MyPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 직원 배정 작업 (admin/employee만) */}
+      {(role === "admin" || role === "employee") && (
+        <MyAssignments employeeId={employee?.id ?? null} />
+      )}
 
       {/* My Machines */}
       <Card className="shadow-card border-0 mb-6">
