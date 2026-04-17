@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGoogleSheets";
 import { supabase } from "@/integrations/supabase/client";
-import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, formatSheetDate } from "@/types/operations";
+import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, formatSheetDate, isCompleted } from "@/types/operations";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
 import { RepairDraftModal } from "@/components/operations/RepairDraftModal";
@@ -55,7 +55,9 @@ function StatusBadge({ status }: { status: OperationStatus }) {
 }
 
 export default function OperationsDashboard() {
-  const { allData, isLoading, error, lastUpdated, refresh } = useGoogleSheets();
+  const { allData: rawData, isLoading, error, lastUpdated, refresh } = useGoogleSheets();
+  // 완료된 항목(P열 TRUE)은 작업현황판에서 제외 — 실적현황으로 이동
+  const allData = useMemo(() => rawData.filter(r => !isCompleted(r.전체완료)), [rawData]);
   const [branch, setBranch] = useState<Branch>("전체");
   const [statusFilter, setStatusFilter] = useState<OperationStatus | "전체">("전체");
   const [techFilter, setTechFilter] = useState("전체");
@@ -110,8 +112,10 @@ export default function OperationsDashboard() {
       const newStatus = confirmAction.next;
 
       if (newStatus === "완료") {
+        // P열 TRUE + A열 status_label도 "완료"로 동기화 → 작업현황판에서 제외, 실적현황에 반영
         await markRowComplete(sheetName, confirmRow._rowIndex, confirmRow._doneCol);
-        toast({ title: "출고 완료", description: `${confirmRow.손님성명}님의 작업이 완료 처리되었습니다.` });
+        try { await updateRowStatus(sheetName, confirmRow._rowIndex, "완료"); } catch { /* 보조 업데이트 실패 무시 */ }
+        toast({ title: "출고 완료", description: `${confirmRow.손님성명}님의 작업이 완료 처리되어 실적현황으로 이동했습니다.` });
       } else {
         await updateRowStatus(sheetName, confirmRow._rowIndex, newStatus);
         toast({ title: "상태 변경", description: `${confirmRow.손님성명}님 → ${newStatus}` });
