@@ -56,6 +56,8 @@ type Employee = {
   notes: string | null;
   user_id: string | null;
   created_at: string;
+  is_active?: boolean;
+  resigned_at?: string | null;
 };
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────
@@ -414,6 +416,23 @@ function EmployeesTab() {
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const updates: any = {
+        is_active: isActive,
+        resigned_at: isActive ? null : new Date().toISOString().slice(0, 10),
+      };
+      const { error } = await (supabase as any).from("employees").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["attendance-employees"] });
+      toast({ title: vars.isActive ? "복직 처리되었습니다." : "퇴사 처리되었습니다." });
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
   const filtered = employees?.filter(e => {
     const s = search.toLowerCase();
     return e.name.toLowerCase().includes(s) || e.phone?.includes(s) || e.team?.includes(s) || e.position?.includes(s);
@@ -493,11 +512,16 @@ function EmployeesTab() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold">{emp.name}</p>
+                          <p className={`font-semibold ${emp.is_active === false ? "line-through text-muted-foreground" : ""}`}>{emp.name}</p>
                           {emp.position && <span className="text-xs text-muted-foreground">{emp.position}</span>}
                           {teamCfg && (
                             <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-medium ${teamCfg.bg} ${teamCfg.color}`}>
                               {emp.team}
+                            </span>
+                          )}
+                          {emp.is_active === false && (
+                            <span className="text-[11px] px-1.5 py-0.5 rounded-md font-medium bg-rose-500/10 text-rose-600">
+                              퇴사{emp.resigned_at ? ` (${emp.resigned_at})` : ""}
                             </span>
                           )}
                           {linkedProfile ? (
@@ -548,8 +572,20 @@ function EmployeesTab() {
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button
+                        variant="ghost" size="sm"
+                        className={`h-8 text-xs ${emp.is_active === false ? "text-emerald-600" : "text-amber-600"}`}
+                        onClick={() => {
+                          const action = emp.is_active === false ? "복직" : "퇴사";
+                          if (confirm(`${emp.name} 직원을 ${action} 처리하시겠습니까?`)) {
+                            toggleActiveMutation.mutate({ id: emp.id, isActive: emp.is_active === false });
+                          }
+                        }}
+                      >
+                        {emp.is_active === false ? "복직" : "퇴사"}
+                      </Button>
+                      <Button
                         variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => { if (confirm(`${emp.name} 직원을 삭제하시겠습니까?`)) deleteMutation.mutate(emp.id); }}
+                        onClick={() => { if (confirm(`${emp.name} 직원을 완전히 삭제하시겠습니까? (기록 유지: '퇴사' 사용)`)) deleteMutation.mutate(emp.id); }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

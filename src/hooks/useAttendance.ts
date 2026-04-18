@@ -100,6 +100,8 @@ export interface Employee {
   user_id: string | null;
   team: string | null;
   overtime_hourly_rate: number | null;
+  is_active?: boolean;
+  resigned_at?: string | null;
 }
 
 export interface OvertimeSettlement {
@@ -140,14 +142,15 @@ async function getPosition(): Promise<{ lat: number; lng: number } | null> {
 export function useAttendance() {
   const qc = useQueryClient();
 
-  // Fetch all employees (기사팀)
+  // Fetch all active employees (전체 팀: 기사/영업/사무)
   const employeesQuery = useQuery({
     queryKey: ["attendance-employees"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("employees")
-        .select("id, name, user_id, team, overtime_hourly_rate")
-        .eq("team", "기사팀")
+        .select("id, name, user_id, team, overtime_hourly_rate, is_active, resigned_at")
+        .eq("is_active", true)
+        .order("team")
         .order("name");
       if (error) throw error;
       return data as Employee[];

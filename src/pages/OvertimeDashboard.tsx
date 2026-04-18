@@ -581,28 +581,44 @@ export default function OvertimeDashboard() {
         </CardContent>
       </Card>
 
-      {/* Employee Cards */}
+      {/* Employee Cards grouped by team */}
       {employees.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
             <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
-              기사팀 직원이 등록되지 않았습니다. 직원 관리에서 팀을 "기사팀"으로 설정해주세요.
+              재직 중인 직원이 없습니다. 직원 관리에서 직원을 등록하고 팀을 설정해주세요.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {employees.map((emp) => (
-            <EmployeeCard
-              key={emp.id}
-              emp={emp}
-              records={allRecords}
-              onClockIn={(id) => setConfirmAction({ type: "in", empId: id, empName: emp.name })}
-              onClockOut={(id) => setConfirmAction({ type: "out", empId: id, empName: emp.name })}
-              isMutating={isMutating}
-            />
-          ))}
+        <div className="space-y-6">
+          {(["기사팀", "영업팀", "사무팀", "기타"] as const).map((teamName) => {
+            const teamEmps = employees.filter((e) =>
+              teamName === "기타" ? !["기사팀", "영업팀", "사무팀"].includes(e.team || "") : e.team === teamName
+            );
+            if (teamEmps.length === 0) return null;
+            return (
+              <div key={teamName}>
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground">{teamName}</h3>
+                  <Badge variant="outline" className="text-[10px]">{teamEmps.length}명</Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {teamEmps.map((emp) => (
+                    <EmployeeCard
+                      key={emp.id}
+                      emp={emp}
+                      records={allRecords}
+                      onClockIn={(id) => setConfirmAction({ type: "in", empId: id, empName: emp.name })}
+                      onClockOut={(id) => setConfirmAction({ type: "out", empId: id, empName: emp.name })}
+                      isMutating={isMutating}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
