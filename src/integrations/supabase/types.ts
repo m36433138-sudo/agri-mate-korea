@@ -343,6 +343,7 @@ export type Database = {
           address: string | null
           created_at: string | null
           id: string
+          is_active: boolean
           join_date: string | null
           name: string
           notes: string | null
@@ -350,6 +351,7 @@ export type Database = {
           phone: string | null
           position: string | null
           resident_number: string | null
+          resigned_at: string | null
           salary: number | null
           team: string | null
           user_id: string | null
@@ -358,6 +360,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
+          is_active?: boolean
           join_date?: string | null
           name: string
           notes?: string | null
@@ -365,6 +368,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           resident_number?: string | null
+          resigned_at?: string | null
           salary?: number | null
           team?: string | null
           user_id?: string | null
@@ -373,6 +377,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
+          is_active?: boolean
           join_date?: string | null
           name?: string
           notes?: string | null
@@ -380,6 +385,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           resident_number?: string | null
+          resigned_at?: string | null
           salary?: number | null
           team?: string | null
           user_id?: string | null
