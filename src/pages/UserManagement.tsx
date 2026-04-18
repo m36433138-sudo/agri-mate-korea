@@ -416,6 +416,23 @@ function EmployeesTab() {
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const updates: any = {
+        is_active: isActive,
+        resigned_at: isActive ? null : new Date().toISOString().slice(0, 10),
+      };
+      const { error } = await (supabase as any).from("employees").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["attendance-employees"] });
+      toast({ title: vars.isActive ? "복직 처리되었습니다." : "퇴사 처리되었습니다." });
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
   const filtered = employees?.filter(e => {
     const s = search.toLowerCase();
     return e.name.toLowerCase().includes(s) || e.phone?.includes(s) || e.team?.includes(s) || e.position?.includes(s);
