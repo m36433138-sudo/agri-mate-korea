@@ -56,6 +56,8 @@ type Employee = {
   notes: string | null;
   user_id: string | null;
   created_at: string;
+  is_active?: boolean;
+  resigned_at?: string | null;
 };
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────
