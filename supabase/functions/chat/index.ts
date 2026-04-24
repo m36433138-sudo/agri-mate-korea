@@ -150,7 +150,7 @@ ${contextSummary}`;
     });
   } catch (e) {
     console.error("chat error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "AI 응답 중 오류가 발생했습니다." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
