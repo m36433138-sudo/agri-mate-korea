@@ -124,10 +124,12 @@ function AccountsTab() {
       const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: newRole });
       if (error) throw error;
       if (newRole === "employee") {
-        const { data: existing } = await supabase.from("employee_permissions").select("id").eq("employee_id", userId);
+        const { data: employee } = await supabase.from("employees").select("id").eq("user_id", userId).maybeSingle();
+        if (!employee?.id) return;
+        const { data: existing } = await supabase.from("employee_permissions").select("id").eq("employee_id", employee.id);
         if (!existing || existing.length === 0) {
           await supabase.from("employee_permissions").insert(
-            Object.keys(PERMISSION_LABELS).map(key => ({ employee_id: userId, permission_key: key, is_allowed: false }))
+            Object.keys(PERMISSION_LABELS).map(key => ({ employee_id: employee.id, permission_key: key, is_allowed: false }))
           );
         }
       }
@@ -289,7 +291,7 @@ function AccountsTab() {
                       </td>
                       <td className="p-3 text-right">
                         {u.role === "employee" && (
-                          <Button variant="ghost" size="sm" onClick={() => setPermOpen(u.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => setPermOpen(u.linkedEmployee?.id ?? null)} disabled={!u.linkedEmployee}>
                             <Settings className="h-4 w-4 mr-1" /> 권한
                           </Button>
                         )}
@@ -1045,7 +1047,9 @@ function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClos
   const { data: profile } = useQuery({
     queryKey: ["profile", employeeId],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("display_name, team").eq("id", employeeId).single();
+      const { data: employee } = await supabase.from("employees").select("user_id").eq("id", employeeId).maybeSingle();
+      if (!employee?.user_id) return null;
+      const { data } = await supabase.from("profiles").select("display_name, team").eq("id", employee.user_id).single();
       return data;
     },
   });
@@ -1054,7 +1058,7 @@ function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClos
   const { data: linkedEmployee } = useQuery({
     queryKey: ["linked-employee", employeeId],
     queryFn: async () => {
-      const { data } = await supabase.from("employees").select("id, name, team, position").eq("user_id", employeeId).maybeSingle();
+      const { data } = await supabase.from("employees").select("id, name, team, position").eq("id", employeeId).maybeSingle();
       return data;
     },
   });
