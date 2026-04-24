@@ -91,10 +91,10 @@ Deno.serve(async (req) => {
       await adminClient.from("user_roles").delete().eq("user_id", userId);
       await adminClient.from("user_roles").insert({ user_id: userId, role });
 
-      if (role === "employee") {
+      if (role === "employee" && employee_id) {
         await adminClient.from("employee_permissions").insert(
           ["view_customers", "edit_customers", "manage_repairs", "view_machines", "add_machines"].map((key) => ({
-            employee_id: userId,
+            employee_id,
             permission_key: key,
             is_allowed: false,
           }))
