@@ -124,6 +124,8 @@ interface Props<T> {
   rowClassName?: (row: T) => string;
   /** 프리셋 저장에 사용할 고유 키 (없으면 프리셋 UI 비활성화) */
   presetKey?: string;
+  /** URL 쿼리스트링 동기화에 사용할 prefix (없으면 URL 동기화 비활성화). 같은 페이지에 여러 테이블이 있을 때 충돌 방지용 */
+  urlKey?: string;
 }
 
 type FilterPreset = {
