@@ -63,6 +63,7 @@ function dbToSheetRow(r: DbRow): SheetRow & { _id: string } {
     전체완료: r.is_completed ? "TRUE" : "",
     비고: r.notes ?? "",
     입력자: r.writer ?? "",
+    priority: normalizePriority(r.priority),
     _branch: r.branch,
     _rowIndex: r.row_index,
     _doneCol: "P", // 호환용 (시트 컬럼). DB에서는 사용하지 않음.
