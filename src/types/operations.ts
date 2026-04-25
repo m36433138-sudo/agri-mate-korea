@@ -1,3 +1,5 @@
+import type { Priority } from "@/lib/priority";
+
 export interface SheetRow {
   status_label: string;
   손님성명: string;
@@ -19,6 +21,7 @@ export interface SheetRow {
   전체완료: string;
   비고: string;
   입력자: string;
+  priority: Priority;
   _branch: "장흥" | "강진";
   _rowIndex: number;
   _doneCol: string; // Column letter for 전체완료 (for write-back)
