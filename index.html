@@ -24,8 +24,41 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
 
-  <body>
-    <div id="root"></div>
+  <body style="margin:0;background:#060F1E;color:#e2e8f0;font-family:Pretendard,system-ui,sans-serif;">
+    <div id="root">
+      <div id="boot-fallback" style="display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px;">
+        <div style="max-width:420px;width:100%;background:#0B1D30;border:1px solid rgba(148,163,184,.2);border-radius:16px;padding:32px;text-align:center;">
+          <div style="width:56px;height:56px;border-radius:9999px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          </div>
+          <h1 style="font-size:18px;font-weight:700;margin:0 0 8px;">앱을 시작하지 못했어요</h1>
+          <p id="boot-fallback-msg" style="font-size:14px;color:#94a3b8;margin:0 0 20px;line-height:1.5;">
+            네트워크가 느리거나 일시적인 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.
+          </p>
+          <button onclick="location.reload()" style="background:#3B82F6;color:#fff;border:0;border-radius:12px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;">
+            새로고침
+          </button>
+        </div>
+      </div>
+    </div>
+    <script>
+      // 5초 내 React가 #root를 채우지 못하면 폴백 노출
+      window.__bootTimer = setTimeout(function () {
+        var fb = document.getElementById('boot-fallback');
+        if (fb && document.getElementById('root').childElementCount <= 1) {
+          fb.style.display = 'flex';
+        }
+      }, 5000);
+      // 모듈 스크립트 로드 실패 즉시 폴백
+      window.addEventListener('error', function (e) {
+        if (e.target && e.target.tagName === 'SCRIPT') {
+          var fb = document.getElementById('boot-fallback');
+          var msg = document.getElementById('boot-fallback-msg');
+          if (msg) msg.textContent = '앱 스크립트를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.';
+          if (fb) fb.style.display = 'flex';
+        }
+      }, true);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
