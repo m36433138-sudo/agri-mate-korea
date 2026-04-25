@@ -159,6 +159,25 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
             </Select>
           </div>
 
+          {/* 우선순위 + 기사 */}
+          <div className="col-span-2 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">우선순위</Label>
+              <PriorityPicker
+                value={form.priority}
+                onChange={(p) => setForm(prev => ({ ...prev, priority: p }))}
+                size="md"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">담당 기사</Label>
+              <TechnicianPicker
+                value={form.technician}
+                onChange={(t) => setForm(prev => ({ ...prev, technician: t }))}
+                size="md"
+              />
+            </div>
+
           {/* 손님 성함 */}
           <div>
             <Label>손님 성함 *</Label>
