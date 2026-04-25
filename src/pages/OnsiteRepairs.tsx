@@ -25,7 +25,51 @@ function getStatusCfg(status: string) {
   return { label: status, color: "text-muted-foreground", dot: "bg-muted-foreground", bg: "bg-muted ring-border" };
 }
 
-function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) => void }) {
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!text) return <>{text}</>;
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+  const isDigitQuery = /^\d+$/.test(q.replace(/\D/g, "")) && q.replace(/\D/g, "").length > 0 && q.replace(/\D/g, "") === q.replace(/\s/g, "");
+  // 전화번호처럼 하이픈 포함된 텍스트에서 숫자만 매칭되도록 처리
+  const digits = q.replace(/\D/g, "");
+  if (isDigitQuery && digits && /\d/.test(text)) {
+    // 텍스트에서 숫자만 모은 위치 매핑으로 하이라이트
+    const map: number[] = [];
+    let digitsOnly = "";
+    for (let i = 0; i < text.length; i++) {
+      if (/\d/.test(text[i])) { map.push(i); digitsOnly += text[i]; }
+    }
+    const idx = digitsOnly.indexOf(digits);
+    if (idx >= 0) {
+      const start = map[idx];
+      const end = map[idx + digits.length - 1] + 1;
+      return (
+        <>
+          {text.slice(0, start)}
+          <mark className="bg-primary/30 text-foreground rounded px-0.5">{text.slice(start, end)}</mark>
+          {text.slice(end)}
+        </>
+      );
+    }
+  }
+  const re = new RegExp(`(${escapeRegExp(q)})`, "ig");
+  const parts = text.split(re);
+  return (
+    <>
+      {parts.map((p, i) =>
+        re.test(p) && p.toLowerCase() === q.toLowerCase()
+          ? <mark key={i} className="bg-primary/30 text-foreground rounded px-0.5">{p}</mark>
+          : <span key={i}>{p}</span>
+      )}
+    </>
+  );
+}
+
+function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: OnsiteRow) => void; query: string }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const cfg = getStatusCfg(row.진행사항);
   const statusColor =
@@ -59,7 +103,7 @@ function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) =>
             <User className="h-4 w-4 text-primary" />
           </div>
           <span className="text-xl font-extrabold text-foreground tracking-tight leading-none">
-            {row.손님성함}
+            <Highlight text={row.손님성함} query={query} />
           </span>
         </div>
 
@@ -69,11 +113,18 @@ function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) =>
           <div className="flex items-center gap-2 flex-wrap">
             {row.기계 && (
               <span className="inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-bold bg-emerald-500/15 text-emerald-400">
-                {row.기계}
+                <Highlight text={row.기계} query={query} />
               </span>
             )}
             {row.품목 && (
-              <span className="text-base font-semibold text-foreground">{row.품목}</span>
+              <span className="text-base font-semibold text-foreground">
+                <Highlight text={row.품목} query={query} />
+              </span>
+            )}
+            {row.제조번호 && (
+              <span className="text-xs font-mono text-muted-foreground">
+                S/N <Highlight text={row.제조번호} query={query} />
+              </span>
             )}
           </div>
         </div>
@@ -83,7 +134,7 @@ function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) =>
           <div className="flex items-center gap-2 ml-0.5">
             <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <a href={`tel:${row.전화번호}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors tabular-nums">
-              {row.전화번호}
+              <Highlight text={row.전화번호} query={query} />
             </a>
           </div>
         )}
@@ -237,7 +288,7 @@ export default function OnsiteRepairs() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((r, i) => (
-            <OnsiteCard key={i} row={r} onEdit={handleEdit} />
+            <OnsiteCard key={i} row={r} onEdit={handleEdit} query={search} />
           ))}
         </div>
       )}
