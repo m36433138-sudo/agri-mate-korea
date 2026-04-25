@@ -564,19 +564,8 @@ export default function ExcelTable<T extends object>({
               </div>
               {activeFilterCount > 0 && showFilterDetails && (
                 <div className="flex items-center gap-1.5 flex-wrap px-3 pb-2 pt-0.5 border-t border-border/30">
-                  {globalFilter && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background border border-border/60 text-foreground">
-                      <span className="text-muted-foreground">검색</span>
-                      <span className="font-medium">= {globalFilter}</span>
-                      <button
-                        type="button"
-                        onClick={() => setGlobalFilter("")}
-                        className="text-muted-foreground hover:text-foreground"
-                        aria-label="검색어 제거"
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </span>
+                  {columnFilters.length === 0 && (
+                    <span className="text-muted-foreground">컬럼 필터 없음</span>
                   )}
                   {columnFilters.map((f) => {
                     const col = table.getColumn(f.id);
