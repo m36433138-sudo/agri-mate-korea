@@ -606,11 +606,11 @@ export default function ExcelTable<T extends object>({
                           )}
                         </div>
                       ) : (
-                        <Input
+                        <TextFilterAutocomplete
                           value={(fv as string) ?? ""}
-                          onChange={(e) => h.column.setFilterValue(e.target.value)}
+                          onChange={(v) => h.column.setFilterValue(v || undefined)}
+                          suggestions={textOptionsCache[h.column.id] ?? []}
                           placeholder="필터..."
-                          className="h-7 text-xs px-2"
                         />
                       )}
                     </div>
