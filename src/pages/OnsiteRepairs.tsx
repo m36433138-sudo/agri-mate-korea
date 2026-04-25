@@ -225,7 +225,26 @@ export default function OnsiteRepairs() {
     <div className="space-y-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">방문수리</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold">방문수리</h1>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 ring-1 ring-blue-500/30 text-xs font-bold text-blue-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              진행중 <span className="tabular-nums">{statusCounts["진행중"] ?? 0}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/15 ring-1 ring-green-500/30 text-xs font-bold text-green-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              완료 <span className="tabular-nums">{statusCounts["완료"] ?? 0}</span>
+            </span>
+            {(statusCounts["보류"] ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 ring-1 ring-amber-500/30 text-xs font-bold text-amber-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                보류 <span className="tabular-nums">{statusCounts["보류"]}</span>
+              </span>
+            )}
+            <span className="text-xs text-muted-foreground">전체 {statusCounts["전체"] ?? 0}건</span>
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button onClick={handleAdd} size="sm">
             <Plus className="h-4 w-4 mr-1" /> 추가
