@@ -89,13 +89,22 @@ const allClients: SupabaseClient[] = [];
  * → 채널 간 race condition 제거, 각 케이스가 깨끗한 상태에서 평가된다.
  */
 async function probe(role: "admin" | "employee" | "customer", topic: string, timeoutMs = 10_000): Promise<"subscribed" | "blocked"> {
+  currentRole = role;
+  currentTopic = topic;
+  lastFailureCause = undefined;
+  lastFailureDetail = undefined;
+
   const client = createClient(SUPABASE_URL!, ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   allClients.push(client);
   const email = creds.users[role].email;
   const { error } = await client.auth.signInWithPassword({ email, password: creds.password });
-  if (error) throw new Error(`login ${email}: ${error.message}`);
+  if (error) {
+    lastFailureCause = "LOGIN_FAILED";
+    lastFailureDetail = `${email}: ${error.message}`;
+    throw new Error(`login ${email}: ${error.message}`);
+  }
 
   return await new Promise<"subscribed" | "blocked">((resolve) => {
     let settled = false;
@@ -105,23 +114,124 @@ async function probe(role: "admin" | "employee" | "customer", topic: string, tim
       clearTimeout(timer);
       resolve(r);
     };
-    const timer = setTimeout(() => finish("blocked"), timeoutMs);
+    const timer = setTimeout(() => {
+      lastFailureCause = "TIMED_OUT";
+      lastFailureDetail = `${timeoutMs}ms 내 SUBSCRIBED 응답 없음`;
+      finish("blocked");
+    }, timeoutMs);
 
     const ch: RealtimeChannel = client.channel(topic, {
       config: { private: true, broadcast: { self: false } },
     });
-    ch.subscribe((status) => {
+    ch.subscribe((status, err) => {
       if (status === "SUBSCRIBED") finish("subscribed");
-      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") finish("blocked");
+      else if (status === "CHANNEL_ERROR") {
+        lastFailureCause = "CHANNEL_ERROR";
+        lastFailureDetail = err?.message ?? "RLS 정책에 의해 거부됨";
+        finish("blocked");
+      } else if (status === "TIMED_OUT") {
+        lastFailureCause = "TIMED_OUT";
+        lastFailureDetail = err?.message ?? "Phoenix join timeout";
+        finish("blocked");
+      } else if (status === "CLOSED") {
+        lastFailureCause = "CLOSED";
+        lastFailureDetail = err?.message ?? "WebSocket closed before join";
+        finish("blocked");
+      }
     });
   });
 }
+
+function recordResult(testName: string, expected: ProbeOutcome, actual: ProbeOutcome | "error", durationMs: number, errorMessage?: string) {
+  const passed = actual === expected;
+  let cause: FailureCause | undefined;
+  let detail: string | undefined = lastFailureDetail;
+
+  if (!passed) {
+    if (lastFailureCause) {
+      cause = lastFailureCause;
+    } else if (actual === "subscribed" && expected === "blocked") {
+      cause = "UNEXPECTED_SUBSCRIBE";
+      detail = "RLS가 통과시켰지만 차단되어야 하는 topic";
+    } else if (actual === "blocked" && expected === "subscribed") {
+      cause = "UNEXPECTED_BLOCK";
+      detail = detail ?? "이유 없이 차단됨 (cause 미캡처)";
+    } else if (actual === "error") {
+      cause = "UNKNOWN";
+      detail = errorMessage;
+    } else {
+      cause = "UNKNOWN";
+    }
+  }
+
+  diagnostics.push({
+    testName,
+    role: currentRole,
+    topic: currentTopic,
+    expected,
+    actual,
+    passed,
+    cause,
+    detail,
+    nextAction: cause ? NEXT_ACTIONS[cause] : undefined,
+    durationMs,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+afterEach((ctx) => {
+  const name = ctx.task.name;
+  // expected 추론: 테스트명에 "차단"이 있으면 blocked, 그 외엔 subscribed
+  const expected: ProbeOutcome = /차단/.test(name) ? "blocked" : "subscribed";
+  const state = ctx.task.result?.state;
+  const duration = ctx.task.result?.duration ?? 0;
+  if (state === "pass") {
+    recordResult(name, expected, expected, duration);
+  } else {
+    const actual: ProbeOutcome | "error" = expected === "subscribed" ? "blocked" : "subscribed";
+    const err = ctx.task.result?.errors?.[0]?.message;
+    recordResult(name, expected, actual, duration, err);
+  }
+});
 
 afterAll(async () => {
   await Promise.all(allClients.map(async (c) => {
     try { await c.removeAllChannels(); } catch { /* noop */ }
     try { await c.auth.signOut(); } catch { /* noop */ }
   }));
+
+  // 리포트 기록
+  if (!hasCreds) {
+    diagnostics.push({
+      testName: "(setup)",
+      role: "admin",
+      topic: "-",
+      expected: "subscribed",
+      actual: "error",
+      passed: false,
+      cause: "MISSING_CREDENTIALS",
+      detail: ".test-credentials.json 또는 SUPABASE 환경변수 누락",
+      nextAction: NEXT_ACTIONS.MISSING_CREDENTIALS,
+      durationMs: 0,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  try {
+    if (!fs.existsSync(REPORT_DIR)) fs.mkdirSync(REPORT_DIR, { recursive: true });
+    const report = {
+      generatedAt: new Date().toISOString(),
+      total: diagnostics.length,
+      passed: diagnostics.filter((d) => d.passed).length,
+      failed: diagnostics.filter((d) => !d.passed).length,
+      entries: diagnostics,
+    };
+    fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2));
+    // eslint-disable-next-line no-console
+    console.log(`\n[e2e] 리포트 기록됨: ${REPORT_PATH}\n`);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[e2e] 리포트 기록 실패:", e);
+  }
 });
 
 d("Realtime RLS — 실제 WebSocket 구독 (e2e)", () => {
