@@ -442,8 +442,12 @@ export default function OperationsDashboard() {
                 </div>
 
                 {/* 기사 */}
-                <div className="text-xs text-muted-foreground truncate pr-1">
-                  {row.수리기사 || "-"}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <TechnicianPicker
+                    value={row.수리기사}
+                    onChange={(name) => handleTechChange(row, name)}
+                    stopPropagation
+                  />
                 </div>
 
                 {/* 액션 */}
