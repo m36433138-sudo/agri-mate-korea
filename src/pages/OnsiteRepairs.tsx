@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   RefreshCw, Search, Phone, MapPin, Wrench, Plus, Pencil,
-  Tractor, ChevronDown, ChevronUp, User, Flame,
+  Tractor, ChevronDown, ChevronUp, User, Flame, X,
 } from "lucide-react";
 import { OnsiteRowFormModal } from "@/components/onsite/OnsiteRowFormModal";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/hooks/useVisitRepairs";
 import { PriorityPicker } from "@/components/operations/PriorityPicker";
 import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
-import { PRIORITY_META, type Priority } from "@/lib/priority";
+import { PRIORITY_META, PRIORITIES, type Priority } from "@/lib/priority";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -78,13 +79,15 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 function OnsiteCard({
-  row, onEdit, query, onPriority, onTechnician,
+  row, onEdit, query, onPriority, onTechnician, selected, onToggleSelect,
 }: {
   row: OnsiteRow;
   onEdit: (r: OnsiteRow) => void;
   query: string;
   onPriority: (r: OnsiteRow, p: Priority) => void;
   onTechnician: (r: OnsiteRow, t: string) => void;
+  selected: boolean;
+  onToggleSelect: (r: OnsiteRow) => void;
 }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const cfg = getStatusCfg(row.진행사항);
@@ -104,13 +107,26 @@ function OnsiteCard({
       className={cn(
         "bg-card rounded-2xl shadow-sm hover:shadow-md hover:border-primary/40 transition-all border border-border/50 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40",
         isUrgent && "ring-1 ring-red-500/40 shadow-red-500/10",
+        selected && "ring-2 ring-primary/60 border-primary/60",
       )}
       style={{ borderLeftWidth: 5, borderLeftColor: statusColor }}
     >
       <div className="px-4 pt-3.5 pb-3 space-y-2.5">
-        {/* 상태 + 우선순위 + 기사 + 수정 */}
+        {/* 체크박스 + 상태 + 우선순위 + 기사 + 수정 */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 flex-wrap">
+            <span
+              onClick={(e) => { e.stopPropagation(); onToggleSelect(row); }}
+              className="flex items-center pr-1"
+              role="presentation"
+            >
+              <Checkbox
+                checked={selected}
+                onCheckedChange={() => onToggleSelect(row)}
+                aria-label="선택"
+                className="h-4 w-4"
+              />
+            </span>
             <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ring-1 ${cfg.bg}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
               <span className={cfg.color}>{cfg.label || "미정"}</span>
@@ -215,6 +231,8 @@ export default function OnsiteRepairs() {
   const [statusFilter, setStatusFilter] = useState("전체");
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const { toast } = useToast();
 
   const { rows: rawRows, isLoading, error, refresh } = useVisitRepairs();
@@ -282,6 +300,54 @@ export default function OnsiteRepairs() {
       refresh();
     } catch (err: any) {
       toast({ title: "기사 배정 실패", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const toggleSelect = (r: OnsiteRow) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(r._rowIndex)) next.delete(r._rowIndex);
+      else next.add(r._rowIndex);
+      return next;
+    });
+  };
+
+  const filteredIds = useMemo(() => filtered.map(r => r._rowIndex), [filtered]);
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+  const someFilteredSelected = filteredIds.some(id => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => {
+      if (allFilteredSelected) {
+        const next = new Set(prev);
+        filteredIds.forEach(id => next.delete(id));
+        return next;
+      }
+      const next = new Set(prev);
+      filteredIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkSetPriority = async (p: Priority) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const results = await Promise.allSettled(ids.map(id => updateVisitPriority(id, p)));
+      const failed = results.filter(r => r.status === "rejected").length;
+      const ok = ids.length - failed;
+      toast({
+        title: `우선순위 일괄 변경: ${p}`,
+        description: failed === 0 ? `${ok}건 적용` : `${ok}건 성공, ${failed}건 실패`,
+        variant: failed === 0 ? "default" : "destructive",
+      });
+      clearSelection();
+      refresh();
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -354,6 +420,54 @@ export default function OnsiteRepairs() {
         </div>
       </div>
 
+      {/* 일괄 작업 바 */}
+      <div className="flex items-center gap-2 flex-wrap text-sm bg-muted/30 border border-border/60 rounded-xl px-3 py-2">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <Checkbox
+            checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+            onCheckedChange={toggleSelectAll}
+            aria-label="현재 목록 전체 선택"
+          />
+          <span className="text-xs text-muted-foreground">
+            {selectedIds.size > 0
+              ? <>선택됨 <span className="font-bold text-foreground tabular-nums">{selectedIds.size}</span>건</>
+              : "전체 선택"}
+          </span>
+        </label>
+        {selectedIds.size > 0 && (
+          <>
+            <span className="text-xs text-muted-foreground">우선순위 일괄 변경:</span>
+            {PRIORITIES.map(p => {
+              const m = PRIORITY_META[p];
+              return (
+                <button
+                  key={p}
+                  disabled={bulkBusy}
+                  onClick={() => bulkSetPriority(p)}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-md ring-1 ring-inset font-bold text-xs transition-all hover:scale-105",
+                    m.badge,
+                    bulkBusy && "opacity-50 cursor-not-allowed",
+                  )}
+                >
+                  {p === "긴급" && <Flame className="h-3 w-3" />}
+                  {m.label}
+                </button>
+              );
+            })}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSelection}
+              disabled={bulkBusy}
+              className="ml-auto h-7 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" /> 선택 해제
+            </Button>
+          </>
+        )}
+      </div>
+
       {/* 카드 목록 */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -378,6 +492,8 @@ export default function OnsiteRepairs() {
               query={search}
               onPriority={handlePriority}
               onTechnician={handleTechnician}
+              selected={selectedIds.has(r._rowIndex)}
+              onToggleSelect={toggleSelect}
             />
           ))}
         </div>
