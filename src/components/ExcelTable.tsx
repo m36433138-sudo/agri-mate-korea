@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -11,10 +11,12 @@ import {
   type FilterFn,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X, ChevronDown, ChevronUp, Bookmark, Save, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -119,7 +121,17 @@ interface Props<T> {
   height?: string | number;
   /** 행에 적용할 추가 className */
   rowClassName?: (row: T) => string;
+  /** 프리셋 저장에 사용할 고유 키 (없으면 프리셋 UI 비활성화) */
+  presetKey?: string;
 }
+
+type FilterPreset = {
+  name: string;
+  globalFilter: string;
+  columnFilters: ColumnFiltersState;
+  sorting: SortingState;
+  createdAt: number;
+};
 
 export default function ExcelTable<T extends object>({
   data,
@@ -132,11 +144,63 @@ export default function ExcelTable<T extends object>({
   emptyMessage = "데이터가 없습니다.",
   height,
   rowClassName,
+  presetKey,
 }: Props<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilterDetails, setShowFilterDetails] = useState(false);
+  const [presets, setPresets] = useState<FilterPreset[]>([]);
+
+  const presetStorageKey = presetKey ? `excel-table-presets:${presetKey}` : null;
+
+  // localStorage에서 프리셋 로드
+  useEffect(() => {
+    if (!presetStorageKey) return;
+    try {
+      const raw = localStorage.getItem(presetStorageKey);
+      if (raw) setPresets(JSON.parse(raw));
+    } catch {}
+  }, [presetStorageKey]);
+
+  const persistPresets = (next: FilterPreset[]) => {
+    setPresets(next);
+    if (presetStorageKey) {
+      try { localStorage.setItem(presetStorageKey, JSON.stringify(next)); } catch {}
+    }
+  };
+
+  const handleSavePreset = () => {
+    const name = window.prompt("프리셋 이름을 입력하세요");
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    const exists = presets.some((p) => p.name === trimmed);
+    if (exists && !window.confirm(`'${trimmed}' 프리셋을 덮어쓸까요?`)) return;
+    const preset: FilterPreset = {
+      name: trimmed,
+      globalFilter,
+      columnFilters,
+      sorting,
+      createdAt: Date.now(),
+    };
+    const next = exists
+      ? presets.map((p) => (p.name === trimmed ? preset : p))
+      : [...presets, preset];
+    persistPresets(next);
+    toast({ title: "프리셋 저장됨", description: `'${trimmed}'` });
+  };
+
+  const handleApplyPreset = (p: FilterPreset) => {
+    setGlobalFilter(p.globalFilter ?? "");
+    setColumnFilters(p.columnFilters ?? []);
+    setSorting(p.sorting ?? []);
+    toast({ title: "프리셋 적용됨", description: `'${p.name}'` });
+  };
+
+  const handleDeletePreset = (name: string) => {
+    if (!window.confirm(`'${name}' 프리셋을 삭제할까요?`)) return;
+    persistPresets(presets.filter((p) => p.name !== name));
+  };
 
   // 컬럼에 filterFn 자동 적용
   const enhancedColumns = useMemo(() => columns.map((c) => {
@@ -301,6 +365,60 @@ export default function ExcelTable<T extends object>({
             </Button>
           )}
           {toolbarRight}
+          {presetKey && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Bookmark className="h-3.5 w-3.5" />
+                  프리셋
+                  {presets.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground tabular-nums">({presets.length})</span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 bg-popover z-50">
+                <DropdownMenuLabel className="text-xs">필터 프리셋</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={handleSavePreset}
+                  disabled={!globalFilter && columnFilters.length === 0 && sorting.length === 0}
+                  className="gap-2"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  현재 상태 저장
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {presets.length === 0 ? (
+                  <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                    저장된 프리셋이 없습니다
+                  </div>
+                ) : (
+                  presets.map((p) => (
+                    <DropdownMenuItem
+                      key={p.name}
+                      onSelect={(e) => { e.preventDefault(); handleApplyPreset(p); }}
+                      className="flex items-center justify-between gap-2 group"
+                    >
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate text-sm">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                          필터 {p.columnFilters.length} · 정렬 {p.sorting.length}
+                          {p.globalFilter && ` · 검색 "${p.globalFilter.slice(0, 12)}"`}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDeletePreset(p.name); }}
+                        className="text-muted-foreground hover:text-destructive opacity-60 group-hover:opacity-100"
+                        aria-label={`${p.name} 삭제`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Button variant="outline" size="sm" onClick={handleExport} disabled={rows.length === 0}>
             <Download className="h-3.5 w-3.5 mr-1" /> 엑셀
           </Button>
