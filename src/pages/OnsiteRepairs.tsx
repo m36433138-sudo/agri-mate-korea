@@ -15,6 +15,7 @@ import { PriorityPicker } from "@/components/operations/PriorityPicker";
 import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
 import { PRIORITY_META, type Priority } from "@/lib/priority";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 type OnsiteRow = VisitOnsiteRow & { _rowIndex: number };
 
@@ -76,13 +77,23 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: OnsiteRow) => void; query: string }) {
+function OnsiteCard({
+  row, onEdit, query, onPriority, onTechnician,
+}: {
+  row: OnsiteRow;
+  onEdit: (r: OnsiteRow) => void;
+  query: string;
+  onPriority: (r: OnsiteRow, p: Priority) => void;
+  onTechnician: (r: OnsiteRow, t: string) => void;
+}) {
   const [detailOpen, setDetailOpen] = useState(false);
   const cfg = getStatusCfg(row.진행사항);
-  const statusColor =
-    row.진행사항.includes("진행") ? "#3b82f6" :
-    row.진행사항 === "완료" ? "#16a34a" :
-    row.진행사항 === "보류" ? "#d97706" : "#94a3b8";
+  const isUrgent = row.priority === "긴급";
+  const statusColor = isUrgent
+    ? PRIORITY_META["긴급"].color
+    : row.진행사항.includes("진행") ? "#3b82f6"
+    : row.진행사항 === "완료" ? "#16a34a"
+    : row.진행사항 === "보류" ? "#d97706" : "#94a3b8";
 
   return (
     <div
@@ -90,16 +101,31 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
       tabIndex={0}
       onClick={() => onEdit(row)}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(row); } }}
-      className="bg-card rounded-2xl shadow-sm hover:shadow-md hover:border-primary/40 transition-all border border-border/50 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
+      className={cn(
+        "bg-card rounded-2xl shadow-sm hover:shadow-md hover:border-primary/40 transition-all border border-border/50 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40",
+        isUrgent && "ring-1 ring-red-500/40 shadow-red-500/10",
+      )}
       style={{ borderLeftWidth: 5, borderLeftColor: statusColor }}
     >
       <div className="px-4 pt-3.5 pb-3 space-y-2.5">
-        {/* 상태 + 수정 버튼 */}
-        <div className="flex items-center justify-between">
-          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ring-1 ${cfg.bg}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-            <span className={cfg.color}>{cfg.label || "미정"}</span>
-          </span>
+        {/* 상태 + 우선순위 + 기사 + 수정 */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ring-1 ${cfg.bg}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              <span className={cfg.color}>{cfg.label || "미정"}</span>
+            </span>
+            <PriorityPicker
+              value={row.priority}
+              onChange={(p) => onPriority(row, p)}
+              stopPropagation
+            />
+            <TechnicianPicker
+              value={row.기사 || ""}
+              onChange={(t) => onTechnician(row, t)}
+              stopPropagation
+            />
+          </div>
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(row); }}
             className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
@@ -189,6 +215,7 @@ export default function OnsiteRepairs() {
   const [statusFilter, setStatusFilter] = useState("전체");
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
+  const { toast } = useToast();
 
   const { rows: rawRows, isLoading, error, refresh } = useVisitRepairs();
   const rows: OnsiteRow[] = useMemo(
@@ -227,11 +254,36 @@ export default function OnsiteRepairs() {
         (qDigits ? r.전화번호.replace(/\D/g, "").includes(qDigits) : r.전화번호.includes(q))
       );
     }
-    return result;
+    return result.slice().sort((a, b) => {
+      const ra = PRIORITY_META[a.priority]?.rank ?? 99;
+      const rb = PRIORITY_META[b.priority]?.rank ?? 99;
+      if (ra !== rb) return ra - rb;
+      return (a._rowIndex ?? 0) - (b._rowIndex ?? 0);
+    });
   }, [rows, statusFilter, search]);
 
   const handleAdd = () => { setEditRow(null); setModalOpen(true); };
   const handleEdit = (r: OnsiteRow) => { setEditRow(r); setModalOpen(true); };
+
+  const handlePriority = async (r: OnsiteRow, p: Priority) => {
+    try {
+      await updateVisitPriority(r._rowIndex, p);
+      toast({ title: `우선순위 → ${p}` });
+      refresh();
+    } catch (err: any) {
+      toast({ title: "우선순위 변경 실패", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleTechnician = async (r: OnsiteRow, t: string) => {
+    try {
+      await updateVisitTechnician(r._rowIndex, t || null);
+      toast({ title: t ? `기사 배정 → ${t}` : "기사 배정 해제" });
+      refresh();
+    } catch (err: any) {
+      toast({ title: "기사 배정 실패", description: err.message, variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -319,7 +371,14 @@ export default function OnsiteRepairs() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((r, i) => (
-            <OnsiteCard key={i} row={r} onEdit={handleEdit} query={search} />
+            <OnsiteCard
+              key={i}
+              row={r}
+              onEdit={handleEdit}
+              query={search}
+              onPriority={handlePriority}
+              onTechnician={handleTechnician}
+            />
           ))}
         </div>
       )}
