@@ -67,7 +67,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: customersCount } = useQuery({
+  const { data: customersCount, isLoading: cl } = useQuery({
     queryKey: ["customers-count"],
     queryFn: async () => {
       const { count, error } = await measureQuery("customers-count", () =>
@@ -79,7 +79,7 @@ export default function Dashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: partsCount } = useQuery({
+  const { data: partsCount, isLoading: pl } = useQuery({
     queryKey: ["parts-count"],
     queryFn: async () => {
       const { count, error } = await measureQuery("parts-count", () =>
@@ -94,7 +94,7 @@ export default function Dashboard() {
   // 이번 달 수리 건수만 카운트 — 가벼운 쿼리
   const dateNow = new Date();
   const monthStart = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, "0")}-01`;
-  const { data: repairsThisMonth = 0 } = useQuery({
+  const { data: repairsThisMonth = 0, isLoading: rl } = useQuery({
     queryKey: ["repairs-month-count", monthStart],
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
