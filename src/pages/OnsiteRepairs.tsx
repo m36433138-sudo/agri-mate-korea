@@ -300,6 +300,16 @@ export default function OnsiteRepairs() {
         return r.진행사항 === statusFilter;
       });
     }
+    if (priorityFilter !== "전체") {
+      result = result.filter(r => r.priority === priorityFilter);
+    }
+    if (technicianFilter) {
+      if (technicianFilter === "__none__") {
+        result = result.filter(r => !r.기사);
+      } else {
+        result = result.filter(r => r.기사 === technicianFilter);
+      }
+    }
     if (search) {
       const q = search.toLowerCase();
       const qDigits = q.replace(/\D/g, "");
