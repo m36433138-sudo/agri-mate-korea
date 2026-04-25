@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SheetRow, OperationStatus } from "@/types/operations";
-import { supabase } from "@/integrations/supabase/client";
+import { upsertRowFromValues, clearRow } from "@/hooks/useGoogleSheets";
 import { useTechnicians } from "@/hooks/useTechnicians";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
@@ -132,14 +132,10 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
       const values = formToValues(form);
 
       if (isEdit && row) {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "updateRow", sheetName, rowIndex: row._rowIndex, values },
-        });
+        await upsertRowFromValues(sheetName, row._rowIndex, values);
         toast({ title: "수정 완료" });
       } else {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "addRow", sheetName, values },
-        });
+        await upsertRowFromValues(sheetName, null, values);
         toast({ title: "추가 완료" });
       }
       onSuccess();
@@ -156,9 +152,7 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
     setDeleting(true);
     try {
       const sheetName = row._branch === "강진" ? "강진(입출수)" : "장흥(입출수)";
-      await supabase.functions.invoke("google-sheets", {
-        body: { action: "clearRow", sheetName, rowIndex: row._rowIndex },
-      });
+      await clearRow(sheetName, row._rowIndex);
       toast({ title: "삭제 완료" });
       onSuccess();
       onClose();

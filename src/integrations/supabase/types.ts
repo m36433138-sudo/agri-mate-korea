@@ -1368,6 +1368,72 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_repair_rows: {
+        Row: {
+          address: string | null
+          cost: number | null
+          created_at: string
+          customer_name: string | null
+          id: string
+          is_completed: boolean
+          machine: string | null
+          model: string | null
+          notes: string | null
+          parts_used: string | null
+          phone: string | null
+          requirements: string | null
+          row_index: number
+          serial_number: string | null
+          status_label: string | null
+          technician: string | null
+          updated_at: string
+          visit_date: string | null
+          writer: string | null
+        }
+        Insert: {
+          address?: string | null
+          cost?: number | null
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          is_completed?: boolean
+          machine?: string | null
+          model?: string | null
+          notes?: string | null
+          parts_used?: string | null
+          phone?: string | null
+          requirements?: string | null
+          row_index: number
+          serial_number?: string | null
+          status_label?: string | null
+          technician?: string | null
+          updated_at?: string
+          visit_date?: string | null
+          writer?: string | null
+        }
+        Update: {
+          address?: string | null
+          cost?: number | null
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          is_completed?: boolean
+          machine?: string | null
+          model?: string | null
+          notes?: string | null
+          parts_used?: string | null
+          phone?: string | null
+          requirements?: string | null
+          row_index?: number
+          serial_number?: string | null
+          status_label?: string | null
+          technician?: string | null
+          updated_at?: string
+          visit_date?: string | null
+          writer?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

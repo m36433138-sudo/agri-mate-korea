@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { upsertVisitFromValues, deleteVisitRow } from "@/hooks/useVisitRepairs";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
@@ -97,14 +97,10 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
       const values = formToValues(form);
 
       if (isEdit && row?._rowIndex) {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "updateRow", sheetName: "방문수리", rowIndex: row._rowIndex, values },
-        });
+        await upsertVisitFromValues(row._rowIndex, values);
         toast({ title: "수정 완료" });
       } else {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "addRow", sheetName: "방문수리", values },
-        });
+        await upsertVisitFromValues(undefined, values);
         toast({ title: "추가 완료" });
       }
       onSuccess();
@@ -120,9 +116,7 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
     if (!row?._rowIndex) return;
     setDeleting(true);
     try {
-      await supabase.functions.invoke("google-sheets", {
-        body: { action: "clearRow", sheetName: "방문수리", rowIndex: row._rowIndex },
-      });
+      await deleteVisitRow(row._rowIndex);
       toast({ title: "삭제 완료" });
       onSuccess();
       onClose();

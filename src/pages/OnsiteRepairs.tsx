@@ -1,6 +1,4 @@
 import { useState, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,44 +7,9 @@ import {
   Tractor, ChevronDown, ChevronUp, User,
 } from "lucide-react";
 import { OnsiteRowFormModal } from "@/components/onsite/OnsiteRowFormModal";
+import { useVisitRepairs, type OnsiteRow as VisitOnsiteRow } from "@/hooks/useVisitRepairs";
 
-interface OnsiteRow {
-  진행사항: string;
-  손님성함: string;
-  기계: string;
-  품목: string;
-  전화번호: string;
-  주소: string;
-  내역: string;
-  _rowIndex: number;
-}
-
-function parseOnsiteRows(values: string[][]): OnsiteRow[] {
-  if (!values || values.length < 2) return [];
-  const headers = values[0].map(h => (h || "").trim());
-  const col = (name: string) => headers.findIndex(h => h.includes(name));
-
-  const iStatus = col("진행") >= 0 ? col("진행") : 0;
-  const iName = col("성함") >= 0 ? col("성함") : col("성명") >= 0 ? col("성명") : 1;
-  const iMachine = col("기계") >= 0 ? col("기계") : 2;
-  const iModel = col("품목") >= 0 ? col("품목") : 3;
-  const iPhone = col("전화") >= 0 ? col("전화") : 4;
-  const iAddr = col("주소") >= 0 ? col("주소") : 5;
-  const iDetail = col("내역") >= 0 ? col("내역") : 6;
-
-  return values.slice(1)
-    .map((row, idx) => ({
-      진행사항: (row[iStatus] || "").trim(),
-      손님성함: (row[iName] || "").trim(),
-      기계: (row[iMachine] || "").trim(),
-      품목: (row[iModel] || "").trim(),
-      전화번호: (row[iPhone] || "").trim(),
-      주소: (row[iAddr] || "").trim(),
-      내역: (row[iDetail] || "").trim(),
-      _rowIndex: idx + 2,
-    }))
-    .filter(r => r.손님성함);
-}
+type OnsiteRow = VisitOnsiteRow & { _rowIndex: number };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string; bg: string }> = {
   "진행중": { label: "진행중", color: "text-blue-400", dot: "bg-blue-500", bg: "bg-blue-500/15 ring-blue-500/30" },
@@ -159,24 +122,16 @@ function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) =>
 const STATUS_TABS = ["전체", "진행중", "완료", "보류"];
 
 export default function OnsiteRepairs() {
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
 
-  const { data: rows = [], isLoading, error } = useQuery({
-    queryKey: ["sheets", "방문수리"],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: { tab: "방문수리" },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      return parseOnsiteRows(data?.values || []);
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { rows: rawRows, isLoading, error, refresh } = useVisitRepairs();
+  const rows: OnsiteRow[] = useMemo(
+    () => rawRows.map((r) => ({ ...r, _rowIndex: r._rowIndex ?? 0 })),
+    [rawRows],
+  );
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { 전체: rows.length, 진행중: 0, 완료: 0, 보류: 0 };
@@ -210,7 +165,6 @@ export default function OnsiteRepairs() {
     return result;
   }, [rows, statusFilter, search]);
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["sheets", "방문수리"] });
   const handleAdd = () => { setEditRow(null); setModalOpen(true); };
   const handleEdit = (r: OnsiteRow) => { setEditRow(r); setModalOpen(true); };
 
