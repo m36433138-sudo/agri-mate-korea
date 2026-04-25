@@ -138,7 +138,7 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
         {row.전화번호 && (
           <div className="flex items-center gap-2 ml-0.5">
             <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <a href={`tel:${row.전화번호}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors tabular-nums">
+            <a href={`tel:${row.전화번호}`} onClick={e => e.stopPropagation()} className="text-sm font-semibold text-foreground hover:text-primary transition-colors tabular-nums">
               <Highlight text={row.전화번호} query={query} />
             </a>
           </div>
