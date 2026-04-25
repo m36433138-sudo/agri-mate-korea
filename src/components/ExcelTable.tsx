@@ -11,7 +11,7 @@ import {
   type FilterFn,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X, ChevronDown, ChevronUp, Bookmark, Save, Trash2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X, ChevronDown, ChevronUp, Bookmark, Save, Trash2, Link2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
