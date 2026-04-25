@@ -34,12 +34,14 @@ export default function RecentMachinesWidget() {
     queryKey: ["machines-recent"],
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
+      // idx_machines_status_entry_date (status, entry_date DESC) 부분 일치 활용
       const { data, error } = await measureQuery("machines-recent", () =>
         supabase
           .from("machines")
           .select("id, model_name, serial_number, entry_date, status, machine_type, purchase_price")
           .eq("status", "재고중")
           .order("entry_date", { ascending: false })
+          .order("created_at", { ascending: false })
           .limit(5)
       );
       if (error) throw error;
