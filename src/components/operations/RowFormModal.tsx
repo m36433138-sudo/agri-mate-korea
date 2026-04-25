@@ -152,9 +152,7 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
     setDeleting(true);
     try {
       const sheetName = row._branch === "강진" ? "강진(입출수)" : "장흥(입출수)";
-      await supabase.functions.invoke("google-sheets", {
-        body: { action: "clearRow", sheetName, rowIndex: row._rowIndex },
-      });
+      await clearRow(sheetName, row._rowIndex);
       toast({ title: "삭제 완료" });
       onSuccess();
       onClose();
