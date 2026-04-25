@@ -51,15 +51,35 @@ function StatusDot({ status }: { status: string }) {
 }
 
 export default function Dashboard() {
-  useRealtimeSync("machines", [["machines"]]);
+  useRealtimeSync("machines", [["machines-stats"], ["machines-recent"]]);
   useRealtimeSync("repairs", [["repairs-recent"]]);
   useRealtimeSync("customers", [["customers-count"]]);
   useRealtimeSync("inventory", [["parts-count"]]);
 
-  const { data: machines, isLoading: ml } = useQuery({
-    queryKey: ["machines"],
+  // 통계용 가벼운 쿼리: 필요한 컬럼만
+  const { data: machineStats, isLoading: ml } = useQuery({
+    queryKey: ["machines-stats"],
+    staleTime: 1000 * 60 * 5,
     queryFn: async () => {
-      const { data, error } = await supabase.from("machines").select("*");
+      const { data, error } = await supabase
+        .from("machines")
+        .select("status, machine_type, sale_date");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // 최근 입고 5건만 — DB에서 정렬·제한
+  const { data: recentEntries = [] } = useQuery({
+    queryKey: ["machines-recent"],
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("machines")
+        .select("id, model_name, serial_number, entry_date, status, machine_type, purchase_price")
+        .eq("status", "재고중")
+        .order("entry_date", { ascending: false })
+        .limit(5);
       if (error) throw error;
       return data;
     },
@@ -67,10 +87,11 @@ export default function Dashboard() {
 
   const { data: repairs, isLoading: rl } = useQuery({
     queryKey: ["repairs-recent"],
+    staleTime: 1000 * 60 * 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("repairs")
-        .select("*, machines(model_name, serial_number)")
+        .select("id, repair_date, repair_content, total_cost, machines(model_name, serial_number)")
         .order("repair_date", { ascending: false })
         .limit(8);
       if (error) throw error;
@@ -87,7 +108,7 @@ export default function Dashboard() {
       if (error) throw error;
       return count ?? 0;
     },
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: partsCount } = useQuery({
@@ -99,26 +120,18 @@ export default function Dashboard() {
       if (error) throw error;
       return count ?? 0;
     },
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
   });
 
   const loading = ml || rl;
-  const inStock = machines?.filter((m) => m.status === "재고중") ?? [];
+  const inStock = machineStats?.filter((m) => m.status === "재고중") ?? [];
   const newMachines = inStock.filter((m) => m.machine_type === "새기계");
   const usedMachines = inStock.filter((m) => m.machine_type === "중고기계");
 
   const dateNow = new Date();
   const thisMonth = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, "0")}`;
   const repairsThisMonth = repairs?.filter((r) => r.repair_date?.startsWith(thisMonth)).length ?? 0;
-  const salesThisMonth = machines?.filter((m) => m.sale_date?.startsWith(thisMonth)).length ?? 0;
-
-  const recentEntries = useMemo(() =>
-    machines
-      ?.filter((m) => m.status === "재고중")
-      .sort((a, b) => (b.entry_date > a.entry_date ? 1 : -1))
-      .slice(0, 5) ?? [],
-    [machines]
-  );
+  const salesThisMonth = machineStats?.filter((m) => m.sale_date?.startsWith(thisMonth)).length ?? 0;
 
   // Fake sparkline data (would come from time-series in production)
   const sparkCustomers = [12, 15, 13, 18, 22, 20, 24, 28, 26, 30];
