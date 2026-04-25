@@ -13,8 +13,10 @@ export function useRealtimeSync(
   const qc = useQueryClient();
 
   useEffect(() => {
+    // 채널 이름을 고유하게 만들어 여러 컴포넌트가 동일 테이블을 구독해도 충돌하지 않도록 함
+    const uniqueId = `${Math.random().toString(36).slice(2)}-${Date.now()}`;
     const channel = supabase
-      .channel(`realtime-${table}`)
+      .channel(`realtime-${table}-${uniqueId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table },
