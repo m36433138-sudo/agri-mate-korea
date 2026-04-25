@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useInView } from "@/hooks/useInView";
 
 interface SparklineProps {
   data: number[];
@@ -15,6 +16,7 @@ export function Sparkline({
   color = "hsl(152, 57%, 38%)",
   fillOpacity = 0.12,
 }: SparklineProps) {
+  const { ref, inView } = useInView<HTMLDivElement>("50px");
   const path = useMemo(() => {
     if (!data.length) return "";
     const max = Math.max(...data, 1);
@@ -43,25 +45,29 @@ export function Sparkline({
   if (!data.length || !path) return null;
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0">
-      <defs>
-        <linearGradient id={`spark-grad-${color.replace(/[^a-z0-9]/gi, "")}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={fillOpacity} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <path
-        d={path.fill}
-        fill={`url(#spark-grad-${color.replace(/[^a-z0-9]/gi, "")})`}
-      />
-      <path
-        d={path.line}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div ref={ref} style={{ width, height }} className="shrink-0">
+      {inView ? (
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+          <defs>
+            <linearGradient id={`spark-grad-${color.replace(/[^a-z0-9]/gi, "")}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={fillOpacity} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <path
+            d={path.fill}
+            fill={`url(#spark-grad-${color.replace(/[^a-z0-9]/gi, "")})`}
+          />
+          <path
+            d={path.line}
+            fill="none"
+            stroke={color}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ) : null}
+    </div>
   );
 }

@@ -1,17 +1,25 @@
 import { Link } from "react-router-dom";
 import { ChevronRight, MessageSquare } from "lucide-react";
+import { useInView } from "@/hooks/useInView";
 
 export default function AIInsightWidget() {
+  const { ref, inView } = useInView<HTMLDivElement>("200px");
+
   return (
     <div
+      ref={ref}
       className="lg:col-span-2 rounded-3xl overflow-hidden relative"
       style={{
         background: "linear-gradient(145deg, hsl(152 45% 18%) 0%, hsl(152 55% 24%) 40%, hsl(170 45% 22%) 100%)",
       }}
     >
-      <div className="absolute inset-0 bg-white/[0.03] backdrop-blur-[1px]" />
-      <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/[0.04] blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-primary/10 blur-3xl" />
+      {inView && (
+        <>
+          <div className="absolute inset-0 bg-white/[0.03] backdrop-blur-[1px]" />
+          <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/[0.04] blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-primary/10 blur-3xl" />
+        </>
+      )}
 
       <div className="p-6 flex flex-col h-full text-white min-h-[320px] relative z-10">
         <div className="flex items-center gap-2.5 mb-5">
