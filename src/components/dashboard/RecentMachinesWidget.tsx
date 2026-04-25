@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ChevronRight, Tractor } from "lucide-react";
@@ -8,11 +9,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TypeBadge } from "@/components/StatusBadge";
 import { formatDate, formatPrice } from "@/lib/formatters";
 
-function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-2xl border border-border/60 bg-card ${className}`}>{children}</div>
-  );
-}
+const GlassCard = forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
+  ({ children, className = "" }, ref) => (
+    <div ref={ref} className={`rounded-2xl border border-border/60 bg-card ${className}`}>
+      {children}
+    </div>
+  )
+);
+GlassCard.displayName = "GlassCard";
 
 function StatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = {
