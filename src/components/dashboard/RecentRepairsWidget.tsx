@@ -20,12 +20,14 @@ export default function RecentRepairsWidget() {
     queryKey: ["repairs-recent"],
     staleTime: 1000 * 60 * 2,
     queryFn: async () => {
+      // idx_repairs_repair_date_created_at (repair_date DESC, created_at DESC) 인덱스 활용
       const { data, error } = await measureQuery("repairs-recent", () =>
         supabase
           .from("repairs")
-          .select("id, repair_date, repair_content, total_cost, machines(model_name, serial_number)")
+          .select("id, repair_date, created_at, repair_content, total_cost, machines!repairs_machine_id_fkey(model_name, serial_number)")
           .order("repair_date", { ascending: false })
-          .limit(8)
+          .order("created_at", { ascending: false })
+          .limit(5)
       );
       if (error) throw error;
       return data;
