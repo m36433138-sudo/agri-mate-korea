@@ -14,7 +14,6 @@ export function useRealtimeSync(
   queryKeys: string[][]
 ) {
   const qc = useQueryClient();
-  // 컴포넌트 인스턴스별 안정적 고유 키
   const instanceId = useId();
 
   // 최신 queryKeys를 ref로 추적 (재구독 없이 콜백에서 최신값 사용)
@@ -25,15 +24,18 @@ export function useRealtimeSync(
   const activeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
-    // 이미 이 인스턴스에 활성 채널이 있다면 새로 만들지 않음 (StrictMode 더블 실행 가드)
     if (activeChannelRef.current) {
+      console.log(
+        `[useRealtimeSync] skip duplicate effect — table="${table}" instance="${instanceId}" (channel already active)`
+      );
       return;
     }
 
     const channelName = `realtime-${table}-${instanceId.replace(/:/g, "")}`;
+    console.log(`[useRealtimeSync] create channel "${channelName}"`);
     const channel = supabase.channel(channelName);
 
-    // 반드시 subscribe() 이전에 .on() 콜백을 등록해야 함
+    // 반드시 subscribe() 이전에 .on() 콜백 등록
     channel.on(
       "postgres_changes",
       { event: "*", schema: "public", table },
@@ -43,14 +45,18 @@ export function useRealtimeSync(
         );
       }
     );
+    console.log(`[useRealtimeSync] registered postgres_changes callback on "${channelName}"`);
 
-    channel.subscribe();
+    channel.subscribe((status) => {
+      console.log(`[useRealtimeSync] subscribe status for "${channelName}":`, status);
+    });
     activeChannelRef.current = channel;
 
     return () => {
       const ch = activeChannelRef.current;
       activeChannelRef.current = null;
       if (!ch) return;
+      console.log(`[useRealtimeSync] cleanup channel "${channelName}"`);
       try {
         ch.unsubscribe();
       } catch {
