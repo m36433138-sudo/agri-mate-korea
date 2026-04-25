@@ -97,14 +97,10 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
       const values = formToValues(form);
 
       if (isEdit && row?._rowIndex) {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "updateRow", sheetName: "방문수리", rowIndex: row._rowIndex, values },
-        });
+        await upsertVisitFromValues(row._rowIndex, values);
         toast({ title: "수정 완료" });
       } else {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "addRow", sheetName: "방문수리", values },
-        });
+        await upsertVisitFromValues(undefined, values);
         toast({ title: "추가 완료" });
       }
       onSuccess();
