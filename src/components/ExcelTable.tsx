@@ -299,6 +299,29 @@ export default function ExcelTable<T extends object>({
     return map;
   }, [table, data, columns]);
 
+  // text 필터의 자동완성 후보 (데이터에서 distinct)
+  const textOptionsCache = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const col of table.getAllLeafColumns()) {
+      const def = col.columnDef as ExcelColumn<T>;
+      if (!def.enableColumnFilter) continue;
+      const ftype = def.filterType ?? "text";
+      if (ftype !== "text") continue;
+
+      const set = new Set<string>();
+      for (const r of data) {
+        try {
+          const v = (col as any).accessorFn ? (col as any).accessorFn(r) : (r as any)[(def as any).accessorKey];
+          if (v != null && v !== "") set.add(String(v));
+        } catch {}
+        if (set.size > 500) break;
+      }
+      const arr = Array.from(set).sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
+      map[col.id] = arr;
+    }
+    return map;
+  }, [table, data, columns]);
+
 
   const handleExport = () => {
     const visibleCols = table.getVisibleLeafColumns();
