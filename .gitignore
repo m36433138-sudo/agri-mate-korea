@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .test-credentials.json
+
+# Realtime RLS e2e generated reports
+public/realtime-rls-report.json
+public/realtime-rls-reports/
