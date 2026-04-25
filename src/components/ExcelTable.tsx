@@ -411,6 +411,32 @@ export default function ExcelTable<T extends object>({
                 })}
               </div>
             )}
+            {/* 결과 요약 바 */}
+            <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-t border-border/40 bg-muted/30 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-2 flex-wrap">
+                {activeFilterCount > 0 ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">
+                      필터 {activeFilterCount}개 적용
+                    </span>
+                    <span className="tabular-nums">
+                      <span className="font-semibold text-foreground">{rows.length.toLocaleString()}</span> / {data.length.toLocaleString()}건
+                    </span>
+                  </>
+                ) : (
+                  <span className="tabular-nums">전체 <span className="font-semibold text-foreground">{data.length.toLocaleString()}</span>건</span>
+                )}
+              </div>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="inline-flex items-center gap-1 hover:text-foreground"
+                >
+                  <X className="h-3 w-3" /> 모두 초기화
+                </button>
+              )}
+            </div>
           </div>
 
           {/* 가상화 행 */}
