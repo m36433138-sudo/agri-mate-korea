@@ -25,7 +25,51 @@ function getStatusCfg(status: string) {
   return { label: status, color: "text-muted-foreground", dot: "bg-muted-foreground", bg: "bg-muted ring-border" };
 }
 
-function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) => void }) {
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!text) return <>{text}</>;
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+  const isDigitQuery = /^\d+$/.test(q.replace(/\D/g, "")) && q.replace(/\D/g, "").length > 0 && q.replace(/\D/g, "") === q.replace(/\s/g, "");
+  // 전화번호처럼 하이픈 포함된 텍스트에서 숫자만 매칭되도록 처리
+  const digits = q.replace(/\D/g, "");
+  if (isDigitQuery && digits && /\d/.test(text)) {
+    // 텍스트에서 숫자만 모은 위치 매핑으로 하이라이트
+    const map: number[] = [];
+    let digitsOnly = "";
+    for (let i = 0; i < text.length; i++) {
+      if (/\d/.test(text[i])) { map.push(i); digitsOnly += text[i]; }
+    }
+    const idx = digitsOnly.indexOf(digits);
+    if (idx >= 0) {
+      const start = map[idx];
+      const end = map[idx + digits.length - 1] + 1;
+      return (
+        <>
+          {text.slice(0, start)}
+          <mark className="bg-primary/30 text-foreground rounded px-0.5">{text.slice(start, end)}</mark>
+          {text.slice(end)}
+        </>
+      );
+    }
+  }
+  const re = new RegExp(`(${escapeRegExp(q)})`, "ig");
+  const parts = text.split(re);
+  return (
+    <>
+      {parts.map((p, i) =>
+        re.test(p) && p.toLowerCase() === q.toLowerCase()
+          ? <mark key={i} className="bg-primary/30 text-foreground rounded px-0.5">{p}</mark>
+          : <span key={i}>{p}</span>
+      )}
+    </>
+  );
+}
+
+
   const [detailOpen, setDetailOpen] = useState(false);
   const cfg = getStatusCfg(row.진행사항);
   const statusColor =
