@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes } from "lucide-react";
 import * as XLSX from "xlsx";
+import ExcelTable, { type ExcelColumn } from "@/components/ExcelTable";
 
 type InventoryItem = {
   id: string;
