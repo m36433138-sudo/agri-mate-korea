@@ -671,6 +671,90 @@ export type Database = {
         }
         Relationships: []
       }
+      operation_rows: {
+        Row: {
+          address: string | null
+          branch: string
+          contact_note: string | null
+          contacted: string | null
+          created_at: string
+          customer_name: string | null
+          dispatch_date: string | null
+          entry_date: string | null
+          id: string
+          is_completed: boolean
+          location: string | null
+          machine: string | null
+          model: string | null
+          notes: string | null
+          phone: string | null
+          repair_done_date: string | null
+          repair_start_date: string | null
+          requirements: string | null
+          row_index: number
+          serial_number: string | null
+          source_tab: string
+          status_label: string | null
+          technician: string | null
+          updated_at: string
+          writer: string | null
+        }
+        Insert: {
+          address?: string | null
+          branch: string
+          contact_note?: string | null
+          contacted?: string | null
+          created_at?: string
+          customer_name?: string | null
+          dispatch_date?: string | null
+          entry_date?: string | null
+          id?: string
+          is_completed?: boolean
+          location?: string | null
+          machine?: string | null
+          model?: string | null
+          notes?: string | null
+          phone?: string | null
+          repair_done_date?: string | null
+          repair_start_date?: string | null
+          requirements?: string | null
+          row_index: number
+          serial_number?: string | null
+          source_tab?: string
+          status_label?: string | null
+          technician?: string | null
+          updated_at?: string
+          writer?: string | null
+        }
+        Update: {
+          address?: string | null
+          branch?: string
+          contact_note?: string | null
+          contacted?: string | null
+          created_at?: string
+          customer_name?: string | null
+          dispatch_date?: string | null
+          entry_date?: string | null
+          id?: string
+          is_completed?: boolean
+          location?: string | null
+          machine?: string | null
+          model?: string | null
+          notes?: string | null
+          phone?: string | null
+          repair_done_date?: string | null
+          repair_start_date?: string | null
+          requirements?: string | null
+          row_index?: number
+          serial_number?: string | null
+          source_tab?: string
+          status_label?: string | null
+          technician?: string | null
+          updated_at?: string
+          writer?: string | null
+        }
+        Relationships: []
+      }
       overtime_settlements: {
         Row: {
           bonus_amount: number
