@@ -441,6 +441,19 @@ export default function ExcelTable<T extends object>({
             </Button>
           )}
           {toolbarRight}
+          {urlKey && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyShareLink}
+              disabled={!globalFilter && columnFilters.length === 0 && sorting.length === 0}
+              title="현재 필터/정렬 상태가 담긴 URL 복사"
+              className="gap-1"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              공유
+            </Button>
+          )}
           {presetKey && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
