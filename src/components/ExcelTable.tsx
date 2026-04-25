@@ -37,14 +37,60 @@ export type ExcelColumn<T> = ColumnDef<T, any> & {
   size?: number;
 };
 
-// dateRange / numberRange 공용 필터 함수
-const rangeFilter: FilterFn<any> = (row, columnId, value) => {
+// 날짜 값을 yyyy-mm-dd로 정규화 (ISO 문자열·Date·"yyyy/m/d" 등 허용)
+const normalizeDate = (raw: any): string | null => {
+  if (raw == null || raw === "") return null;
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return null;
+    const y = raw.getFullYear();
+    const m = String(raw.getMonth() + 1).padStart(2, "0");
+    const d = String(raw.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(raw).trim();
+  // 이미 yyyy-mm-dd로 시작하면 앞 10글자 사용
+  const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+  }
+  // yyyy/mm/dd, yyyy.mm.dd 등
+  const altMatch = s.match(/^(\d{4})[./](\d{1,2})[./](\d{1,2})/);
+  if (altMatch) {
+    return `${altMatch[1]}-${altMatch[2].padStart(2, "0")}-${altMatch[3].padStart(2, "0")}`;
+  }
+  // Date 파서로 마지막 시도
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return null;
+  return normalizeDate(d);
+};
+
+// 날짜 범위 필터 — yyyy-mm-dd 문자열 비교 (사전순 = 시간순)
+const dateRangeFilter: FilterFn<any> = (row, columnId, value) => {
   if (!value || (!value.from && !value.to)) return true;
+  const v = normalizeDate(row.getValue(columnId));
+  if (v == null) return false;
+  const from = value.from ? normalizeDate(value.from) : null;
+  const to = value.to ? normalizeDate(value.to) : null;
+  if (from && v < from) return false;
+  if (to && v > to) return false;
+  return true;
+};
+
+// 숫자 범위 필터 — 양쪽을 Number로 변환해 수치 비교
+const numberRangeFilter: FilterFn<any> = (row, columnId, value) => {
+  if (!value || (value.from == null && value.to == null) || (value.from === "" && value.to === "")) return true;
   const raw = row.getValue(columnId);
   if (raw == null || raw === "") return false;
-  const v = typeof raw === "number" ? raw : String(raw);
-  if (value.from != null && value.from !== "" && v < value.from) return false;
-  if (value.to != null && value.to !== "" && v > value.to) return false;
+  const n = typeof raw === "number" ? raw : Number(String(raw).replace(/[^\d.-]/g, ""));
+  if (!Number.isFinite(n)) return false;
+  if (value.from != null && value.from !== "") {
+    const f = Number(value.from);
+    if (Number.isFinite(f) && n < f) return false;
+  }
+  if (value.to != null && value.to !== "") {
+    const t = Number(value.to);
+    if (Number.isFinite(t) && n > t) return false;
+  }
   return true;
 };
 
@@ -96,7 +142,8 @@ export default function ExcelTable<T extends object>({
     const def = c as ExcelColumn<any>;
     if (!def.enableColumnFilter || (c as any).filterFn) return c;
     if (def.filterType === "select") return { ...c, filterFn: selectFilter as any };
-    if (def.filterType === "dateRange" || def.filterType === "numberRange") return { ...c, filterFn: rangeFilter as any };
+    if (def.filterType === "dateRange") return { ...c, filterFn: dateRangeFilter as any };
+    if (def.filterType === "numberRange") return { ...c, filterFn: numberRangeFilter as any };
     return c;
   }), [columns]);
 
