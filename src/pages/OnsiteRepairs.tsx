@@ -79,7 +79,11 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
 
   return (
     <div
-      className="bg-card rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-border/50 overflow-hidden"
+      role="button"
+      tabIndex={0}
+      onClick={() => onEdit(row)}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(row); } }}
+      className="bg-card rounded-2xl shadow-sm hover:shadow-md hover:border-primary/40 transition-all border border-border/50 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
       style={{ borderLeftWidth: 5, borderLeftColor: statusColor }}
     >
       <div className="px-4 pt-3.5 pb-3 space-y-2.5">
@@ -90,8 +94,9 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
             <span className={cfg.color}>{cfg.label || "미정"}</span>
           </span>
           <button
-            onClick={() => onEdit(row)}
+            onClick={(e) => { e.stopPropagation(); onEdit(row); }}
             className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
+            title="상세/수정"
           >
             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
