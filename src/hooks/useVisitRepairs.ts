@@ -10,6 +10,7 @@ export interface OnsiteRow {
   손님성함: string;
   기계: string;
   품목: string;
+  제조번호: string;
   전화번호: string;
   주소: string;
   내역: string;
@@ -26,6 +27,7 @@ interface DbVisitRow {
   address: string | null;
   machine: string | null;
   model: string | null;
+  serial_number: string | null;
   requirements: string | null;
   is_completed: boolean;
 }
@@ -36,6 +38,7 @@ function dbToOnsite(r: DbVisitRow): OnsiteRow {
     손님성함: r.customer_name ?? "",
     기계: r.machine ?? "",
     품목: r.model ?? "",
+    제조번호: r.serial_number ?? "",
     전화번호: r.phone ?? "",
     주소: r.address ?? "",
     내역: r.requirements ?? "",
