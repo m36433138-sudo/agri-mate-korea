@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -47,8 +48,14 @@ export function useRealtimeSync(
     );
     console.log(`[useRealtimeSync] registered postgres_changes callback on "${channelName}"`);
 
-    channel.subscribe((status) => {
-      console.log(`[useRealtimeSync] subscribe status for "${channelName}":`, status);
+    channel.subscribe((status, err) => {
+      console.log(`[useRealtimeSync] subscribe status for "${channelName}":`, status, err ?? "");
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        toast.error("실시간 동기화 연결에 문제가 있습니다.", {
+          id: `realtime-error-${table}`,
+          description: `${table} 테이블의 실시간 업데이트가 일시적으로 중단되었습니다. 화면은 정상 사용 가능합니다.`,
+        });
+      }
     });
     activeChannelRef.current = channel;
 
