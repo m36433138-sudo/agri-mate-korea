@@ -67,7 +67,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: customersCount } = useQuery({
+  const { data: customersCount, isLoading: cl } = useQuery({
     queryKey: ["customers-count"],
     queryFn: async () => {
       const { count, error } = await measureQuery("customers-count", () =>
@@ -79,7 +79,7 @@ export default function Dashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: partsCount } = useQuery({
+  const { data: partsCount, isLoading: pl } = useQuery({
     queryKey: ["parts-count"],
     queryFn: async () => {
       const { count, error } = await measureQuery("parts-count", () =>
@@ -94,7 +94,7 @@ export default function Dashboard() {
   // 이번 달 수리 건수만 카운트 — 가벼운 쿼리
   const dateNow = new Date();
   const monthStart = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, "0")}-01`;
-  const { data: repairsThisMonth = 0 } = useQuery({
+  const { data: repairsThisMonth = 0, isLoading: rl } = useQuery({
     queryKey: ["repairs-month-count", monthStart],
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
@@ -110,6 +110,9 @@ export default function Dashboard() {
   });
 
   const loading = ml;
+  const heroLoading = rl;
+  const customersLoading = cl;
+  const partsLoading = pl;
   const inStock = machineStats?.filter((m) => m.status === "재고중") ?? [];
   const newMachines = inStock.filter((m) => m.machine_type === "새기계");
   const usedMachines = inStock.filter((m) => m.machine_type === "중고기계");
@@ -144,12 +147,14 @@ export default function Dashboard() {
             오늘의 업무 현황
           </h1>
         </div>
-        {!loading && salesThisMonth > 0 && (
+        {loading ? (
+          <Skeleton className="hidden sm:block h-10 w-40 rounded-2xl" />
+        ) : salesThisMonth > 0 ? (
           <div className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-primary bg-primary/8 px-4 py-2 rounded-2xl border border-primary/15">
             <ArrowUpRight className="h-3.5 w-3.5" />
             이번 달 판매 {salesThisMonth}대
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* ── Hero KPI Row: 1 large + 3 small (즉시 렌더, above the fold) ── */}
@@ -163,16 +168,26 @@ export default function Dashboard() {
               </div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">오늘 할 일</span>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-5xl font-extrabold tracking-tight text-foreground tabular-nums">
-                {repairsThisMonth}
-              </span>
-              <span className="text-lg font-semibold text-muted-foreground">건</span>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">이번 달 수리 진행</p>
-            <div className="mt-4">
-              <Sparkline data={sparkRepairs} width={140} height={36} color="hsl(var(--primary))" fillOpacity={0.15} />
-            </div>
+            {heroLoading ? (
+              <>
+                <Skeleton className="h-12 w-28 rounded-xl" />
+                <Skeleton className="h-4 w-32 mt-3 rounded" />
+                <Skeleton className="h-9 w-[140px] mt-4 rounded-xl" />
+              </>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-5xl font-extrabold tracking-tight text-foreground tabular-nums">
+                    {repairsThisMonth}
+                  </span>
+                  <span className="text-lg font-semibold text-muted-foreground">건</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">이번 달 수리 진행</p>
+                <div className="mt-4">
+                  <Sparkline data={sparkRepairs} width={140} height={36} color="hsl(var(--primary))" fillOpacity={0.15} />
+                </div>
+              </>
+            )}
           </div>
         </GlassCard>
 
@@ -187,6 +202,7 @@ export default function Dashboard() {
             iconBg: "bg-[hsl(217,91%,60%)]/10",
             iconColor: "text-[hsl(217,91%,60%)]",
             to: "/customers",
+            isLoading: customersLoading,
           },
           {
             label: "재고 기계",
@@ -199,6 +215,7 @@ export default function Dashboard() {
             iconBg: "bg-primary/10",
             iconColor: "text-primary",
             to: "/machines",
+            isLoading: loading,
           },
           {
             label: "등록 부품",
@@ -210,6 +227,7 @@ export default function Dashboard() {
             iconBg: "bg-warning/10",
             iconColor: "text-warning",
             to: "/parts",
+            isLoading: partsLoading,
           },
         ].map((s) => (
           <Link key={s.to} to={s.to}>
@@ -221,7 +239,7 @@ export default function Dashboard() {
                 <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all duration-200 group-hover:translate-x-0.5" />
               </div>
               <p className="text-xs font-medium text-muted-foreground mb-1">{s.label}</p>
-              {loading ? (
+              {s.isLoading ? (
                 <Skeleton className="h-8 w-20 rounded-xl" />
               ) : (
                 <div className="flex items-baseline gap-1">
