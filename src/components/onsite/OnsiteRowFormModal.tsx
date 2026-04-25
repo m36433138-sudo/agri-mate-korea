@@ -177,6 +177,7 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
                 size="md"
               />
             </div>
+          </div>
 
           {/* 손님 성함 */}
           <div>
