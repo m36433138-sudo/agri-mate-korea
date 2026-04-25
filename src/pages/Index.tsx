@@ -118,8 +118,6 @@ export default function Dashboard() {
   });
 
   // 이번 달 수리 건수만 카운트 — 가벼운 쿼리
-  const dateNow = new Date();
-  const monthStart = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, "0")}-01`;
   const { data: repairsThisMonth = 0, isLoading: rl } = useQuery({
     queryKey: ["repairs-month-count", monthStart],
     staleTime: 1000 * 60 * 5,
@@ -129,6 +127,7 @@ export default function Dashboard() {
           .from("repairs")
           .select("*", { count: "exact", head: true })
           .gte("repair_date", monthStart)
+          .lt("repair_date", monthEnd)
       );
       if (error) throw error;
       return count ?? 0;
@@ -139,12 +138,9 @@ export default function Dashboard() {
   const heroLoading = rl;
   const customersLoading = cl;
   const partsLoading = pl;
-  const inStock = machineStats?.filter((m) => m.status === "재고중") ?? [];
+  const inStock = machineStats ?? [];
   const newMachines = inStock.filter((m) => m.machine_type === "새기계");
   const usedMachines = inStock.filter((m) => m.machine_type === "중고기계");
-
-  const thisMonth = monthStart.slice(0, 7);
-  const salesThisMonth = machineStats?.filter((m) => m.sale_date?.startsWith(thisMonth)).length ?? 0;
 
   // Fake sparkline data (would come from time-series in production)
   const sparkCustomers = [12, 15, 13, 18, 22, 20, 24, 28, 26, 30];
