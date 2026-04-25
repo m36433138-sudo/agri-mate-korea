@@ -77,13 +77,23 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: OnsiteRow) => void; query: string }) {
+function OnsiteCard({
+  row, onEdit, query, onPriority, onTechnician,
+}: {
+  row: OnsiteRow;
+  onEdit: (r: OnsiteRow) => void;
+  query: string;
+  onPriority: (r: OnsiteRow, p: Priority) => void;
+  onTechnician: (r: OnsiteRow, t: string) => void;
+}) {
   const [detailOpen, setDetailOpen] = useState(false);
   const cfg = getStatusCfg(row.진행사항);
-  const statusColor =
-    row.진행사항.includes("진행") ? "#3b82f6" :
-    row.진행사항 === "완료" ? "#16a34a" :
-    row.진행사항 === "보류" ? "#d97706" : "#94a3b8";
+  const isUrgent = row.priority === "긴급";
+  const statusColor = isUrgent
+    ? PRIORITY_META["긴급"].color
+    : row.진행사항.includes("진행") ? "#3b82f6"
+    : row.진행사항 === "완료" ? "#16a34a"
+    : row.진행사항 === "보류" ? "#d97706" : "#94a3b8";
 
   return (
     <div
@@ -91,7 +101,10 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
       tabIndex={0}
       onClick={() => onEdit(row)}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(row); } }}
-      className="bg-card rounded-2xl shadow-sm hover:shadow-md hover:border-primary/40 transition-all border border-border/50 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
+      className={cn(
+        "bg-card rounded-2xl shadow-sm hover:shadow-md hover:border-primary/40 transition-all border border-border/50 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40",
+        isUrgent && "ring-1 ring-red-500/40 shadow-red-500/10",
+      )}
       style={{ borderLeftWidth: 5, borderLeftColor: statusColor }}
     >
       <div className="px-4 pt-3.5 pb-3 space-y-2.5">
