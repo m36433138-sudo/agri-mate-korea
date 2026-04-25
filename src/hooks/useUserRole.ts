@@ -21,9 +21,15 @@ export function useUserRole() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // 사용자 정보는 자주 안 바뀜 → 30분 fresh, 1시간 캐시
+  const USER_STALE = 1000 * 60 * 30;
+  const USER_GC = 1000 * 60 * 60;
+
   const { data: role, isLoading: roleLoading } = useQuery({
     queryKey: ["user-role", userId],
     enabled: !!userId,
+    staleTime: USER_STALE,
+    gcTime: USER_GC,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
@@ -39,6 +45,8 @@ export function useUserRole() {
   const { data: permissions, isLoading: permLoading } = useQuery({
     queryKey: ["user-permissions", userId],
     enabled: !!userId && role === "employee",
+    staleTime: USER_STALE,
+    gcTime: USER_GC,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employee_permissions")
@@ -54,6 +62,8 @@ export function useUserRole() {
   const { data: profile } = useQuery({
     queryKey: ["user-profile", userId],
     enabled: !!userId,
+    staleTime: USER_STALE,
+    gcTime: USER_GC,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
