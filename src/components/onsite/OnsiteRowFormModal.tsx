@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { upsertVisitFromValues, deleteVisitRow } from "@/hooks/useVisitRepairs";
+import {
+  upsertVisitFromValues, deleteVisitRow,
+  updateVisitPriority, updateVisitTechnician,
+} from "@/hooks/useVisitRepairs";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
@@ -12,6 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
+import { PriorityPicker } from "@/components/operations/PriorityPicker";
+import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
+import { normalizePriority, type Priority } from "@/lib/priority";
 
 const STATUSES = ["진행중", "완료", "보류"];
 const MACHINE_TYPES = ["농업용 트랙터", "콤바인", "이앙기", "기타"];
