@@ -49,21 +49,47 @@ function WidgetSkeleton({ className = "" }: { className?: string }) {
 }
 
 export default function Dashboard() {
-  useRealtimeSync("machines", [["machines-stats"]]);
+  useRealtimeSync("machines", [["machines-stats"], ["machines-sales-month"]]);
   useRealtimeSync("customers", [["customers-count"]]);
   useRealtimeSync("inventory", [["parts-count"]]);
   useRealtimeSync("repairs", [["repairs-month-count"]]);
 
-  // 통계용 가벼운 쿼리: 필요한 컬럼만
+  // 이번 달 범위 (월별 판매 집계 + 수리 카운트 공용)
+  const dateNow = new Date();
+  const monthStart = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, "0")}-01`;
+  const nextMonthDate = new Date(dateNow.getFullYear(), dateNow.getMonth() + 1, 1);
+  const monthEnd = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}-01`;
+
+  // 재고 현황용 가벼운 쿼리: 재고중 행만, 필요한 컬럼만
   const { data: machineStats, isLoading: ml } = useQuery({
     queryKey: ["machines-stats"],
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
       const { data, error } = await measureQuery("machines-stats", () =>
-        supabase.from("machines").select("status, machine_type, sale_date")
+        supabase
+          .from("machines")
+          .select("status, machine_type")
+          .eq("status", "재고중")
       );
       if (error) throw error;
       return data;
+    },
+  });
+
+  // 이번 달 판매 건수: 날짜 범위로 한정 + count만 (head: true)
+  const { data: salesThisMonth = 0 } = useQuery({
+    queryKey: ["machines-sales-month", monthStart],
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      const { count, error } = await measureQuery("machines-sales-month", () =>
+        supabase
+          .from("machines")
+          .select("*", { count: "exact", head: true })
+          .gte("sale_date", monthStart)
+          .lt("sale_date", monthEnd)
+      );
+      if (error) throw error;
+      return count ?? 0;
     },
   });
 
