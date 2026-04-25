@@ -460,14 +460,80 @@ export default function OnsiteRepairs() {
             </button>
           );
         })}
-        <div className="relative flex-1 max-w-xs ml-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="고객명·전화·기계·제조번호 검색..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {/* 우선순위 필터 */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPriorityFilter("전체")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors",
+                priorityFilter === "전체"
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-background text-muted-foreground border-border hover:text-foreground",
+              )}
+            >
+              우선순위·전체
+            </button>
+            {PRIORITIES.map(p => {
+              const m = PRIORITY_META[p];
+              const active = priorityFilter === p;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPriorityFilter(active ? "전체" : p)}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold ring-1 ring-inset transition-all",
+                    active ? m.badge : "bg-background text-muted-foreground ring-border hover:text-foreground",
+                  )}
+                  title={`우선순위: ${p}`}
+                >
+                  {p === "긴급" && <Flame className="h-3 w-3" />}
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 기사 필터 */}
+          <Select value={technicianFilter || "__all__"} onValueChange={v => setTechnicianFilter(v === "__all__" ? "" : v)}>
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue placeholder="기사 전체" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">기사 전체</SelectItem>
+              <SelectItem value="__none__">미배정</SelectItem>
+              {TECHNICIANS.map(name => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* 초기화 */}
+          {(statusFilter !== "전체" || priorityFilter !== "전체" || technicianFilter || search) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setStatusFilter("전체");
+                setPriorityFilter("전체");
+                setTechnicianFilter("");
+                setSearch("");
+              }}
+              className="h-8 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" /> 초기화
+            </Button>
+          )}
+
+          <div className="relative w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="고객명·전화·기계·제조번호 검색..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
         </div>
       </div>
 
