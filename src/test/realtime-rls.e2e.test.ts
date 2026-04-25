@@ -10,10 +10,56 @@
  * 실제 ws 구독으로 검증한다. private:true 채널만이 RLS 게이팅을 받는다.
  */
 
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, afterEach } from "vitest";
 import { createClient, type SupabaseClient, type RealtimeChannel } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
+
+// ── 진단 리포트 수집 ─────────────────────────────────────────
+type ProbeOutcome = "subscribed" | "blocked";
+type FailureCause =
+  | "LOGIN_FAILED"
+  | "CHANNEL_ERROR"
+  | "TIMED_OUT"
+  | "CLOSED"
+  | "UNEXPECTED_SUBSCRIBE"
+  | "UNEXPECTED_BLOCK"
+  | "MISSING_CREDENTIALS"
+  | "UNKNOWN";
+
+interface DiagnosticEntry {
+  testName: string;
+  role: "admin" | "employee" | "customer";
+  topic: string;
+  expected: ProbeOutcome;
+  actual: ProbeOutcome | "error";
+  passed: boolean;
+  cause?: FailureCause;
+  detail?: string;
+  nextAction?: string;
+  durationMs: number;
+  timestamp: string;
+}
+
+const REPORT_DIR = path.resolve(process.cwd(), "public");
+const REPORT_PATH = path.join(REPORT_DIR, "realtime-rls-report.json");
+const diagnostics: DiagnosticEntry[] = [];
+let currentExpected: ProbeOutcome = "subscribed";
+let currentRole: "admin" | "employee" | "customer" = "admin";
+let currentTopic = "";
+let lastFailureCause: FailureCause | undefined;
+let lastFailureDetail: string | undefined;
+
+const NEXT_ACTIONS: Record<FailureCause, string> = {
+  LOGIN_FAILED: "scripts/seed-e2e-users.mjs로 테스트 계정을 다시 시드하거나 .test-credentials.json의 password 값을 확인하세요.",
+  CHANNEL_ERROR: "supabase/migrations 의 realtime.messages RLS 정책이 해당 topic 패턴을 허용하는지 확인하세요. (의도된 차단이라면 expected를 'blocked'로 수정)",
+  TIMED_OUT: "Supabase Realtime 서버 응답이 지연되었습니다. cloud_status로 백엔드 상태를 점검하고 네트워크/방화벽을 확인하세요.",
+  CLOSED: "WebSocket이 조기 종료되었습니다. anon key 만료 또는 JWT 갱신 실패를 확인하세요.",
+  UNEXPECTED_SUBSCRIBE: "차단되어야 할 topic이 허용되었습니다. RLS 정책에 누락된 거부 규칙이 있는지 점검하세요. (보안 위험)",
+  UNEXPECTED_BLOCK: "허용되어야 할 topic이 차단되었습니다. RLS 정책의 USING 절과 사용자 role/employee_id 매핑을 확인하세요.",
+  MISSING_CREDENTIALS: ".test-credentials.json이 없습니다. `bun scripts/seed-e2e-users.mjs <password>` 실행 후 재시도하세요.",
+  UNKNOWN: "원인 불명. ws 라이브러리 버전·네트워크·Supabase 프로젝트 상태(cloud_status)를 순서대로 점검하세요.",
+};
 
 import WebSocket from "ws";
 // @ts-expect-error global polyfill — supabase-js realtime은 글로벌 WebSocket을 사용
