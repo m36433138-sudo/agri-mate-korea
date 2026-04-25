@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +14,8 @@ import {
 } from "@/hooks/useVisitRepairs";
 import { PriorityPicker } from "@/components/operations/PriorityPicker";
 import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
-import { PRIORITY_META, PRIORITIES, type Priority } from "@/lib/priority";
+import { PRIORITY_META, PRIORITIES, TECHNICIANS, type Priority } from "@/lib/priority";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -225,15 +226,56 @@ function OnsiteCard({
 }
 
 const STATUS_TABS = ["전체", "진행중", "완료", "보류"];
+const STORAGE_KEY = "onsite-repairs:filters:v1";
+
+interface PersistedFilters {
+  search: string;
+  statusFilter: string;
+  priorityFilter: string; // "전체" | Priority
+  technicianFilter: string; // "" = 전체
+}
+
+const DEFAULT_FILTERS: PersistedFilters = {
+  search: "",
+  statusFilter: "전체",
+  priorityFilter: "전체",
+  technicianFilter: "",
+};
+
+function loadFilters(): PersistedFilters {
+  if (typeof window === "undefined") return DEFAULT_FILTERS;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_FILTERS;
+    return { ...DEFAULT_FILTERS, ...(JSON.parse(raw) as Partial<PersistedFilters>) };
+  } catch {
+    return DEFAULT_FILTERS;
+  }
+}
 
 export default function OnsiteRepairs() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("전체");
+  const initial = useMemo(loadFilters, []);
+  const [search, setSearch] = useState(initial.search);
+  const [statusFilter, setStatusFilter] = useState(initial.statusFilter);
+  const [priorityFilter, setPriorityFilter] = useState<string>(initial.priorityFilter);
+  const [technicianFilter, setTechnicianFilter] = useState<string>(initial.technicianFilter);
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const { toast } = useToast();
+
+  // 필터 상태를 localStorage에 저장
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ search, statusFilter, priorityFilter, technicianFilter }),
+      );
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [search, statusFilter, priorityFilter, technicianFilter]);
 
   const { rows: rawRows, isLoading, error, refresh } = useVisitRepairs();
   const rows: OnsiteRow[] = useMemo(
@@ -259,6 +301,16 @@ export default function OnsiteRepairs() {
         return r.진행사항 === statusFilter;
       });
     }
+    if (priorityFilter !== "전체") {
+      result = result.filter(r => r.priority === priorityFilter);
+    }
+    if (technicianFilter) {
+      if (technicianFilter === "__none__") {
+        result = result.filter(r => !r.기사);
+      } else {
+        result = result.filter(r => r.기사 === technicianFilter);
+      }
+    }
     if (search) {
       const q = search.toLowerCase();
       const qDigits = q.replace(/\D/g, "");
@@ -278,7 +330,7 @@ export default function OnsiteRepairs() {
       if (ra !== rb) return ra - rb;
       return (a._rowIndex ?? 0) - (b._rowIndex ?? 0);
     });
-  }, [rows, statusFilter, search]);
+  }, [rows, statusFilter, priorityFilter, technicianFilter, search]);
 
   const handleAdd = () => { setEditRow(null); setModalOpen(true); };
   const handleEdit = (r: OnsiteRow) => { setEditRow(r); setModalOpen(true); };
@@ -409,14 +461,80 @@ export default function OnsiteRepairs() {
             </button>
           );
         })}
-        <div className="relative flex-1 max-w-xs ml-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="고객명·전화·기계·제조번호 검색..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {/* 우선순위 필터 */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPriorityFilter("전체")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors",
+                priorityFilter === "전체"
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-background text-muted-foreground border-border hover:text-foreground",
+              )}
+            >
+              우선순위·전체
+            </button>
+            {PRIORITIES.map(p => {
+              const m = PRIORITY_META[p];
+              const active = priorityFilter === p;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPriorityFilter(active ? "전체" : p)}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold ring-1 ring-inset transition-all",
+                    active ? m.badge : "bg-background text-muted-foreground ring-border hover:text-foreground",
+                  )}
+                  title={`우선순위: ${p}`}
+                >
+                  {p === "긴급" && <Flame className="h-3 w-3" />}
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 기사 필터 */}
+          <Select value={technicianFilter || "__all__"} onValueChange={v => setTechnicianFilter(v === "__all__" ? "" : v)}>
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue placeholder="기사 전체" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">기사 전체</SelectItem>
+              <SelectItem value="__none__">미배정</SelectItem>
+              {TECHNICIANS.map(name => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* 초기화 */}
+          {(statusFilter !== "전체" || priorityFilter !== "전체" || technicianFilter || search) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setStatusFilter("전체");
+                setPriorityFilter("전체");
+                setTechnicianFilter("");
+                setSearch("");
+              }}
+              className="h-8 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" /> 초기화
+            </Button>
+          )}
+
+          <div className="relative w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="고객명·전화·기계·제조번호 검색..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
         </div>
       </div>
 
