@@ -45,10 +45,10 @@ function colorForMs(ms: number): string {
   return "color:#ef4444;font-weight:bold"; // red
 }
 
-export async function measureQuery<T>(
+export async function measureQuery<R extends { data: any; error: any; count?: number | null }>(
   label: string,
-  fn: () => Promise<{ data: T; error: any; count?: number | null }>
-): Promise<{ data: T; error: any; count?: number | null }> {
+  fn: () => PromiseLike<R>
+): Promise<R> {
   const t0 = performance.now();
   const result = await fn();
   const dur = performance.now() - t0;
