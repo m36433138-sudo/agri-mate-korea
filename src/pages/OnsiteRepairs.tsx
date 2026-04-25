@@ -122,24 +122,16 @@ function OnsiteCard({ row, onEdit }: { row: OnsiteRow; onEdit: (r: OnsiteRow) =>
 const STATUS_TABS = ["전체", "진행중", "완료", "보류"];
 
 export default function OnsiteRepairs() {
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
 
-  const { data: rows = [], isLoading, error } = useQuery({
-    queryKey: ["sheets", "방문수리"],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: { tab: "방문수리" },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      return parseOnsiteRows(data?.values || []);
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { rows: rawRows, isLoading, error, refresh } = useVisitRepairs();
+  const rows: OnsiteRow[] = useMemo(
+    () => rawRows.map((r) => ({ ...r, _rowIndex: r._rowIndex ?? 0 })),
+    [rawRows],
+  );
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { 전체: rows.length, 진행중: 0, 완료: 0, 보류: 0 };
@@ -173,7 +165,6 @@ export default function OnsiteRepairs() {
     return result;
   }, [rows, statusFilter, search]);
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["sheets", "방문수리"] });
   const handleAdd = () => { setEditRow(null); setModalOpen(true); };
   const handleEdit = (r: OnsiteRow) => { setEditRow(r); setModalOpen(true); };
 
