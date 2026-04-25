@@ -57,7 +57,7 @@ export default function RecentRepairsWidget() {
           <p className="text-sm text-muted-foreground p-10 text-center">수리 이력이 없습니다.</p>
         ) : (
           <div className="divide-y divide-border/30">
-            {repairs.slice(0, 6).map((r: any) => (
+            {repairs.map((r: any) => (
               <div key={r.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-accent/30 transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
                   <Wrench className="h-4 w-4 text-muted-foreground" />
