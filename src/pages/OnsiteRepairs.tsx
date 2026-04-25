@@ -4,10 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   RefreshCw, Search, Phone, MapPin, Wrench, Plus, Pencil,
-  Tractor, ChevronDown, ChevronUp, User,
+  Tractor, ChevronDown, ChevronUp, User, Flame,
 } from "lucide-react";
 import { OnsiteRowFormModal } from "@/components/onsite/OnsiteRowFormModal";
-import { useVisitRepairs, type OnsiteRow as VisitOnsiteRow } from "@/hooks/useVisitRepairs";
+import {
+  useVisitRepairs, updateVisitPriority, updateVisitTechnician,
+  type OnsiteRow as VisitOnsiteRow,
+} from "@/hooks/useVisitRepairs";
+import { PriorityPicker } from "@/components/operations/PriorityPicker";
+import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
+import { PRIORITY_META, type Priority } from "@/lib/priority";
+import { useToast } from "@/hooks/use-toast";
 
 type OnsiteRow = VisitOnsiteRow & { _rowIndex: number };
 
