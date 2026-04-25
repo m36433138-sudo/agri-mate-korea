@@ -14,7 +14,7 @@ import {
 } from "@/hooks/useVisitRepairs";
 import { PriorityPicker } from "@/components/operations/PriorityPicker";
 import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
-import { PRIORITY_META, type Priority } from "@/lib/priority";
+import { PRIORITY_META, PRIORITIES, type Priority } from "@/lib/priority";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
