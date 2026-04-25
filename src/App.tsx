@@ -129,7 +129,8 @@ const App = () => (
         </Suspense>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
+    </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;
