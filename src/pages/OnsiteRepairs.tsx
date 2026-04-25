@@ -156,7 +156,7 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
         {row.내역 && (
           <div>
             <button
-              onClick={() => setDetailOpen(v => !v)}
+              onClick={(e) => { e.stopPropagation(); setDetailOpen(v => !v); }}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <Wrench className="h-3 w-3" />
