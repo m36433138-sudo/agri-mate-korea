@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,11 +11,13 @@ export function useRealtimeSync(
   queryKeys: string[][]
 ) {
   const qc = useQueryClient();
+  // useId는 컴포넌트 인스턴스마다 안정적인 고유 키를 보장 (렌더마다 변하지 않음)
+  const instanceId = useId();
 
   useEffect(() => {
-    // 채널 이름을 고유하게 만들어 여러 컴포넌트가 동일 테이블을 구독해도 충돌하지 않도록 함
-    const uniqueId = `${Math.random().toString(36).slice(2)}-${Date.now()}`;
-    const channel = supabase.channel(`realtime-${table}-${uniqueId}`);
+    // 컴포넌트 인스턴스별 결정적 채널 이름 → 동일 테이블을 여러 곳에서 구독해도 충돌 없음
+    const channelName = `realtime-${table}-${instanceId.replace(/:/g, "")}`;
+    const channel = supabase.channel(channelName);
 
     // 반드시 subscribe() 이전에 .on() 콜백을 등록해야 함
     channel.on(
@@ -37,5 +39,5 @@ export function useRealtimeSync(
       }
       supabase.removeChannel(channel);
     };
-  }, [table, qc]); // queryKeys intentionally excluded to avoid re-subscribing
+  }, [table, instanceId, qc]); // queryKeys intentionally excluded to avoid re-subscribing
 }
