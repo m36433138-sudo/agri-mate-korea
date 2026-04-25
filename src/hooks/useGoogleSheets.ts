@@ -36,6 +36,7 @@ interface DbRow {
   is_completed: boolean;
   notes: string | null;
   writer: string | null;
+  priority: string | null;
   updated_at: string;
 }
 
