@@ -8,13 +8,17 @@ import {
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
+  type FilterFn,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+
+export type ColumnFilterType = "text" | "select" | "dateRange" | "numberRange";
 
 export type ExcelColumn<T> = ColumnDef<T, any> & {
   /** Excel export 시 사용할 값 추출 함수. 없으면 accessorKey 값 사용 */
@@ -25,8 +29,29 @@ export type ExcelColumn<T> = ColumnDef<T, any> & {
   disableSort?: boolean;
   /** 필터 활성화 (헤더 아래 입력칸) */
   enableColumnFilter?: boolean;
+  /** 필터 유형 — 기본 text */
+  filterType?: ColumnFilterType;
+  /** select 필터일 때 선택지. 없으면 데이터에서 자동 추출(distinct) */
+  filterOptions?: string[];
   /** 기본 너비(px) */
   size?: number;
+};
+
+// dateRange / numberRange 공용 필터 함수
+const rangeFilter: FilterFn<any> = (row, columnId, value) => {
+  if (!value || (!value.from && !value.to)) return true;
+  const raw = row.getValue(columnId);
+  if (raw == null || raw === "") return false;
+  const v = typeof raw === "number" ? raw : String(raw);
+  if (value.from != null && value.from !== "" && v < value.from) return false;
+  if (value.to != null && value.to !== "" && v > value.to) return false;
+  return true;
+};
+
+const selectFilter: FilterFn<any> = (row, columnId, value) => {
+  if (!value || value === "__all__") return true;
+  const raw = row.getValue(columnId);
+  return String(raw ?? "") === String(value);
 };
 
 interface Props<T> {
