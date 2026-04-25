@@ -107,13 +107,26 @@ function OnsiteCard({
       className={cn(
         "bg-card rounded-2xl shadow-sm hover:shadow-md hover:border-primary/40 transition-all border border-border/50 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40",
         isUrgent && "ring-1 ring-red-500/40 shadow-red-500/10",
+        selected && "ring-2 ring-primary/60 border-primary/60",
       )}
       style={{ borderLeftWidth: 5, borderLeftColor: statusColor }}
     >
       <div className="px-4 pt-3.5 pb-3 space-y-2.5">
-        {/* 상태 + 우선순위 + 기사 + 수정 */}
+        {/* 체크박스 + 상태 + 우선순위 + 기사 + 수정 */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 flex-wrap">
+            <span
+              onClick={(e) => { e.stopPropagation(); onToggleSelect(row); }}
+              className="flex items-center pr-1"
+              role="presentation"
+            >
+              <Checkbox
+                checked={selected}
+                onCheckedChange={() => onToggleSelect(row)}
+                aria-label="선택"
+                className="h-4 w-4"
+              />
+            </span>
             <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ring-1 ${cfg.bg}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
               <span className={cfg.color}>{cfg.label || "미정"}</span>
