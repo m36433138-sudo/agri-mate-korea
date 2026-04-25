@@ -53,7 +53,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => null);
     const messages = Array.isArray(body?.messages) ? body.messages : [];
-    if (messages.length > 30 || messages.some((m) => !["user", "assistant"].includes(m?.role) || typeof m?.content !== "string" || m.content.length > 4000)) {
+    if (messages.length > 30 || messages.some((m: any) => !["user", "assistant"].includes(m?.role) || typeof m?.content !== "string" || m.content.length > 4000)) {
       return new Response(JSON.stringify({ error: "요청 형식이 올바르지 않습니다." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
