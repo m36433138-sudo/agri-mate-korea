@@ -33,6 +33,7 @@ const AccountingPage = lazy(() => import("@/pages/AccountingPage"));
 const BankingPage = lazy(() => import("@/pages/BankingPage"));
 const LocationHistory = lazy(() => import("@/pages/LocationHistory"));
 const RealtimeRlsReport = lazy(() => import("@/pages/RealtimeRlsReport"));
+const ClientErrorsReport = lazy(() => import("@/pages/ClientErrorsReport"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
@@ -107,6 +108,11 @@ const App = () => (
                         <Route path="/diagnostics/realtime-rls" element={
                           <ProtectedRoute allowedRoles={["admin"]}>
                             <RealtimeRlsReport />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/diagnostics/client-errors" element={
+                          <ProtectedRoute allowedRoles={["admin"]}>
+                            <ClientErrorsReport />
                           </ProtectedRoute>
                         } />
                         <Route path="/my-page" element={<MyPage />} />
