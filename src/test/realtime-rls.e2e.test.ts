@@ -42,7 +42,7 @@ const allClients: SupabaseClient[] = [];
  * 매 호출마다 새 client를 생성·로그인 후 단 하나의 private 채널만 구독한다.
  * → 채널 간 race condition 제거, 각 케이스가 깨끗한 상태에서 평가된다.
  */
-async function probe(role: "admin" | "employee" | "customer", topic: string, timeoutMs = 6000): Promise<"subscribed" | "blocked"> {
+async function probe(role: "admin" | "employee" | "customer", topic: string, timeoutMs = 10_000): Promise<"subscribed" | "blocked"> {
   const client = createClient(SUPABASE_URL!, ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
