@@ -42,7 +42,10 @@ interface DiagnosticEntry {
 }
 
 const REPORT_DIR = path.resolve(process.cwd(), "public");
-const REPORT_PATH = path.join(REPORT_DIR, "realtime-rls-report.json");
+const REPORTS_SUBDIR = path.join(REPORT_DIR, "realtime-rls-reports");
+const LATEST_PATH = path.join(REPORT_DIR, "realtime-rls-report.json");
+const INDEX_PATH = path.join(REPORTS_SUBDIR, "index.json");
+const MAX_REPORTS = 20;
 const diagnostics: DiagnosticEntry[] = [];
 let currentExpected: ProbeOutcome = "subscribed";
 let currentRole: "admin" | "employee" | "customer" = "admin";
@@ -218,16 +221,42 @@ afterAll(async () => {
   }
   try {
     if (!fs.existsSync(REPORT_DIR)) fs.mkdirSync(REPORT_DIR, { recursive: true });
+    if (!fs.existsSync(REPORTS_SUBDIR)) fs.mkdirSync(REPORTS_SUBDIR, { recursive: true });
+
+    const generatedAt = new Date().toISOString();
+    const id = generatedAt.replace(/[:.]/g, "-");
     const report = {
-      generatedAt: new Date().toISOString(),
+      id,
+      generatedAt,
       total: diagnostics.length,
       passed: diagnostics.filter((d) => d.passed).length,
       failed: diagnostics.filter((d) => !d.passed).length,
       entries: diagnostics,
     };
-    fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2));
+    const versionedPath = path.join(REPORTS_SUBDIR, `${id}.json`);
+    fs.writeFileSync(versionedPath, JSON.stringify(report, null, 2));
+    fs.writeFileSync(LATEST_PATH, JSON.stringify(report, null, 2));
+
+    // index.json 유지: 최신 MAX_REPORTS 개만
+    let index: Array<{ id: string; generatedAt: string; total: number; passed: number; failed: number }> = [];
+    if (fs.existsSync(INDEX_PATH)) {
+      try { index = JSON.parse(fs.readFileSync(INDEX_PATH, "utf8")); } catch { index = []; }
+    }
+    index.unshift({ id, generatedAt, total: report.total, passed: report.passed, failed: report.failed });
+    // dedup by id
+    const seen = new Set<string>();
+    index = index.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+    // trim & cleanup
+    const trimmed = index.slice(0, MAX_REPORTS);
+    const removed = index.slice(MAX_REPORTS);
+    for (const r of removed) {
+      const p = path.join(REPORTS_SUBDIR, `${r.id}.json`);
+      try { fs.unlinkSync(p); } catch { /* noop */ }
+    }
+    fs.writeFileSync(INDEX_PATH, JSON.stringify(trimmed, null, 2));
+
     // eslint-disable-next-line no-console
-    console.log(`\n[e2e] 리포트 기록됨: ${REPORT_PATH}\n`);
+    console.log(`\n[e2e] 리포트 기록됨: ${versionedPath}\n[e2e] 인덱스 업데이트: ${INDEX_PATH}\n`);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("[e2e] 리포트 기록 실패:", e);
