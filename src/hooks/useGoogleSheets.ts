@@ -123,7 +123,7 @@ export async function updateRowStatus(sheetName: string, rowIndex: number, newSt
  */
 function valuesArrayToPatch(values: any[]): Record<string, any> {
   const v = (i: number) => (values[i] ?? "").toString();
-  return {
+  const patch: Record<string, any> = {
     status_label: v(0) || null,
     customer_name: v(1) || null,
     machine: v(2) || null,
@@ -142,6 +142,10 @@ function valuesArrayToPatch(values: any[]): Record<string, any> {
     is_completed: ["TRUE", "true", "1", "✓"].includes(v(15).trim()),
     notes: v(16) || null,
   };
+  if (values.length > 17 && v(17)) {
+    patch.priority = normalizePriority(v(17));
+  }
+  return patch;
 }
 
 export async function upsertRowFromValues(sheetName: string, rowIndex: number | null, values: any[]): Promise<void> {
