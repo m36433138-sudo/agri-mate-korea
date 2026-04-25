@@ -303,6 +303,54 @@ export default function OnsiteRepairs() {
     }
   };
 
+  const toggleSelect = (r: OnsiteRow) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(r._rowIndex)) next.delete(r._rowIndex);
+      else next.add(r._rowIndex);
+      return next;
+    });
+  };
+
+  const filteredIds = useMemo(() => filtered.map(r => r._rowIndex), [filtered]);
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+  const someFilteredSelected = filteredIds.some(id => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => {
+      if (allFilteredSelected) {
+        const next = new Set(prev);
+        filteredIds.forEach(id => next.delete(id));
+        return next;
+      }
+      const next = new Set(prev);
+      filteredIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkSetPriority = async (p: Priority) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const results = await Promise.allSettled(ids.map(id => updateVisitPriority(id, p)));
+      const failed = results.filter(r => r.status === "rejected").length;
+      const ok = ids.length - failed;
+      toast({
+        title: `우선순위 일괄 변경: ${p}`,
+        description: failed === 0 ? `${ok}건 적용` : `${ok}건 성공, ${failed}건 실패`,
+        variant: failed === 0 ? "default" : "destructive",
+      });
+      clearSelection();
+      refresh();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* 헤더 */}
