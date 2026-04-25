@@ -127,7 +127,9 @@ export default function ExcelTable<T extends object>({
         if (def.exportValue) v = def.exportValue(r.original as T);
         else if ("accessorKey" in def && def.accessorKey)
           v = (r.original as any)[def.accessorKey as string];
-        else v = c.getValue ? r.getValue(c.id) : "";
+        else {
+          try { v = r.getValue(c.id); } catch { v = ""; }
+        }
         obj[headers[i]] = v ?? "";
       });
       return obj;
