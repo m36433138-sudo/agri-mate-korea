@@ -7,9 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
  * Subscribe to Supabase Realtime changes on a table
  * and auto-invalidate the given query keys.
  *
- * StrictMode/dev에서 effect가 두 번 실행되어도 동일 (table+instanceId)
- * 조합으로는 단 하나의 채널만 활성 상태로 유지되도록 가드합니다.
+ * 가드 계층:
+ * 1) instance ref      → 같은 컴포넌트 인스턴스의 StrictMode 더블 effect 방지
+ * 2) module registry   → 같은 페이지 세션 내 (table+instanceId) 채널 중복 생성 방지
  */
+
+// 페이지 세션 동안 활성 채널을 추적 (key = `${table}::${instanceId}`)
+const activeChannels = new Map<string, ReturnType<typeof supabase.channel>>();
+
 export function useRealtimeSync(
   table: string,
   queryKeys: string[][]
@@ -21,14 +26,26 @@ export function useRealtimeSync(
   const queryKeysRef = useRef(queryKeys);
   queryKeysRef.current = queryKeys;
 
-  // 활성 채널 추적 (중복 구독 방지)
+  // 인스턴스 로컬 활성 채널 ref
   const activeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
+    const registryKey = `${table}::${instanceId}`;
+
+    // (1) 인스턴스 ref 가드
     if (activeChannelRef.current) {
       console.log(
-        `[useRealtimeSync] skip duplicate effect — table="${table}" instance="${instanceId}" (channel already active)`
+        `[useRealtimeSync] skip — instance ref already has channel for "${registryKey}"`
       );
+      return;
+    }
+
+    // (2) 모듈 레지스트리 가드
+    if (activeChannels.has(registryKey)) {
+      console.log(
+        `[useRealtimeSync] skip — module registry already has channel for "${registryKey}"`
+      );
+      activeChannelRef.current = activeChannels.get(registryKey)!;
       return;
     }
 
@@ -57,11 +74,14 @@ export function useRealtimeSync(
         });
       }
     });
+
     activeChannelRef.current = channel;
+    activeChannels.set(registryKey, channel);
 
     return () => {
       const ch = activeChannelRef.current;
       activeChannelRef.current = null;
+      activeChannels.delete(registryKey);
       if (!ch) return;
       console.log(`[useRealtimeSync] cleanup channel "${channelName}"`);
       try {
