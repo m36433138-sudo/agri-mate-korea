@@ -116,9 +116,7 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
     if (!row?._rowIndex) return;
     setDeleting(true);
     try {
-      await supabase.functions.invoke("google-sheets", {
-        body: { action: "clearRow", sheetName: "방문수리", rowIndex: row._rowIndex },
-      });
+      await deleteVisitRow(row._rowIndex);
       toast({ title: "삭제 완료" });
       onSuccess();
       onClose();
