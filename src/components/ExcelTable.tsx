@@ -8,13 +8,17 @@ import {
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
+  type FilterFn,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+
+export type ColumnFilterType = "text" | "select" | "dateRange" | "numberRange";
 
 export type ExcelColumn<T> = ColumnDef<T, any> & {
   /** Excel export 시 사용할 값 추출 함수. 없으면 accessorKey 값 사용 */
@@ -25,8 +29,29 @@ export type ExcelColumn<T> = ColumnDef<T, any> & {
   disableSort?: boolean;
   /** 필터 활성화 (헤더 아래 입력칸) */
   enableColumnFilter?: boolean;
+  /** 필터 유형 — 기본 text */
+  filterType?: ColumnFilterType;
+  /** select 필터일 때 선택지. 없으면 데이터에서 자동 추출(distinct) */
+  filterOptions?: string[];
   /** 기본 너비(px) */
   size?: number;
+};
+
+// dateRange / numberRange 공용 필터 함수
+const rangeFilter: FilterFn<any> = (row, columnId, value) => {
+  if (!value || (!value.from && !value.to)) return true;
+  const raw = row.getValue(columnId);
+  if (raw == null || raw === "") return false;
+  const v = typeof raw === "number" ? raw : String(raw);
+  if (value.from != null && value.from !== "" && v < value.from) return false;
+  if (value.to != null && value.to !== "" && v > value.to) return false;
+  return true;
+};
+
+const selectFilter: FilterFn<any> = (row, columnId, value) => {
+  if (!value || value === "__all__") return true;
+  const raw = row.getValue(columnId);
+  return String(raw ?? "") === String(value);
 };
 
 interface Props<T> {
@@ -66,9 +91,18 @@ export default function ExcelTable<T extends object>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
+  // 컬럼에 filterFn 자동 적용
+  const enhancedColumns = useMemo(() => columns.map((c) => {
+    const def = c as ExcelColumn<any>;
+    if (!def.enableColumnFilter || (c as any).filterFn) return c;
+    if (def.filterType === "select") return { ...c, filterFn: selectFilter as any };
+    if (def.filterType === "dateRange" || def.filterType === "numberRange") return { ...c, filterFn: rangeFilter as any };
+    return c;
+  }), [columns]);
+
   const table = useReactTable({
     data,
-    columns,
+    columns: enhancedColumns,
     state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -111,6 +145,30 @@ export default function ExcelTable<T extends object>({
     }
     return offsets;
   }, [table, columns]);
+
+  // select 필터의 자동 옵션 (데이터에서 distinct)
+  const selectOptionsCache = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const col of table.getAllLeafColumns()) {
+      const def = col.columnDef as ExcelColumn<T>;
+      if (def.enableColumnFilter && def.filterType === "select") {
+        if (def.filterOptions) {
+          map[col.id] = def.filterOptions;
+        } else {
+          const set = new Set<string>();
+          for (const r of data) {
+            try {
+              const v = (col as any).accessorFn ? (col as any).accessorFn(r) : (r as any)[(def as any).accessorKey];
+              if (v != null && v !== "") set.add(String(v));
+            } catch {}
+          }
+          map[col.id] = Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
+        }
+      }
+    }
+    return map;
+  }, [table, data, columns]);
+
 
   const handleExport = () => {
     const visibleCols = table.getVisibleLeafColumns();
@@ -237,7 +295,7 @@ export default function ExcelTable<T extends object>({
             ))}
             {/* 컬럼 필터 행 */}
             {table.getHeaderGroups()[0].headers.some((h) => (h.column.columnDef as ExcelColumn<T>).enableColumnFilter) && (
-              <div className="flex border-t border-border/40 bg-background/40" style={{ height: 32 }}>
+              <div className="flex border-t border-border/40 bg-background/40" style={{ minHeight: 38 }}>
                 {table.getHeaderGroups()[0].headers.map((h) => {
                   const def = h.column.columnDef as ExcelColumn<T>;
                   const sticky = def.sticky;
@@ -252,16 +310,85 @@ export default function ExcelTable<T extends object>({
                         }
                       : {}),
                   };
+                  const fv = h.column.getFilterValue() as any;
+                  const ftype = def.filterType ?? "text";
                   return (
-                    <div key={h.id} style={style} className="px-1.5 py-0.5 border-r border-border/30">
-                      {def.enableColumnFilter ? (
+                    <div key={h.id} style={style} className="px-1 py-1 border-r border-border/30">
+                      {!def.enableColumnFilter ? null : ftype === "select" ? (
+                        <Select
+                          value={fv ?? "__all__"}
+                          onValueChange={(v) => h.column.setFilterValue(v === "__all__" ? undefined : v)}
+                        >
+                          <SelectTrigger className="h-7 text-xs px-2">
+                            <SelectValue placeholder="전체" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            <SelectItem value="__all__">전체</SelectItem>
+                            {(selectOptionsCache[h.column.id] ?? []).map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : ftype === "dateRange" ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="date"
+                            value={fv?.from ?? ""}
+                            onChange={(e) => h.column.setFilterValue({ ...(fv ?? {}), from: e.target.value || undefined })}
+                            className="h-7 text-[11px] px-1.5"
+                          />
+                          <Input
+                            type="date"
+                            value={fv?.to ?? ""}
+                            onChange={(e) => h.column.setFilterValue({ ...(fv ?? {}), to: e.target.value || undefined })}
+                            className="h-7 text-[11px] px-1.5"
+                          />
+                          {fv && (fv.from || fv.to) && (
+                            <button
+                              type="button"
+                              onClick={() => h.column.setFilterValue(undefined)}
+                              className="text-muted-foreground hover:text-foreground shrink-0"
+                              aria-label="초기화"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ) : ftype === "numberRange" ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            placeholder="≥"
+                            value={fv?.from ?? ""}
+                            onChange={(e) => h.column.setFilterValue({ ...(fv ?? {}), from: e.target.value === "" ? undefined : Number(e.target.value) })}
+                            className="h-7 text-[11px] px-1.5"
+                          />
+                          <Input
+                            type="number"
+                            placeholder="≤"
+                            value={fv?.to ?? ""}
+                            onChange={(e) => h.column.setFilterValue({ ...(fv ?? {}), to: e.target.value === "" ? undefined : Number(e.target.value) })}
+                            className="h-7 text-[11px] px-1.5"
+                          />
+                          {fv && (fv.from != null || fv.to != null) && (
+                            <button
+                              type="button"
+                              onClick={() => h.column.setFilterValue(undefined)}
+                              className="text-muted-foreground hover:text-foreground shrink-0"
+                              aria-label="초기화"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ) : (
                         <Input
-                          value={(h.column.getFilterValue() as string) ?? ""}
+                          value={(fv as string) ?? ""}
                           onChange={(e) => h.column.setFilterValue(e.target.value)}
                           placeholder="필터..."
-                          className="h-6 text-xs px-2"
+                          className="h-7 text-xs px-2"
                         />
-                      ) : null}
+                      )}
                     </div>
                   );
                 })}

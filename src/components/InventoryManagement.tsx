@@ -254,9 +254,11 @@ export default function InventoryManagement() {
         <ExcelTable
           data={searchResults}
           columns={[
-            { accessorKey: "part_code", header: "부품코드", size: 160, sticky: true,
+            { accessorKey: "part_code", header: "부품코드", size: 180, sticky: true,
+              enableColumnFilter: true, filterType: "text",
               cell: ({ getValue }) => <span className="font-mono text-xs">{getValue() as string}</span> },
-            { accessorKey: "part_name", header: "부품명", size: 240,
+            { accessorKey: "part_name", header: "부품명", size: 260,
+              enableColumnFilter: true, filterType: "text",
               cell: ({ row }) => {
                 const it = row.original as InventoryItem;
                 const isLow = (it.quantity ?? 0) < (it.min_stock ?? 1);
@@ -267,22 +269,27 @@ export default function InventoryManagement() {
                   </span>
                 );
               } },
-            { accessorKey: "alt_part_code", header: "설계변경코드", size: 160,
+            { accessorKey: "alt_part_code", header: "설계변경코드", size: 170,
+              enableColumnFilter: true, filterType: "text",
               cell: ({ getValue }) => <span className="font-mono text-xs text-muted-foreground">{(getValue() as string) || "-"}</span> },
-            { accessorKey: "quantity", header: "수량", size: 80,
+            { accessorKey: "quantity", header: "수량", size: 160,
+              enableColumnFilter: true, filterType: "numberRange",
               cell: ({ row }) => {
                 const it = row.original as InventoryItem;
                 const isLow = (it.quantity ?? 0) < (it.min_stock ?? 1);
                 return <span className={`text-right tabular-nums font-bold w-full ${isLow ? "text-destructive" : ""}`}>{it.quantity ?? 0}</span>;
               },
               exportValue: (r) => r.quantity ?? 0 },
-            { accessorKey: "min_stock", header: "적정재고", size: 90,
+            { accessorKey: "min_stock", header: "적정재고", size: 150,
+              enableColumnFilter: true, filterType: "numberRange",
               cell: ({ getValue }) => <span className="text-right text-muted-foreground tabular-nums w-full">{(getValue() as number) ?? 1}</span>,
               exportValue: (r) => r.min_stock ?? 1 },
-            { accessorKey: "sales_price", header: "매출가", size: 110,
+            { accessorKey: "sales_price", header: "매출가", size: 170,
+              enableColumnFilter: true, filterType: "numberRange",
               cell: ({ getValue }) => <span className="text-right text-muted-foreground tabular-nums w-full">{(getValue() as number)?.toLocaleString() ?? "-"}</span>,
               exportValue: (r) => r.sales_price ?? "" },
-            { id: "location", header: "위치", size: 140,
+            { id: "location", header: "위치", size: 160,
+              enableColumnFilter: true, filterType: "text",
               accessorFn: (r: any) => [r.location_main, r.location_sub].filter(Boolean).join(" / "),
               cell: ({ getValue }) => <span className="text-muted-foreground text-xs truncate">{(getValue() as string) || "-"}</span> },
             { id: "_actions", header: "", size: 80, disableSort: true,

@@ -67,9 +67,11 @@ export default function MachinesList() {
   }, [machines, typeTab, statusTab]);
 
   const columns = useMemo<ExcelColumn<MachineWithCustomer>[]>(() => [
-    { accessorKey: "manufacturer", header: "제조사", size: 90,
+    { accessorKey: "manufacturer", header: "제조사", size: 100,
+      enableColumnFilter: true, filterType: "select",
       cell: ({ getValue }) => <span className="text-muted-foreground">{(getValue() as string) || "-"}</span> },
     { accessorKey: "model_name", header: "모델명", size: 200, sticky: true,
+      enableColumnFilter: true, filterType: "text",
       cell: ({ row }) => {
         const m = row.original as any;
         return (
@@ -84,21 +86,28 @@ export default function MachinesList() {
         );
       } },
     { accessorKey: "serial_number", header: "제조번호", size: 160,
+      enableColumnFilter: true, filterType: "text",
       cell: ({ getValue }) => <span className="font-mono text-xs text-muted-foreground">{getValue() as string}</span> },
-    { accessorKey: "machine_type", header: "구분", size: 90,
+    { accessorKey: "machine_type", header: "구분", size: 100,
+      enableColumnFilter: true, filterType: "select",
       cell: ({ getValue }) => <TypeBadge type={getValue() as string} /> },
-    { accessorKey: "status", header: "상태", size: 90,
+    { accessorKey: "status", header: "상태", size: 100,
+      enableColumnFilter: true, filterType: "select",
       cell: ({ getValue }) => <StatusBadge status={getValue() as string} /> },
-    { accessorKey: "entry_date", header: "입고일", size: 110,
+    { accessorKey: "entry_date", header: "입고일", size: 200,
+      enableColumnFilter: true, filterType: "dateRange",
       cell: ({ getValue }) => <span className="text-muted-foreground">{formatDate(getValue() as string)}</span>,
       exportValue: (r) => r.entry_date },
-    { accessorKey: "sale_date", header: "판매일", size: 110,
+    { accessorKey: "sale_date", header: "판매일", size: 200,
+      enableColumnFilter: true, filterType: "dateRange",
       cell: ({ getValue }) => <span className="text-muted-foreground">{getValue() ? formatDate(getValue() as string) : "-"}</span>,
       exportValue: (r) => r.sale_date ?? "" },
-    { id: "customer_name", header: "고객명", size: 120,
+    { id: "customer_name", header: "고객명", size: 140,
+      enableColumnFilter: true, filterType: "text",
       accessorFn: (r: any) => r.customers?.name ?? "",
       cell: ({ getValue }) => <span className="text-muted-foreground">{(getValue() as string) || "-"}</span> },
-    { accessorKey: "purchase_price", header: "매입가", size: 130,
+    { accessorKey: "purchase_price", header: "매입가", size: 180,
+      enableColumnFilter: true, filterType: "numberRange",
       cell: ({ getValue }) => <span className="text-right tabular-nums font-medium w-full">{formatPrice(getValue() as number)}</span>,
       exportValue: (r) => r.purchase_price },
     { id: "_actions", header: "", size: 56, disableSort: true, enableResizing: false,
