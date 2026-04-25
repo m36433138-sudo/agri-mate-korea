@@ -108,12 +108,24 @@ function OnsiteCard({
       style={{ borderLeftWidth: 5, borderLeftColor: statusColor }}
     >
       <div className="px-4 pt-3.5 pb-3 space-y-2.5">
-        {/* 상태 + 수정 버튼 */}
-        <div className="flex items-center justify-between">
-          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ring-1 ${cfg.bg}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-            <span className={cfg.color}>{cfg.label || "미정"}</span>
-          </span>
+        {/* 상태 + 우선순위 + 기사 + 수정 */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ring-1 ${cfg.bg}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              <span className={cfg.color}>{cfg.label || "미정"}</span>
+            </span>
+            <PriorityPicker
+              value={row.priority}
+              onChange={(p) => onPriority(row, p)}
+              stopPropagation
+            />
+            <TechnicianPicker
+              value={row.기사 || ""}
+              onChange={(t) => onTechnician(row, t)}
+              stopPropagation
+            />
+          </div>
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(row); }}
             className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
