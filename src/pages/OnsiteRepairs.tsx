@@ -420,6 +420,54 @@ export default function OnsiteRepairs() {
         </div>
       </div>
 
+      {/* 일괄 작업 바 */}
+      <div className="flex items-center gap-2 flex-wrap text-sm bg-muted/30 border border-border/60 rounded-xl px-3 py-2">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <Checkbox
+            checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+            onCheckedChange={toggleSelectAll}
+            aria-label="현재 목록 전체 선택"
+          />
+          <span className="text-xs text-muted-foreground">
+            {selectedIds.size > 0
+              ? <>선택됨 <span className="font-bold text-foreground tabular-nums">{selectedIds.size}</span>건</>
+              : "전체 선택"}
+          </span>
+        </label>
+        {selectedIds.size > 0 && (
+          <>
+            <span className="text-xs text-muted-foreground">우선순위 일괄 변경:</span>
+            {PRIORITIES.map(p => {
+              const m = PRIORITY_META[p];
+              return (
+                <button
+                  key={p}
+                  disabled={bulkBusy}
+                  onClick={() => bulkSetPriority(p)}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-md ring-1 ring-inset font-bold text-xs transition-all hover:scale-105",
+                    m.badge,
+                    bulkBusy && "opacity-50 cursor-not-allowed",
+                  )}
+                >
+                  {p === "긴급" && <Flame className="h-3 w-3" />}
+                  {m.label}
+                </button>
+              );
+            })}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSelection}
+              disabled={bulkBusy}
+              className="ml-auto h-7 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" /> 선택 해제
+            </Button>
+          </>
+        )}
+      </div>
+
       {/* 카드 목록 */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -444,6 +492,8 @@ export default function OnsiteRepairs() {
               query={search}
               onPriority={handlePriority}
               onTechnician={handleTechnician}
+              selected={selectedIds.has(r._rowIndex)}
+              onToggleSelect={toggleSelect}
             />
           ))}
         </div>
