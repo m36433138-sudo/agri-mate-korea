@@ -79,13 +79,15 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 function OnsiteCard({
-  row, onEdit, query, onPriority, onTechnician,
+  row, onEdit, query, onPriority, onTechnician, selected, onToggleSelect,
 }: {
   row: OnsiteRow;
   onEdit: (r: OnsiteRow) => void;
   query: string;
   onPriority: (r: OnsiteRow, p: Priority) => void;
   onTechnician: (r: OnsiteRow, t: string) => void;
+  selected: boolean;
+  onToggleSelect: (r: OnsiteRow) => void;
 }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const cfg = getStatusCfg(row.진행사항);
