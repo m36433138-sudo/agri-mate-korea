@@ -153,13 +153,15 @@ export default function OnsiteRepairs() {
     }
     if (search) {
       const q = search.toLowerCase();
+      const qDigits = q.replace(/\D/g, "");
       result = result.filter(r =>
         r.손님성함.toLowerCase().includes(q) ||
         r.기계.toLowerCase().includes(q) ||
         r.품목.toLowerCase().includes(q) ||
+        r.제조번호.toLowerCase().includes(q) ||
         r.내역.toLowerCase().includes(q) ||
         r.주소.toLowerCase().includes(q) ||
-        r.전화번호.includes(q)
+        (qDigits ? r.전화번호.replace(/\D/g, "").includes(qDigits) : r.전화번호.includes(q))
       );
     }
     return result;
@@ -210,7 +212,7 @@ export default function OnsiteRepairs() {
         <div className="relative flex-1 max-w-xs ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="이름, 기계, 주소 검색..."
+            placeholder="고객명·전화·기계·제조번호 검색..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9 h-9"
