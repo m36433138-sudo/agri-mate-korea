@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -5,15 +6,18 @@ import { measureQuery } from "@/lib/queryProfiler";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import {
-  Tractor, Wrench, Users, Package,
+  Tractor, Users, Package,
   ChevronRight, MessageSquare,
   ClipboardList, Truck, ArrowUpRight, TrendingUp,
-  Calendar, Zap, BarChart3, Activity,
+  Calendar, Zap,
 } from "lucide-react";
-import { formatPrice, formatDate } from "@/lib/formatters";
-import { TypeBadge } from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
 
+// 하단 위젯은 지연 로딩 (초기 JS 번들에서 분리)
+const RecentRepairsWidget = lazy(() => import("@/components/dashboard/RecentRepairsWidget"));
+const AIInsightWidget = lazy(() => import("@/components/dashboard/AIInsightWidget"));
+const RecentMachinesWidget = lazy(() => import("@/components/dashboard/RecentMachinesWidget"));
+const MonthlySummaryWidget = lazy(() => import("@/components/dashboard/MonthlySummaryWidget"));
 
 // ── Glass card component ──
 function GlassCard({
@@ -39,23 +43,16 @@ function GlassCard({
   );
 }
 
-// ── Status dot ──
-function StatusDot({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    "재고중": "bg-emerald-500",
-    "판매완료": "bg-muted-foreground",
-    "수리중": "bg-amber-500",
-  };
-  return (
-    <span className={`inline-block w-2 h-2 rounded-full ${colors[status] ?? "bg-muted-foreground"}`} />
-  );
+// 위젯 placeholder skeleton
+function WidgetSkeleton({ className = "" }: { className?: string }) {
+  return <Skeleton className={`rounded-2xl ${className}`} />;
 }
 
 export default function Dashboard() {
-  useRealtimeSync("machines", [["machines-stats"], ["machines-recent"]]);
-  useRealtimeSync("repairs", [["repairs-recent"]]);
+  useRealtimeSync("machines", [["machines-stats"]]);
   useRealtimeSync("customers", [["customers-count"]]);
   useRealtimeSync("inventory", [["parts-count"]]);
+  useRealtimeSync("repairs", [["repairs-month-count"]]);
 
   // 통계용 가벼운 쿼리: 필요한 컬럼만
   const { data: machineStats, isLoading: ml } = useQuery({
@@ -64,40 +61,6 @@ export default function Dashboard() {
     queryFn: async () => {
       const { data, error } = await measureQuery("machines-stats", () =>
         supabase.from("machines").select("status, machine_type, sale_date")
-      );
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // 최근 입고 5건만 — DB에서 정렬·제한
-  const { data: recentEntries = [] } = useQuery({
-    queryKey: ["machines-recent"],
-    staleTime: 1000 * 60 * 5,
-    queryFn: async () => {
-      const { data, error } = await measureQuery("machines-recent", () =>
-        supabase
-          .from("machines")
-          .select("id, model_name, serial_number, entry_date, status, machine_type, purchase_price")
-          .eq("status", "재고중")
-          .order("entry_date", { ascending: false })
-          .limit(5)
-      );
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: repairs, isLoading: rl } = useQuery({
-    queryKey: ["repairs-recent"],
-    staleTime: 1000 * 60 * 2,
-    queryFn: async () => {
-      const { data, error } = await measureQuery("repairs-recent", () =>
-        supabase
-          .from("repairs")
-          .select("id, repair_date, repair_content, total_cost, machines(model_name, serial_number)")
-          .order("repair_date", { ascending: false })
-          .limit(8)
       );
       if (error) throw error;
       return data;
@@ -128,14 +91,30 @@ export default function Dashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const loading = ml || rl;
+  // 이번 달 수리 건수만 카운트 — 가벼운 쿼리
+  const dateNow = new Date();
+  const monthStart = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, "0")}-01`;
+  const { data: repairsThisMonth = 0 } = useQuery({
+    queryKey: ["repairs-month-count", monthStart],
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      const { count, error } = await measureQuery("repairs-month-count", () =>
+        supabase
+          .from("repairs")
+          .select("*", { count: "exact", head: true })
+          .gte("repair_date", monthStart)
+      );
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const loading = ml;
   const inStock = machineStats?.filter((m) => m.status === "재고중") ?? [];
   const newMachines = inStock.filter((m) => m.machine_type === "새기계");
   const usedMachines = inStock.filter((m) => m.machine_type === "중고기계");
 
-  const dateNow = new Date();
-  const thisMonth = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, "0")}`;
-  const repairsThisMonth = repairs?.filter((r) => r.repair_date?.startsWith(thisMonth)).length ?? 0;
+  const thisMonth = monthStart.slice(0, 7);
   const salesThisMonth = machineStats?.filter((m) => m.sale_date?.startsWith(thisMonth)).length ?? 0;
 
   // Fake sparkline data (would come from time-series in production)
@@ -173,9 +152,8 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ── Hero KPI Row: 1 large + 3 small ── */}
+      {/* ── Hero KPI Row: 1 large + 3 small (즉시 렌더, above the fold) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Large hero card - Today's tasks */}
         <GlassCard className="lg:col-span-1 p-6 relative overflow-hidden group">
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-primary/5 blur-2xl group-hover:bg-primary/8 transition-colors duration-500" />
           <div className="relative">
@@ -185,16 +163,12 @@ export default function Dashboard() {
               </div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">오늘 할 일</span>
             </div>
-            {loading ? (
-              <Skeleton className="h-14 w-32 rounded-2xl" />
-            ) : (
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-5xl font-extrabold tracking-tight text-foreground tabular-nums">
-                  {repairsThisMonth}
-                </span>
-                <span className="text-lg font-semibold text-muted-foreground">건</span>
-              </div>
-            )}
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-5xl font-extrabold tracking-tight text-foreground tabular-nums">
+                {repairsThisMonth}
+              </span>
+              <span className="text-lg font-semibold text-muted-foreground">건</span>
+            </div>
             <p className="text-sm text-muted-foreground mt-2">이번 달 수리 진행</p>
             <div className="mt-4">
               <Sparkline data={sparkRepairs} width={140} height={36} color="hsl(var(--primary))" fillOpacity={0.15} />
@@ -202,7 +176,6 @@ export default function Dashboard() {
           </div>
         </GlassCard>
 
-        {/* 3 smaller KPI cards */}
         {[
           {
             label: "전체 고객",
@@ -283,200 +256,31 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* ── Middle: Recent repairs + AI Insight ── */}
+      {/* ── Middle: Recent repairs + AI Insight (지연 로딩) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* Recent repairs - left 3 cols */}
-        <GlassCard className="lg:col-span-3 overflow-hidden" hover={false}>
-          <div className="px-6 py-4 border-b border-border/40 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-bold text-sm">최근 정비 내역</h3>
-            </div>
-            <Link
-              to="/repairs"
-              className="text-xs text-primary font-semibold hover:underline flex items-center gap-0.5 group"
-            >
-              전체보기 <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="p-6 space-y-3">
-                {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
-              </div>
-            ) : repairs?.length === 0 ? (
-              <p className="text-sm text-muted-foreground p-10 text-center">수리 이력이 없습니다.</p>
-            ) : (
-              <div className="divide-y divide-border/30">
-                {repairs?.slice(0, 6).map((r: any) => (
-                  <div key={r.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-accent/30 transition-colors">
-                    <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                      <Wrench className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{r.machines?.model_name}</p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{r.repair_content}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      {r.total_cost > 0 && (
-                        <p className="text-sm font-bold tabular-nums">{formatPrice(r.total_cost)}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">{formatDate(r.repair_date)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </GlassCard>
-
-        {/* AI Insight Panel - right 2 cols */}
-        <div className="lg:col-span-2 rounded-3xl overflow-hidden relative"
-          style={{
-            background: "linear-gradient(145deg, hsl(152 45% 18%) 0%, hsl(152 55% 24%) 40%, hsl(170 45% 22%) 100%)",
-          }}
-        >
-          {/* Glassmorphism overlay */}
-          <div className="absolute inset-0 bg-white/[0.03] backdrop-blur-[1px]" />
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/[0.04] blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-primary/10 blur-3xl" />
-
-          <div className="p-6 flex flex-col h-full text-white min-h-[320px] relative z-10">
-            <div className="flex items-center gap-2.5 mb-5">
-              <div className="p-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10">
-                <MessageSquare className="h-4 w-4" />
-              </div>
-              <div>
-                <span className="font-bold text-sm block">AI 정비 어드바이저</span>
-                <span className="text-[11px] text-white/50">Powered by AgriMate</span>
-              </div>
-            </div>
-
-            <h4 className="text-xl font-extrabold mb-4 leading-snug">
-              기계 증상을<br />분석해 드립니다
-            </h4>
-
-            <div className="space-y-3 flex-1">
-              <div className="bg-white/8 backdrop-blur-sm rounded-2xl p-4 text-xs border border-white/8 leading-relaxed text-white/85">
-                💡 "유압 압력이 불규칙할 때는 펌프 입구 스트레이너 막힘을 먼저 확인하세요..."
-              </div>
-              <div className="bg-white/8 backdrop-blur-sm rounded-2xl p-4 text-xs border border-white/8 leading-relaxed text-white/85">
-                🔧 "엔진 과열 시 냉각수 순환 경로와 서모스탯 작동 상태를 점검하세요."
-              </div>
-            </div>
-
-            <Link
-              to="/chat"
-              className="mt-5 w-full py-3 bg-white text-foreground font-bold rounded-2xl hover:bg-white/95 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 text-sm shadow-lg shadow-black/10"
-            >
-              AI 상담 시작 <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
+        <Suspense fallback={<WidgetSkeleton className="lg:col-span-3 h-[360px]" />}>
+          <RecentRepairsWidget />
+        </Suspense>
+        <Suspense fallback={<WidgetSkeleton className="lg:col-span-2 h-[360px]" />}>
+          <AIInsightWidget />
+        </Suspense>
       </div>
 
-      {/* ── Bottom Bento: Recent inbound + Performance ── */}
+      {/* ── Bottom Bento: Recent inbound + Performance (지연 로딩) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* Recent inbound machines - 3 cols */}
-        <GlassCard className="lg:col-span-3 overflow-hidden" hover={false}>
-          <div className="px-6 py-4 border-b border-border/40 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Tractor className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-bold text-sm">최근 입고 기계</h3>
-            </div>
-            <Link
-              to="/machines"
-              className="text-xs text-primary font-semibold hover:underline flex items-center gap-0.5 group"
-            >
-              전체보기 <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
-          <div className="p-4">
-            {loading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
-              </div>
-            ) : recentEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">입고 기계가 없습니다.</p>
-            ) : (
-              <div className="space-y-1">
-                {recentEntries.map((m) => (
-                  <Link
-                    key={m.id}
-                    to={`/machines/${m.id}`}
-                    className="flex items-center justify-between px-3 py-3 rounded-2xl hover:bg-accent/40 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
-                        <StatusDot status={m.status} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold truncate">{m.model_name}</p>
-                        <p className="text-xs text-muted-foreground font-mono truncate">
-                          {m.serial_number} · {formatDate(m.entry_date)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2.5 ml-2 shrink-0">
-                      <TypeBadge type={m.machine_type} />
-                      <span className="text-sm font-bold tabular-nums hidden sm:block">
-                        {formatPrice(m.purchase_price)}
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </GlassCard>
-
-        {/* Performance summary - 2 cols */}
-        <GlassCard className="lg:col-span-2 p-6" hover={false}>
-          <div className="flex items-center gap-2 mb-5">
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-bold text-sm">이번 달 실적 요약</h3>
-          </div>
-
-          <div className="space-y-5">
-            {/* Metric rows */}
-            {[
-              { label: "수리 완료", value: repairsThisMonth, max: 20, color: "bg-primary" },
-              { label: "기계 판매", value: salesThisMonth, max: 10, color: "bg-info" },
-              { label: "신규 고객", value: Math.floor((customersCount ?? 0) * 0.1), max: 15, color: "bg-warning" },
-            ].map((m) => (
-              <div key={m.label}>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-muted-foreground">{m.label}</span>
-                  <span className="text-sm font-bold tabular-nums">{loading ? "–" : m.value}</span>
-                </div>
-                <div className="h-2 rounded-full bg-accent overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${m.color} transition-all duration-700 ease-out`}
-                    style={{ width: loading ? "0%" : `${Math.min((m.value / m.max) * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Quick stats grid */}
-          <div className="grid grid-cols-2 gap-3 mt-6 pt-5 border-t border-border/40">
-            <div className="rounded-2xl bg-accent/50 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-foreground">
-                {loading ? "–" : inStock.length}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">재고 기계</p>
-            </div>
-            <div className="rounded-2xl bg-accent/50 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-foreground">
-                {loading ? "–" : (partsCount ?? 0)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">등록 부품</p>
-            </div>
-          </div>
-        </GlassCard>
+        <Suspense fallback={<WidgetSkeleton className="lg:col-span-3 h-[320px]" />}>
+          <RecentMachinesWidget />
+        </Suspense>
+        <Suspense fallback={<WidgetSkeleton className="lg:col-span-2 h-[320px]" />}>
+          <MonthlySummaryWidget
+            loading={loading}
+            repairsThisMonth={repairsThisMonth}
+            salesThisMonth={salesThisMonth}
+            customersCount={customersCount ?? 0}
+            inStockCount={inStock.length}
+            partsCount={partsCount ?? 0}
+          />
+        </Suspense>
       </div>
     </div>
   );
