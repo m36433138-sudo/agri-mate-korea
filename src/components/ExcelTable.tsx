@@ -136,6 +136,7 @@ export default function ExcelTable<T extends object>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [showFilterDetails, setShowFilterDetails] = useState(false);
 
   // 컬럼에 filterFn 자동 적용
   const enhancedColumns = useMemo(() => columns.map((c) => {
