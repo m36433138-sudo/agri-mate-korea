@@ -311,12 +311,13 @@ export default function OperationsDashboard() {
         <div
           className="grid text-[11px] font-semibold text-muted-foreground uppercase tracking-wide"
           style={{
-            gridTemplateColumns: "110px 52px 90px 1fr 120px 110px 1fr 80px 110px",
+            gridTemplateColumns: "70px 110px 52px 90px 1fr 120px 110px 1fr 110px 110px",
             background: "hsl(var(--card))",
             borderBottom: "1px solid hsl(var(--border) / 0.6)",
             padding: "10px 14px",
           }}
         >
+          <span>우선</span>
           <span>상태</span>
           <span>지점</span>
           <span>성함</span>
