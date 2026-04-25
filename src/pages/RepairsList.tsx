@@ -48,29 +48,36 @@ export default function RepairsList() {
   });
 
   const columns = useMemo<ExcelColumn<RepairWithMachine>[]>(() => [
-    { accessorKey: "repair_date", header: "수리일", size: 110, sticky: true,
+    { accessorKey: "repair_date", header: "수리일", size: 220, sticky: true,
+      enableColumnFilter: true, filterType: "dateRange",
       cell: ({ getValue }) => <span className="whitespace-nowrap">{formatDate(getValue() as string)}</span>,
       exportValue: (r) => r.repair_date },
-    { id: "machine_model", header: "기계", size: 180,
+    { id: "machine_model", header: "기계", size: 200,
+      enableColumnFilter: true, filterType: "text",
       accessorFn: (r: any) => r.machines?.model_name ?? "",
       cell: ({ row }) => {
         const r = row.original as any;
         return <span className="font-medium truncate">{r.machines?.model_name ?? "-"}</span>;
       } },
-    { id: "machine_serial", header: "제조번호", size: 150,
+    { id: "machine_serial", header: "제조번호", size: 160,
+      enableColumnFilter: true, filterType: "text",
       accessorFn: (r: any) => r.machines?.serial_number ?? "",
       cell: ({ getValue }) => <span className="font-mono text-xs text-muted-foreground">{(getValue() as string) || "-"}</span> },
     { accessorKey: "repair_content", header: "수리내용", size: 320,
+      enableColumnFilter: true, filterType: "text",
       cell: ({ getValue }) => <span className="truncate">{getValue() as string}</span> },
-    { accessorKey: "technician", header: "담당", size: 100,
+    { accessorKey: "technician", header: "담당", size: 120,
+      enableColumnFilter: true, filterType: "select",
       cell: ({ getValue }) => <span className="text-muted-foreground">{(getValue() as string) || "-"}</span> },
-    { accessorKey: "labor_cost", header: "공임비", size: 110,
+    { accessorKey: "labor_cost", header: "공임비", size: 180,
+      enableColumnFilter: true, filterType: "numberRange",
       cell: ({ getValue }) => {
         const v = getValue() as number;
         return <span className="text-right tabular-nums w-full">{v > 0 ? formatPrice(v) : "-"}</span>;
       },
       exportValue: (r) => r.labor_cost ?? 0 },
-    { accessorKey: "total_cost", header: "총비용", size: 130,
+    { accessorKey: "total_cost", header: "총비용", size: 200,
+      enableColumnFilter: true, filterType: "numberRange",
       cell: ({ getValue }) => {
         const v = getValue() as number;
         return <span className="text-right tabular-nums font-medium w-full">{v > 0 ? formatPrice(v) : "-"}</span>;
