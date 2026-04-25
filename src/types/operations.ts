@@ -176,6 +176,7 @@ export function parseRows(values: string[][], branch: "장흥" | "강진"): Shee
       전체완료: (row[iDone] || "").trim(),
       비고: (row[iNote] || "").trim(),
       입력자: iWriter >= 0 ? (row[iWriter] || "").trim() : "",
+      priority: "보통",
       _branch: branch,
       _rowIndex: idx + 2,
       _doneCol: doneColLetter,
