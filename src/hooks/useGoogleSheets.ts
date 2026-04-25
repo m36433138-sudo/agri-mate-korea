@@ -182,6 +182,24 @@ export async function clearRow(sheetName: string, rowIndex: number): Promise<voi
   if (error) throw new Error(error.message);
 }
 
+export async function updateRowPriority(branch: "장흥" | "강진", rowIndex: number, priority: Priority): Promise<void> {
+  const { error } = await supabase
+    .from("operation_rows" as any)
+    .update({ priority } as any)
+    .eq("branch", branch)
+    .eq("row_index", rowIndex);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateRowTechnician(branch: "장흥" | "강진", rowIndex: number, technician: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("operation_rows" as any)
+    .update({ technician: technician || null } as any)
+    .eq("branch", branch)
+    .eq("row_index", rowIndex);
+  if (error) throw new Error(error.message);
+}
+
 // ─── 메인 훅 ─────────────────────────────────────────────
 export function useGoogleSheets() {
   const queryClient = useQueryClient();
