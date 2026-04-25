@@ -103,7 +103,7 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
             <User className="h-4 w-4 text-primary" />
           </div>
           <span className="text-xl font-extrabold text-foreground tracking-tight leading-none">
-            {row.손님성함}
+            <Highlight text={row.손님성함} query={query} />
           </span>
         </div>
 
@@ -113,11 +113,18 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
           <div className="flex items-center gap-2 flex-wrap">
             {row.기계 && (
               <span className="inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-bold bg-emerald-500/15 text-emerald-400">
-                {row.기계}
+                <Highlight text={row.기계} query={query} />
               </span>
             )}
             {row.품목 && (
-              <span className="text-base font-semibold text-foreground">{row.품목}</span>
+              <span className="text-base font-semibold text-foreground">
+                <Highlight text={row.품목} query={query} />
+              </span>
+            )}
+            {row.제조번호 && (
+              <span className="text-xs font-mono text-muted-foreground">
+                S/N <Highlight text={row.제조번호} query={query} />
+              </span>
             )}
           </div>
         </div>
@@ -127,7 +134,7 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
           <div className="flex items-center gap-2 ml-0.5">
             <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <a href={`tel:${row.전화번호}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors tabular-nums">
-              {row.전화번호}
+              <Highlight text={row.전화번호} query={query} />
             </a>
           </div>
         )}
