@@ -1,15 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { useListFilter } from "@/hooks/useListFilter";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2, Users, ChevronRight, UserMinus } from "lucide-react";
+import { Plus, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2, Users, UserMinus } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import ExcelTable, { type ExcelColumn } from "@/components/ExcelTable";
 import type { Customer } from "@/types/database";
 
 export default function CustomersList() {
@@ -29,6 +29,7 @@ export default function CustomersList() {
   const [cleaning, setCleaning] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   useRealtimeSync("customers", [["customers"]]);
 
