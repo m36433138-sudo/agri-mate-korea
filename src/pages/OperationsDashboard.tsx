@@ -245,6 +245,27 @@ export default function OperationsDashboard() {
               </button>
             );
           })}
+          {/* 우선순위 필터 */}
+          {(["전체", "긴급", "높음", "보통", "낮음"] as const).map(p => {
+            const active = priorityFilter === p;
+            const meta = p !== "전체" ? PRIORITY_META[p] : null;
+            return (
+              <button
+                key={p}
+                onClick={() => setPriorityFilter(p as any)}
+                className={`text-[11px] font-bold px-2 py-1 rounded-md border inline-flex items-center gap-1 transition-all ${
+                  active ? "border-primary/60 bg-primary/10 text-primary" : "border-border/40 text-muted-foreground hover:text-foreground"
+                } ${p === "긴급" && urgentCount > 0 ? "animate-pulse" : ""}`}
+                style={active && meta ? { borderColor: meta.color + "88", color: meta.color, background: meta.color + "18" } : undefined}
+              >
+                {p === "긴급" && <Flame className="h-3 w-3" />}
+                {p}
+                {p === "긴급" && urgentCount > 0 && (
+                  <span className="ml-0.5 text-[9px] tabular-nums">{urgentCount}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-2">
