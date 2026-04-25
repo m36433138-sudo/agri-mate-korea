@@ -479,8 +479,8 @@ export default function ExcelTable<T extends object>({
             )}
             {/* 결과 요약 바 */}
             <div className="border-t border-border/40 bg-muted/30 text-[11px] text-muted-foreground">
-              <div className="flex items-center justify-between gap-2 px-3 py-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-start justify-between gap-2 px-3 py-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {activeFilterCount > 0 ? (
                     <>
                       <button
@@ -500,15 +500,66 @@ export default function ExcelTable<T extends object>({
                   ) : (
                     <span className="tabular-nums">전체 <span className="font-semibold text-foreground">{data.length.toLocaleString()}</span>건</span>
                   )}
+                  {globalFilter && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background border border-border/60 text-foreground">
+                      <Search className="h-2.5 w-2.5 text-muted-foreground" />
+                      <span className="font-medium truncate max-w-[160px]">{globalFilter}</span>
+                      <button
+                        type="button"
+                        onClick={() => setGlobalFilter("")}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="검색어 제거"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  )}
+                  {sorting.map((s, idx) => {
+                    const col = table.getColumn(s.id);
+                    const def = col?.columnDef as ExcelColumn<T> | undefined;
+                    const label = def && typeof def.header === "string" ? def.header : s.id;
+                    return (
+                      <span
+                        key={s.id}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background border border-border/60 text-foreground"
+                        title={sorting.length > 1 ? `정렬 ${idx + 1}순위` : "정렬"}
+                      >
+                        {s.desc ? <ArrowDown className="h-2.5 w-2.5 text-muted-foreground" /> : <ArrowUp className="h-2.5 w-2.5 text-muted-foreground" />}
+                        <span className="font-medium">{label}</span>
+                        <span className="text-muted-foreground">{s.desc ? "내림차순" : "오름차순"}</span>
+                        <button
+                          type="button"
+                          onClick={() => col?.clearSorting()}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={`${label} 정렬 해제`}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </span>
+                    );
+                  })}
                 </div>
-                {activeFilterCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleClearFilters}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" /> 모두 초기화
-                  </button>
+                {(activeFilterCount > 0 || sorting.length > 0) && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {sorting.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSorting([])}
+                        className="inline-flex items-center gap-1 hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" /> 정렬 해제
+                      </button>
+                    )}
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="inline-flex items-center gap-1 hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" /> 필터 초기화
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               {activeFilterCount > 0 && showFilterDetails && (
