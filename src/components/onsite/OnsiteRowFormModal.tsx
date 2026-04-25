@@ -30,24 +30,28 @@ interface OnsiteRow {
   전화번호: string;
   주소: string;
   내역: string;
+  기사?: string;
+  priority?: Priority;
   _rowIndex?: number;
 }
 
 interface FormData {
   status: string;
   name: string;
-  machine: string;       // 기계 종류
-  model: string;         // 품목 (모델명)
-  serial_number: string; // 제조번호 (UI 전용)
+  machine: string;
+  model: string;
+  serial_number: string;
   phone: string;
   address: string;
   detail: string;
+  technician: string;
+  priority: Priority;
 }
 
 function rowToForm(row?: OnsiteRow): FormData {
   if (!row) return {
     status: "", name: "", machine: "", model: "", serial_number: "",
-    phone: "", address: "", detail: "",
+    phone: "", address: "", detail: "", technician: "", priority: "보통",
   };
   return {
     status: row.진행사항,
@@ -58,13 +62,15 @@ function rowToForm(row?: OnsiteRow): FormData {
     phone: row.전화번호,
     address: row.주소,
     detail: row.내역,
+    technician: row.기사 ?? "",
+    priority: normalizePriority(row.priority),
   };
 }
 
 function formToValues(f: FormData): string[] {
-  // 방문수리 시트 컬럼: 진행사항, 손님성함, 기계, 품목, 전화번호, 주소, 내역
+  // visit_repair_rows: status, name, machine, model, phone, address, detail, technician, priority
   const modelWithSerial = f.model + (f.serial_number ? ` (${f.serial_number})` : "");
-  return [f.status, f.name, f.machine, modelWithSerial, f.phone, f.address, f.detail];
+  return [f.status, f.name, f.machine, modelWithSerial, f.phone, f.address, f.detail, f.technician, f.priority];
 }
 
 interface Props {
