@@ -121,7 +121,17 @@ interface Props<T> {
   height?: string | number;
   /** 행에 적용할 추가 className */
   rowClassName?: (row: T) => string;
+  /** 프리셋 저장에 사용할 고유 키 (없으면 프리셋 UI 비활성화) */
+  presetKey?: string;
 }
+
+type FilterPreset = {
+  name: string;
+  globalFilter: string;
+  columnFilters: ColumnFiltersState;
+  sorting: SortingState;
+  createdAt: number;
+};
 
 export default function ExcelTable<T extends object>({
   data,
@@ -134,11 +144,63 @@ export default function ExcelTable<T extends object>({
   emptyMessage = "데이터가 없습니다.",
   height,
   rowClassName,
+  presetKey,
 }: Props<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showFilterDetails, setShowFilterDetails] = useState(false);
+  const [presets, setPresets] = useState<FilterPreset[]>([]);
+
+  const presetStorageKey = presetKey ? `excel-table-presets:${presetKey}` : null;
+
+  // localStorage에서 프리셋 로드
+  useEffect(() => {
+    if (!presetStorageKey) return;
+    try {
+      const raw = localStorage.getItem(presetStorageKey);
+      if (raw) setPresets(JSON.parse(raw));
+    } catch {}
+  }, [presetStorageKey]);
+
+  const persistPresets = (next: FilterPreset[]) => {
+    setPresets(next);
+    if (presetStorageKey) {
+      try { localStorage.setItem(presetStorageKey, JSON.stringify(next)); } catch {}
+    }
+  };
+
+  const handleSavePreset = () => {
+    const name = window.prompt("프리셋 이름을 입력하세요");
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    const exists = presets.some((p) => p.name === trimmed);
+    if (exists && !window.confirm(`'${trimmed}' 프리셋을 덮어쓸까요?`)) return;
+    const preset: FilterPreset = {
+      name: trimmed,
+      globalFilter,
+      columnFilters,
+      sorting,
+      createdAt: Date.now(),
+    };
+    const next = exists
+      ? presets.map((p) => (p.name === trimmed ? preset : p))
+      : [...presets, preset];
+    persistPresets(next);
+    toast({ title: "프리셋 저장됨", description: `'${trimmed}'` });
+  };
+
+  const handleApplyPreset = (p: FilterPreset) => {
+    setGlobalFilter(p.globalFilter ?? "");
+    setColumnFilters(p.columnFilters ?? []);
+    setSorting(p.sorting ?? []);
+    toast({ title: "프리셋 적용됨", description: `'${p.name}'` });
+  };
+
+  const handleDeletePreset = (name: string) => {
+    if (!window.confirm(`'${name}' 프리셋을 삭제할까요?`)) return;
+    persistPresets(presets.filter((p) => p.name !== name));
+  };
 
   // 컬럼에 filterFn 자동 적용
   const enhancedColumns = useMemo(() => columns.map((c) => {
