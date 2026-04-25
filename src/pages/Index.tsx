@@ -12,7 +12,7 @@ import {
 import { formatPrice, formatDate } from "@/lib/formatters";
 import { TypeBadge } from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+
 
 // ── Glass card component ──
 function GlassCard({
