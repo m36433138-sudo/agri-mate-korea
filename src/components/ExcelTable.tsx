@@ -11,7 +11,7 @@ import {
   type FilterFn,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X, ChevronDown, ChevronUp, Bookmark, Save, Trash2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X, ChevronDown, ChevronUp, Bookmark, Save, Trash2, Link2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -124,6 +124,8 @@ interface Props<T> {
   rowClassName?: (row: T) => string;
   /** 프리셋 저장에 사용할 고유 키 (없으면 프리셋 UI 비활성화) */
   presetKey?: string;
+  /** URL 쿼리스트링 동기화에 사용할 prefix (없으면 URL 동기화 비활성화). 같은 페이지에 여러 테이블이 있을 때 충돌 방지용 */
+  urlKey?: string;
 }
 
 type FilterPreset = {
@@ -146,12 +148,62 @@ export default function ExcelTable<T extends object>({
   height,
   rowClassName,
   presetKey,
+  urlKey,
 }: Props<T>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const urlPrefix = urlKey ? `${urlKey}_` : "";
+  // URL → 초기값
+  const initialFromUrl = useMemo(() => {
+    if (!urlKey || typeof window === "undefined") return null;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const raw = sp.get(`${urlPrefix}t`); // table state (compact JSON)
+      if (!raw) return null;
+      const parsed = JSON.parse(decodeURIComponent(raw));
+      return {
+        globalFilter: parsed.q ?? "",
+        columnFilters: (parsed.f ?? []) as ColumnFiltersState,
+        sorting: (parsed.s ?? []) as SortingState,
+      };
+    } catch { return null; }
+  }, [urlKey, urlPrefix]);
+
+  const [sorting, setSorting] = useState<SortingState>(initialFromUrl?.sorting ?? []);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialFromUrl?.columnFilters ?? []);
+  const [globalFilter, setGlobalFilter] = useState(initialFromUrl?.globalFilter ?? "");
   const [showFilterDetails, setShowFilterDetails] = useState(false);
   const [presets, setPresets] = useState<FilterPreset[]>([]);
+
+  // 상태 → URL 동기화 (replaceState로 히스토리 누적 방지)
+  useEffect(() => {
+    if (!urlKey || typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const key = `${urlPrefix}t`;
+    const isEmpty = !globalFilter && columnFilters.length === 0 && sorting.length === 0;
+    if (isEmpty) {
+      sp.delete(key);
+    } else {
+      const payload = JSON.stringify({
+        q: globalFilter || undefined,
+        f: columnFilters.length ? columnFilters : undefined,
+        s: sorting.length ? sorting : undefined,
+      });
+      sp.set(key, encodeURIComponent(payload));
+    }
+    const qs = sp.toString();
+    const next = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+    if (next !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState(null, "", next);
+    }
+  }, [urlKey, urlPrefix, globalFilter, columnFilters, sorting]);
+
+  const handleCopyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({ title: "공유 링크가 복사되었습니다" });
+    } catch {
+      toast({ title: "복사 실패", description: "주소창에서 직접 복사해주세요", variant: "destructive" });
+    }
+  };
 
   const presetStorageKey = presetKey ? `excel-table-presets:${presetKey}` : null;
 
@@ -389,6 +441,19 @@ export default function ExcelTable<T extends object>({
             </Button>
           )}
           {toolbarRight}
+          {urlKey && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyShareLink}
+              disabled={!globalFilter && columnFilters.length === 0 && sorting.length === 0}
+              title="현재 필터/정렬 상태가 담긴 URL 복사"
+              className="gap-1"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              공유
+            </Button>
+          )}
           {presetKey && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
