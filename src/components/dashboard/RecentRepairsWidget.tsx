@@ -20,12 +20,14 @@ export default function RecentRepairsWidget() {
     queryKey: ["repairs-recent"],
     staleTime: 1000 * 60 * 2,
     queryFn: async () => {
+      // idx_repairs_repair_date_created_at (repair_date DESC, created_at DESC) 인덱스 활용
       const { data, error } = await measureQuery("repairs-recent", () =>
         supabase
           .from("repairs")
-          .select("id, repair_date, repair_content, total_cost, machines(model_name, serial_number)")
+          .select("id, repair_date, created_at, repair_content, total_cost, machines!repairs_machine_id_fkey(model_name, serial_number)")
           .order("repair_date", { ascending: false })
-          .limit(8)
+          .order("created_at", { ascending: false })
+          .limit(5)
       );
       if (error) throw error;
       return data;
@@ -55,7 +57,7 @@ export default function RecentRepairsWidget() {
           <p className="text-sm text-muted-foreground p-10 text-center">수리 이력이 없습니다.</p>
         ) : (
           <div className="divide-y divide-border/30">
-            {repairs.slice(0, 6).map((r: any) => (
+            {repairs.map((r: any) => (
               <div key={r.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-accent/30 transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
                   <Wrench className="h-4 w-4 text-muted-foreground" />
