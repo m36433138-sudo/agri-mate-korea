@@ -50,10 +50,10 @@ function WidgetSkeleton({ className = "" }: { className?: string }) {
 }
 
 export default function Dashboard() {
-  useRealtimeSync("machines", [["machines-stats"], ["machines-sales-month"]]);
-  useRealtimeSync("customers", [["customers-count"]]);
-  useRealtimeSync("inventory", [["parts-count"]]);
-  useRealtimeSync("repairs", [["repairs-month-count"]]);
+  const machinesRT = useRealtimeSync("machines", [["machines-stats"], ["machines-sales-month"]]);
+  const customersRT = useRealtimeSync("customers", [["customers-count"]]);
+  const inventoryRT = useRealtimeSync("inventory", [["parts-count"]]);
+  const repairsRT = useRealtimeSync("repairs", [["repairs-month-count"]]);
 
   // 이번 달 범위 (월별 판매 집계 + 수리 카운트 공용)
   const dateNow = new Date();
