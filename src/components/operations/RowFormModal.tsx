@@ -132,14 +132,10 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
       const values = formToValues(form);
 
       if (isEdit && row) {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "updateRow", sheetName, rowIndex: row._rowIndex, values },
-        });
+        await upsertRowFromValues(sheetName, row._rowIndex, values);
         toast({ title: "수정 완료" });
       } else {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "addRow", sheetName, values },
-        });
+        await upsertRowFromValues(sheetName, null, values);
         toast({ title: "추가 완료" });
       }
       onSuccess();
