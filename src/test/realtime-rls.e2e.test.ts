@@ -42,7 +42,10 @@ interface DiagnosticEntry {
 }
 
 const REPORT_DIR = path.resolve(process.cwd(), "public");
-const REPORT_PATH = path.join(REPORT_DIR, "realtime-rls-report.json");
+const REPORTS_SUBDIR = path.join(REPORT_DIR, "realtime-rls-reports");
+const LATEST_PATH = path.join(REPORT_DIR, "realtime-rls-report.json");
+const INDEX_PATH = path.join(REPORTS_SUBDIR, "index.json");
+const MAX_REPORTS = 20;
 const diagnostics: DiagnosticEntry[] = [];
 let currentExpected: ProbeOutcome = "subscribed";
 let currentRole: "admin" | "employee" | "customer" = "admin";
