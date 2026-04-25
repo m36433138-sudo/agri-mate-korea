@@ -11,7 +11,7 @@ import {
   type FilterFn,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -136,6 +136,7 @@ export default function ExcelTable<T extends object>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [showFilterDetails, setShowFilterDetails] = useState(false);
 
   // 컬럼에 filterFn 자동 적용
   const enhancedColumns = useMemo(() => columns.map((c) => {
@@ -477,29 +478,92 @@ export default function ExcelTable<T extends object>({
               </div>
             )}
             {/* 결과 요약 바 */}
-            <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-t border-border/40 bg-muted/30 text-[11px] text-muted-foreground">
-              <div className="flex items-center gap-2 flex-wrap">
-                {activeFilterCount > 0 ? (
-                  <>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">
-                      필터 {activeFilterCount}개 적용
-                    </span>
-                    <span className="tabular-nums">
-                      <span className="font-semibold text-foreground">{rows.length.toLocaleString()}</span> / {data.length.toLocaleString()}건
-                    </span>
-                  </>
-                ) : (
-                  <span className="tabular-nums">전체 <span className="font-semibold text-foreground">{data.length.toLocaleString()}</span>건</span>
+            <div className="border-t border-border/40 bg-muted/30 text-[11px] text-muted-foreground">
+              <div className="flex items-center justify-between gap-2 px-3 py-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {activeFilterCount > 0 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilterDetails((v) => !v)}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium hover:bg-primary/25 transition-colors"
+                        aria-expanded={showFilterDetails}
+                        title={showFilterDetails ? "적용값 숨기기" : "적용값 펼치기"}
+                      >
+                        필터 {activeFilterCount}개 적용
+                        {showFilterDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </button>
+                      <span className="tabular-nums">
+                        <span className="font-semibold text-foreground">{rows.length.toLocaleString()}</span> / {data.length.toLocaleString()}건
+                      </span>
+                    </>
+                  ) : (
+                    <span className="tabular-nums">전체 <span className="font-semibold text-foreground">{data.length.toLocaleString()}</span>건</span>
+                  )}
+                </div>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" /> 모두 초기화
+                  </button>
                 )}
               </div>
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearFilters}
-                  className="inline-flex items-center gap-1 hover:text-foreground"
-                >
-                  <X className="h-3 w-3" /> 모두 초기화
-                </button>
+              {activeFilterCount > 0 && showFilterDetails && (
+                <div className="flex items-center gap-1.5 flex-wrap px-3 pb-2 pt-0.5 border-t border-border/30">
+                  {globalFilter && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background border border-border/60 text-foreground">
+                      <span className="text-muted-foreground">검색</span>
+                      <span className="font-medium">= {globalFilter}</span>
+                      <button
+                        type="button"
+                        onClick={() => setGlobalFilter("")}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="검색어 제거"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  )}
+                  {columnFilters.map((f) => {
+                    const col = table.getColumn(f.id);
+                    if (!col) return null;
+                    const def = col.columnDef as ExcelColumn<T>;
+                    const label = typeof def.header === "string" ? def.header : f.id;
+                    const v: any = f.value;
+                    let display = "";
+                    if (def.filterType === "dateRange") {
+                      const from = v?.from ?? "";
+                      const to = v?.to ?? "";
+                      display = `${from || "…"} ~ ${to || "…"}`;
+                    } else if (def.filterType === "numberRange") {
+                      const from = v?.from ?? v?.from === 0 ? v?.from : "";
+                      const to = v?.to ?? v?.to === 0 ? v?.to : "";
+                      display = `${from === "" || from == null ? "…" : from} ~ ${to === "" || to == null ? "…" : to}`;
+                    } else {
+                      display = String(v ?? "");
+                    }
+                    return (
+                      <span
+                        key={f.id}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background border border-border/60 text-foreground"
+                      >
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-medium">= {display}</span>
+                        <button
+                          type="button"
+                          onClick={() => col.setFilterValue(undefined)}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={`${label} 필터 제거`}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
