@@ -288,7 +288,7 @@ export default function OnsiteRepairs() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((r, i) => (
-            <OnsiteCard key={i} row={r} onEdit={handleEdit} />
+            <OnsiteCard key={i} row={r} onEdit={handleEdit} query={search} />
           ))}
         </div>
       )}
