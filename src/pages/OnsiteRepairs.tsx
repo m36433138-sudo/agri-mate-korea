@@ -79,7 +79,11 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
 
   return (
     <div
-      className="bg-card rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-border/50 overflow-hidden"
+      role="button"
+      tabIndex={0}
+      onClick={() => onEdit(row)}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(row); } }}
+      className="bg-card rounded-2xl shadow-sm hover:shadow-md hover:border-primary/40 transition-all border border-border/50 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
       style={{ borderLeftWidth: 5, borderLeftColor: statusColor }}
     >
       <div className="px-4 pt-3.5 pb-3 space-y-2.5">
@@ -90,8 +94,9 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
             <span className={cfg.color}>{cfg.label || "미정"}</span>
           </span>
           <button
-            onClick={() => onEdit(row)}
+            onClick={(e) => { e.stopPropagation(); onEdit(row); }}
             className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
+            title="상세/수정"
           >
             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
@@ -133,7 +138,7 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
         {row.전화번호 && (
           <div className="flex items-center gap-2 ml-0.5">
             <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <a href={`tel:${row.전화번호}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors tabular-nums">
+            <a href={`tel:${row.전화번호}`} onClick={e => e.stopPropagation()} className="text-sm font-semibold text-foreground hover:text-primary transition-colors tabular-nums">
               <Highlight text={row.전화번호} query={query} />
             </a>
           </div>
@@ -151,7 +156,7 @@ function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: Onsite
         {row.내역 && (
           <div>
             <button
-              onClick={() => setDetailOpen(v => !v)}
+              onClick={(e) => { e.stopPropagation(); setDetailOpen(v => !v); }}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <Wrench className="h-3 w-3" />
