@@ -688,6 +688,7 @@ export type Database = {
           model: string | null
           notes: string | null
           phone: string | null
+          priority: string
           repair_done_date: string | null
           repair_start_date: string | null
           requirements: string | null
@@ -715,6 +716,7 @@ export type Database = {
           model?: string | null
           notes?: string | null
           phone?: string | null
+          priority?: string
           repair_done_date?: string | null
           repair_start_date?: string | null
           requirements?: string | null
@@ -742,6 +744,7 @@ export type Database = {
           model?: string | null
           notes?: string | null
           phone?: string | null
+          priority?: string
           repair_done_date?: string | null
           repair_start_date?: string | null
           requirements?: string | null
@@ -1381,6 +1384,7 @@ export type Database = {
           notes: string | null
           parts_used: string | null
           phone: string | null
+          priority: string
           requirements: string | null
           row_index: number
           serial_number: string | null
@@ -1402,6 +1406,7 @@ export type Database = {
           notes?: string | null
           parts_used?: string | null
           phone?: string | null
+          priority?: string
           requirements?: string | null
           row_index: number
           serial_number?: string | null
@@ -1423,6 +1428,7 @@ export type Database = {
           notes?: string | null
           parts_used?: string | null
           phone?: string | null
+          priority?: string
           requirements?: string | null
           row_index?: number
           serial_number?: string | null

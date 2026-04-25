@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SheetRow } from "@/types/operations";
+import { normalizePriority, type Priority } from "@/lib/priority";
 
 // ─── DB row → SheetRow 변환 ───────────────────────────────
 interface DbRow {
@@ -35,6 +36,7 @@ interface DbRow {
   is_completed: boolean;
   notes: string | null;
   writer: string | null;
+  priority: string | null;
   updated_at: string;
 }
 
@@ -61,6 +63,7 @@ function dbToSheetRow(r: DbRow): SheetRow & { _id: string } {
     전체완료: r.is_completed ? "TRUE" : "",
     비고: r.notes ?? "",
     입력자: r.writer ?? "",
+    priority: normalizePriority(r.priority),
     _branch: r.branch,
     _rowIndex: r.row_index,
     _doneCol: "P", // 호환용 (시트 컬럼). DB에서는 사용하지 않음.
@@ -120,7 +123,7 @@ export async function updateRowStatus(sheetName: string, rowIndex: number, newSt
  */
 function valuesArrayToPatch(values: any[]): Record<string, any> {
   const v = (i: number) => (values[i] ?? "").toString();
-  return {
+  const patch: Record<string, any> = {
     status_label: v(0) || null,
     customer_name: v(1) || null,
     machine: v(2) || null,
@@ -139,6 +142,10 @@ function valuesArrayToPatch(values: any[]): Record<string, any> {
     is_completed: ["TRUE", "true", "1", "✓"].includes(v(15).trim()),
     notes: v(16) || null,
   };
+  if (values.length > 17 && v(17)) {
+    patch.priority = normalizePriority(v(17));
+  }
+  return patch;
 }
 
 export async function upsertRowFromValues(sheetName: string, rowIndex: number | null, values: any[]): Promise<void> {
@@ -174,6 +181,24 @@ export async function clearRow(sheetName: string, rowIndex: number): Promise<voi
   const { error } = await supabase
     .from("operation_rows" as any)
     .delete()
+    .eq("branch", branch)
+    .eq("row_index", rowIndex);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateRowPriority(branch: "장흥" | "강진", rowIndex: number, priority: Priority): Promise<void> {
+  const { error } = await supabase
+    .from("operation_rows" as any)
+    .update({ priority } as any)
+    .eq("branch", branch)
+    .eq("row_index", rowIndex);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateRowTechnician(branch: "장흥" | "강진", rowIndex: number, technician: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("operation_rows" as any)
+    .update({ technician: technician || null } as any)
     .eq("branch", branch)
     .eq("row_index", rowIndex);
   if (error) throw new Error(error.message);

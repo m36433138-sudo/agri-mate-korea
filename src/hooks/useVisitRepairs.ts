@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizePriority, type Priority } from "@/lib/priority";
 
 export interface OnsiteRow {
   진행사항: string;
@@ -14,6 +15,8 @@ export interface OnsiteRow {
   전화번호: string;
   주소: string;
   내역: string;
+  기사: string;
+  priority: Priority;
   _rowIndex?: number;
   _id?: string;
 }
@@ -28,8 +31,10 @@ interface DbVisitRow {
   machine: string | null;
   model: string | null;
   serial_number: string | null;
+  technician: string | null;
   requirements: string | null;
   is_completed: boolean;
+  priority: string | null;
 }
 
 function dbToOnsite(r: DbVisitRow): OnsiteRow {
@@ -42,6 +47,8 @@ function dbToOnsite(r: DbVisitRow): OnsiteRow {
     전화번호: r.phone ?? "",
     주소: r.address ?? "",
     내역: r.requirements ?? "",
+    기사: r.technician ?? "",
+    priority: normalizePriority(r.priority),
     _rowIndex: r.row_index,
     _id: r.id,
   };
@@ -67,10 +74,10 @@ async function fetchAllVisits(): Promise<OnsiteRow[]> {
 }
 
 function valuesArrayToVisitPatch(values: string[]): Record<string, any> {
-  // 진행사항, 손님성함, 기계, 품목, 전화번호, 주소, 내역
+  // 진행사항, 손님성함, 기계, 품목, 전화번호, 주소, 내역, [기사], [priority]
   const v = (i: number) => (values[i] ?? "").toString();
   const status = v(0);
-  return {
+  const patch: Record<string, any> = {
     status_label: status || null,
     customer_name: v(1) || null,
     machine: v(2) || null,
@@ -80,6 +87,9 @@ function valuesArrayToVisitPatch(values: string[]): Record<string, any> {
     requirements: v(6) || null,
     is_completed: status === "완료",
   };
+  if (values.length > 7) patch.technician = v(7) || null;
+  if (values.length > 8 && v(8)) patch.priority = normalizePriority(v(8));
+  return patch;
 }
 
 export async function upsertVisitFromValues(rowIndex: number | undefined, values: string[]): Promise<void> {
@@ -109,6 +119,22 @@ export async function deleteVisitRow(rowIndex: number): Promise<void> {
   const { error } = await supabase
     .from("visit_repair_rows" as any)
     .delete()
+    .eq("row_index", rowIndex);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateVisitPriority(rowIndex: number, priority: Priority): Promise<void> {
+  const { error } = await supabase
+    .from("visit_repair_rows" as any)
+    .update({ priority } as any)
+    .eq("row_index", rowIndex);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateVisitTechnician(rowIndex: number, technician: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("visit_repair_rows" as any)
+    .update({ technician: technician || null } as any)
     .eq("row_index", rowIndex);
   if (error) throw new Error(error.message);
 }
