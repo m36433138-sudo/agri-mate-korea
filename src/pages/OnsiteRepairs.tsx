@@ -212,7 +212,7 @@ export default function OnsiteRepairs() {
         <div className="relative flex-1 max-w-xs ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="이름, 기계, 주소 검색..."
+            placeholder="고객명·전화·기계·제조번호 검색..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9 h-9"
