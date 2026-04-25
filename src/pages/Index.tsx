@@ -202,6 +202,7 @@ export default function Dashboard() {
             iconBg: "bg-[hsl(217,91%,60%)]/10",
             iconColor: "text-[hsl(217,91%,60%)]",
             to: "/customers",
+            isLoading: customersLoading,
           },
           {
             label: "재고 기계",
@@ -214,6 +215,7 @@ export default function Dashboard() {
             iconBg: "bg-primary/10",
             iconColor: "text-primary",
             to: "/machines",
+            isLoading: loading,
           },
           {
             label: "등록 부품",
@@ -225,6 +227,7 @@ export default function Dashboard() {
             iconBg: "bg-warning/10",
             iconColor: "text-warning",
             to: "/parts",
+            isLoading: partsLoading,
           },
         ].map((s) => (
           <Link key={s.to} to={s.to}>
@@ -236,7 +239,7 @@ export default function Dashboard() {
                 <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all duration-200 group-hover:translate-x-0.5" />
               </div>
               <p className="text-xs font-medium text-muted-foreground mb-1">{s.label}</p>
-              {loading ? (
+              {s.isLoading ? (
                 <Skeleton className="h-8 w-20 rounded-xl" />
               ) : (
                 <div className="flex items-baseline gap-1">
