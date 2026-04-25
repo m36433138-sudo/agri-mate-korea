@@ -142,7 +142,8 @@ export default function ExcelTable<T extends object>({
     const def = c as ExcelColumn<any>;
     if (!def.enableColumnFilter || (c as any).filterFn) return c;
     if (def.filterType === "select") return { ...c, filterFn: selectFilter as any };
-    if (def.filterType === "dateRange" || def.filterType === "numberRange") return { ...c, filterFn: rangeFilter as any };
+    if (def.filterType === "dateRange") return { ...c, filterFn: dateRangeFilter as any };
+    if (def.filterType === "numberRange") return { ...c, filterFn: numberRangeFilter as any };
     return c;
   }), [columns]);
 
