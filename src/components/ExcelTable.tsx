@@ -193,25 +193,43 @@ export default function ExcelTable<T extends object>({
     return offsets;
   }, [table, columns]);
 
-  // select 필터의 자동 옵션 (데이터에서 distinct)
+  // select 필터의 자동 옵션 (데이터에서 distinct, 값 타입에 맞게 정렬)
   const selectOptionsCache = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const col of table.getAllLeafColumns()) {
       const def = col.columnDef as ExcelColumn<T>;
-      if (def.enableColumnFilter && def.filterType === "select") {
-        if (def.filterOptions) {
-          map[col.id] = def.filterOptions;
-        } else {
-          const set = new Set<string>();
-          for (const r of data) {
-            try {
-              const v = (col as any).accessorFn ? (col as any).accessorFn(r) : (r as any)[(def as any).accessorKey];
-              if (v != null && v !== "") set.add(String(v));
-            } catch {}
-          }
-          map[col.id] = Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
-        }
+      if (!def.enableColumnFilter || def.filterType !== "select") continue;
+
+      // 명시적 옵션 — 그대로 사용 (사용자가 의도한 순서 유지)
+      if (def.filterOptions) {
+        map[col.id] = def.filterOptions;
+        continue;
       }
+
+      const set = new Set<string>();
+      for (const r of data) {
+        try {
+          const v = (col as any).accessorFn ? (col as any).accessorFn(r) : (r as any)[(def as any).accessorKey];
+          if (v != null && v !== "") set.add(String(v));
+        } catch {}
+      }
+      const arr = Array.from(set);
+
+      // 모두 숫자로 변환 가능하면 숫자 정렬
+      const allNumeric = arr.length > 0 && arr.every((s) => s !== "" && !isNaN(Number(s)));
+      // 모두 yyyy-mm-dd 또는 ISO 날짜로 보이면 날짜(문자열 ISO) 정렬
+      const allDate = !allNumeric && arr.length > 0 && arr.every((s) => /^\d{4}[-./]\d{1,2}[-./]\d{1,2}/.test(s));
+
+      if (allNumeric) {
+        arr.sort((a, b) => Number(a) - Number(b));
+      } else if (allDate) {
+        const norm = (s: string) => s.replace(/[./]/g, "-").slice(0, 10);
+        arr.sort((a, b) => norm(a).localeCompare(norm(b)));
+      } else {
+        arr.sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
+      }
+
+      map[col.id] = arr;
     }
     return map;
   }, [table, data, columns]);
