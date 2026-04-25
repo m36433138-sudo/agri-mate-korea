@@ -64,6 +64,7 @@ export default function OperationsDashboard() {
   const [branch, setBranch] = useState<Branch>("전체");
   const [statusFilter, setStatusFilter] = useState<OperationStatus | "전체">("전체");
   const [techFilter, setTechFilter] = useState("전체");
+  const [priorityFilter, setPriorityFilter] = useState<Priority | "전체">("전체");
   const [confirmRow, setConfirmRow] = useState<SheetRow | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ label: string; next: OperationStatus | "완료" } | null>(null);
   const [isMarking, setIsMarking] = useState(false);
@@ -88,17 +89,46 @@ export default function OperationsDashboard() {
     if (branch !== "전체") rows = rows.filter(r => r._branch === branch);
     if (techFilter !== "전체") rows = rows.filter(r => r.수리기사 === techFilter);
     if (statusFilter !== "전체") rows = rows.filter(r => getStatus(r) === statusFilter);
-    // 상태 순서대로 정렬
+    if (priorityFilter !== "전체") rows = rows.filter(r => r.priority === priorityFilter);
+    // 우선순위(긴급 먼저) → 상태 순서
     return rows.slice().sort((a, b) => {
+      const pa = PRIORITY_META[a.priority].rank;
+      const pb = PRIORITY_META[b.priority].rank;
+      if (pa !== pb) return pa - pb;
       return STATUS_ORDER.indexOf(getStatus(a)) - STATUS_ORDER.indexOf(getStatus(b));
     });
-  }, [allData, branch, techFilter, statusFilter]);
+  }, [allData, branch, techFilter, statusFilter, priorityFilter]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { 전체: allData.length };
     STATUS_ORDER.forEach(s => { c[s] = allData.filter(r => getStatus(r) === s).length; });
     return c;
   }, [allData]);
+
+  const urgentCount = useMemo(
+    () => allData.filter(r => r.priority === "긴급").length,
+    [allData],
+  );
+
+  const handlePriorityChange = async (row: SheetRow, p: Priority) => {
+    try {
+      await updateRowPriority(row._branch, row._rowIndex, p);
+      toast({ title: "우선순위 변경", description: `${row.손님성명 || "행"} → ${p}` });
+      refresh();
+    } catch (err: any) {
+      toast({ title: "오류", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleTechChange = async (row: SheetRow, name: string) => {
+    try {
+      await updateRowTechnician(row._branch, row._rowIndex, name || null);
+      toast({ title: "기사 배정", description: `${row.손님성명 || "행"} → ${name || "미배정"}` });
+      refresh();
+    } catch (err: any) {
+      toast({ title: "오류", description: err.message, variant: "destructive" });
+    }
+  };
 
   const handleTransition = (row: SheetRow) => {
     const transition = STATUS_TRANSITIONS[getStatus(row)];
