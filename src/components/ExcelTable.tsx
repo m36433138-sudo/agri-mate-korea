@@ -91,9 +91,18 @@ export default function ExcelTable<T extends object>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
+  // 컬럼에 filterFn 자동 적용
+  const enhancedColumns = useMemo(() => columns.map((c) => {
+    const def = c as ExcelColumn<any>;
+    if (!def.enableColumnFilter || (c as any).filterFn) return c;
+    if (def.filterType === "select") return { ...c, filterFn: selectFilter as any };
+    if (def.filterType === "dateRange" || def.filterType === "numberRange") return { ...c, filterFn: rangeFilter as any };
+    return c;
+  }), [columns]);
+
   const table = useReactTable({
     data,
-    columns,
+    columns: enhancedColumns,
     state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -136,6 +145,30 @@ export default function ExcelTable<T extends object>({
     }
     return offsets;
   }, [table, columns]);
+
+  // select 필터의 자동 옵션 (데이터에서 distinct)
+  const selectOptionsCache = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const col of table.getAllLeafColumns()) {
+      const def = col.columnDef as ExcelColumn<T>;
+      if (def.enableColumnFilter && def.filterType === "select") {
+        if (def.filterOptions) {
+          map[col.id] = def.filterOptions;
+        } else {
+          const set = new Set<string>();
+          for (const r of data) {
+            try {
+              const v = (col as any).accessorFn ? (col as any).accessorFn(r) : (r as any)[(def as any).accessorKey];
+              if (v != null && v !== "") set.add(String(v));
+            } catch {}
+          }
+          map[col.id] = Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
+        }
+      }
+    }
+    return map;
+  }, [table, data, columns]);
+
 
   const handleExport = () => {
     const visibleCols = table.getVisibleLeafColumns();
