@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SheetRow } from "@/types/operations";
+import { normalizePriority, type Priority } from "@/lib/priority";
 
 // ─── DB row → SheetRow 변환 ───────────────────────────────
 interface DbRow {
