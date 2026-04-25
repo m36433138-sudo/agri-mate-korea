@@ -71,8 +71,10 @@ async function trySubscribe(
 ): Promise<"subscribed" | "blocked"> {
   return new Promise((resolve) => {
     let settled = false;
+    // private:true → realtime.messages RLS가 토픽 단위 인가를 강제한다.
+    // 일반(public) 채널은 RLS를 우회하므로 정책 검증에는 반드시 private 모드를 써야 한다.
     const channel: RealtimeChannel = client.channel(topic, {
-      config: { broadcast: { self: false }, presence: { key: "" } },
+      config: { private: true, broadcast: { self: false } },
     });
 
     const finish = (r: "subscribed" | "blocked") => {
