@@ -357,18 +357,26 @@ export default function OperationsDashboard() {
           return (
             <div
               key={rowKey + idx}
-              className="group border-b border-border/30 last:border-0 transition-colors hover:brightness-110"
-              style={{ background: meta.rowBg, borderLeft: `3px solid ${meta.color}` }}
+              className={`group border-b border-border/30 last:border-0 transition-colors hover:brightness-110 ${row.priority === "긴급" ? "ring-1 ring-inset ring-red-500/40" : ""}`}
+              style={{
+                background: row.priority === "긴급" ? "hsl(0 80% 50% / 0.08)" : meta.rowBg,
+                borderLeft: `4px solid ${row.priority === "긴급" ? PRIORITY_META["긴급"].color : meta.color}`,
+              }}
             >
               {/* 메인 행 */}
               <div
                 className="grid items-center"
                 style={{
-                  gridTemplateColumns: "110px 52px 90px 1fr 120px 110px 1fr 80px 110px",
+                  gridTemplateColumns: "70px 110px 52px 90px 1fr 120px 110px 1fr 110px 110px",
                   padding: "9px 14px",
                   gap: 0,
                 }}
               >
+                {/* 우선순위 */}
+                <div>
+                  <PriorityPicker value={row.priority} onChange={(p) => handlePriorityChange(row, p)} />
+                </div>
+
                 {/* 상태 */}
                 <div><StatusBadge status={status} /></div>
 
