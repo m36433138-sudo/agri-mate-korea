@@ -50,7 +50,7 @@ describe("useRealtimeSync — cleanup", () => {
 
     expect(channel).toHaveBeenCalledTimes(1);
     expect(on).toHaveBeenCalledTimes(1);
-    expect(on.mock.calls[0][0]).toBe("postgres_changes");
+    expect((on.mock.calls[0] as unknown[])[0]).toBe("postgres_changes");
     expect(subscribe).toHaveBeenCalledTimes(1);
 
     unmount();
