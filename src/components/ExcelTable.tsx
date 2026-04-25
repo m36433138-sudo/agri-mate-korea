@@ -295,7 +295,7 @@ export default function ExcelTable<T extends object>({
             ))}
             {/* 컬럼 필터 행 */}
             {table.getHeaderGroups()[0].headers.some((h) => (h.column.columnDef as ExcelColumn<T>).enableColumnFilter) && (
-              <div className="flex border-t border-border/40 bg-background/40" style={{ height: 32 }}>
+              <div className="flex border-t border-border/40 bg-background/40" style={{ minHeight: 38 }}>
                 {table.getHeaderGroups()[0].headers.map((h) => {
                   const def = h.column.columnDef as ExcelColumn<T>;
                   const sticky = def.sticky;
@@ -310,16 +310,85 @@ export default function ExcelTable<T extends object>({
                         }
                       : {}),
                   };
+                  const fv = h.column.getFilterValue() as any;
+                  const ftype = def.filterType ?? "text";
                   return (
-                    <div key={h.id} style={style} className="px-1.5 py-0.5 border-r border-border/30">
-                      {def.enableColumnFilter ? (
+                    <div key={h.id} style={style} className="px-1 py-1 border-r border-border/30">
+                      {!def.enableColumnFilter ? null : ftype === "select" ? (
+                        <Select
+                          value={fv ?? "__all__"}
+                          onValueChange={(v) => h.column.setFilterValue(v === "__all__" ? undefined : v)}
+                        >
+                          <SelectTrigger className="h-7 text-xs px-2">
+                            <SelectValue placeholder="전체" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            <SelectItem value="__all__">전체</SelectItem>
+                            {(selectOptionsCache[h.column.id] ?? []).map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : ftype === "dateRange" ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="date"
+                            value={fv?.from ?? ""}
+                            onChange={(e) => h.column.setFilterValue({ ...(fv ?? {}), from: e.target.value || undefined })}
+                            className="h-7 text-[11px] px-1.5"
+                          />
+                          <Input
+                            type="date"
+                            value={fv?.to ?? ""}
+                            onChange={(e) => h.column.setFilterValue({ ...(fv ?? {}), to: e.target.value || undefined })}
+                            className="h-7 text-[11px] px-1.5"
+                          />
+                          {fv && (fv.from || fv.to) && (
+                            <button
+                              type="button"
+                              onClick={() => h.column.setFilterValue(undefined)}
+                              className="text-muted-foreground hover:text-foreground shrink-0"
+                              aria-label="초기화"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ) : ftype === "numberRange" ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            placeholder="≥"
+                            value={fv?.from ?? ""}
+                            onChange={(e) => h.column.setFilterValue({ ...(fv ?? {}), from: e.target.value === "" ? undefined : Number(e.target.value) })}
+                            className="h-7 text-[11px] px-1.5"
+                          />
+                          <Input
+                            type="number"
+                            placeholder="≤"
+                            value={fv?.to ?? ""}
+                            onChange={(e) => h.column.setFilterValue({ ...(fv ?? {}), to: e.target.value === "" ? undefined : Number(e.target.value) })}
+                            className="h-7 text-[11px] px-1.5"
+                          />
+                          {fv && (fv.from != null || fv.to != null) && (
+                            <button
+                              type="button"
+                              onClick={() => h.column.setFilterValue(undefined)}
+                              className="text-muted-foreground hover:text-foreground shrink-0"
+                              aria-label="초기화"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ) : (
                         <Input
-                          value={(h.column.getFilterValue() as string) ?? ""}
+                          value={(fv as string) ?? ""}
                           onChange={(e) => h.column.setFilterValue(e.target.value)}
                           placeholder="필터..."
-                          className="h-6 text-xs px-2"
+                          className="h-7 text-xs px-2"
                         />
-                      ) : null}
+                      )}
                     </div>
                   );
                 })}
