@@ -215,6 +215,7 @@ export default function OnsiteRepairs() {
   const [statusFilter, setStatusFilter] = useState("전체");
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
+  const { toast } = useToast();
 
   const { rows: rawRows, isLoading, error, refresh } = useVisitRepairs();
   const rows: OnsiteRow[] = useMemo(
