@@ -69,7 +69,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-
+function OnsiteCard({ row, onEdit, query }: { row: OnsiteRow; onEdit: (r: OnsiteRow) => void; query: string }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const cfg = getStatusCfg(row.진행사항);
   const statusColor =
