@@ -153,13 +153,15 @@ export default function OnsiteRepairs() {
     }
     if (search) {
       const q = search.toLowerCase();
+      const qDigits = q.replace(/\D/g, "");
       result = result.filter(r =>
         r.손님성함.toLowerCase().includes(q) ||
         r.기계.toLowerCase().includes(q) ||
         r.품목.toLowerCase().includes(q) ||
+        r.제조번호.toLowerCase().includes(q) ||
         r.내역.toLowerCase().includes(q) ||
         r.주소.toLowerCase().includes(q) ||
-        r.전화번호.includes(q)
+        (qDigits ? r.전화번호.replace(/\D/g, "").includes(qDigits) : r.전화번호.includes(q))
       );
     }
     return result;
