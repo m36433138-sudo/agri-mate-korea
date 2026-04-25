@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   RefreshCw, Search, Phone, MapPin, Wrench, Plus, Pencil,
-  Tractor, ChevronDown, ChevronUp, User, Flame,
+  Tractor, ChevronDown, ChevronUp, User, Flame, X,
 } from "lucide-react";
 import { OnsiteRowFormModal } from "@/components/onsite/OnsiteRowFormModal";
 import {
