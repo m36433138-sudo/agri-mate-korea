@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
+import TextFilterAutocomplete from "./excel-table/TextFilterAutocomplete";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -294,6 +295,29 @@ export default function ExcelTable<T extends object>({
         arr.sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
       }
 
+      map[col.id] = arr;
+    }
+    return map;
+  }, [table, data, columns]);
+
+  // text 필터의 자동완성 후보 (데이터에서 distinct)
+  const textOptionsCache = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const col of table.getAllLeafColumns()) {
+      const def = col.columnDef as ExcelColumn<T>;
+      if (!def.enableColumnFilter) continue;
+      const ftype = def.filterType ?? "text";
+      if (ftype !== "text") continue;
+
+      const set = new Set<string>();
+      for (const r of data) {
+        try {
+          const v = (col as any).accessorFn ? (col as any).accessorFn(r) : (r as any)[(def as any).accessorKey];
+          if (v != null && v !== "") set.add(String(v));
+        } catch {}
+        if (set.size > 500) break;
+      }
+      const arr = Array.from(set).sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
       map[col.id] = arr;
     }
     return map;
@@ -583,11 +607,11 @@ export default function ExcelTable<T extends object>({
                           )}
                         </div>
                       ) : (
-                        <Input
+                        <TextFilterAutocomplete
                           value={(fv as string) ?? ""}
-                          onChange={(e) => h.column.setFilterValue(e.target.value)}
+                          onChange={(v) => h.column.setFilterValue(v || undefined)}
+                          suggestions={textOptionsCache[h.column.id] ?? []}
                           placeholder="필터..."
-                          className="h-7 text-xs px-2"
                         />
                       )}
                     </div>
