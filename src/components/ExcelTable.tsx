@@ -365,6 +365,60 @@ export default function ExcelTable<T extends object>({
             </Button>
           )}
           {toolbarRight}
+          {presetKey && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Bookmark className="h-3.5 w-3.5" />
+                  프리셋
+                  {presets.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground tabular-nums">({presets.length})</span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 bg-popover z-50">
+                <DropdownMenuLabel className="text-xs">필터 프리셋</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={handleSavePreset}
+                  disabled={!globalFilter && columnFilters.length === 0 && sorting.length === 0}
+                  className="gap-2"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  현재 상태 저장
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {presets.length === 0 ? (
+                  <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                    저장된 프리셋이 없습니다
+                  </div>
+                ) : (
+                  presets.map((p) => (
+                    <DropdownMenuItem
+                      key={p.name}
+                      onSelect={(e) => { e.preventDefault(); handleApplyPreset(p); }}
+                      className="flex items-center justify-between gap-2 group"
+                    >
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate text-sm">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                          필터 {p.columnFilters.length} · 정렬 {p.sorting.length}
+                          {p.globalFilter && ` · 검색 "${p.globalFilter.slice(0, 12)}"`}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDeletePreset(p.name); }}
+                        className="text-muted-foreground hover:text-destructive opacity-60 group-hover:opacity-100"
+                        aria-label={`${p.name} 삭제`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Button variant="outline" size="sm" onClick={handleExport} disabled={rows.length === 0}>
             <Download className="h-3.5 w-3.5 mr-1" /> 엑셀
           </Button>
