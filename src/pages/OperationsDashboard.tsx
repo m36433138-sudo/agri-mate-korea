@@ -1,7 +1,10 @@
 import { useState, useMemo } from "react";
-import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGoogleSheets";
+import { useGoogleSheets, markRowComplete, updateRowStatus, updateRowPriority, updateRowTechnician } from "@/hooks/useGoogleSheets";
 import { supabase } from "@/integrations/supabase/client";
 import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, formatSheetDate, isCompleted } from "@/types/operations";
+import { PRIORITY_META, type Priority, TECHNICIANS } from "@/lib/priority";
+import { PriorityPicker } from "@/components/operations/PriorityPicker";
+import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
 import { RepairDraftModal } from "@/components/operations/RepairDraftModal";
@@ -20,7 +23,7 @@ import {
 import {
   RefreshCw, AlertCircle, Plus, PackageOpen, Wrench, CheckCircle2,
   Truck, PauseCircle, Package, Phone, MapPin, Pencil, FileText,
-  ArrowRight, ChevronDown, ChevronUp,
+  ArrowRight, ChevronDown, ChevronUp, Flame,
 } from "lucide-react";
 
 type Branch = "전체" | "장흥" | "강진";
