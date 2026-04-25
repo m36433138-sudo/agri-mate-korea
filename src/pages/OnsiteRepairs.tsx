@@ -329,7 +329,7 @@ export default function OnsiteRepairs() {
       if (ra !== rb) return ra - rb;
       return (a._rowIndex ?? 0) - (b._rowIndex ?? 0);
     });
-  }, [rows, statusFilter, search]);
+  }, [rows, statusFilter, priorityFilter, technicianFilter, search]);
 
   const handleAdd = () => { setEditRow(null); setModalOpen(true); };
   const handleEdit = (r: OnsiteRow) => { setEditRow(r); setModalOpen(true); };
