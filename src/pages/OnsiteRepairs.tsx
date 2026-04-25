@@ -225,15 +225,56 @@ function OnsiteCard({
 }
 
 const STATUS_TABS = ["전체", "진행중", "완료", "보류"];
+const STORAGE_KEY = "onsite-repairs:filters:v1";
+
+interface PersistedFilters {
+  search: string;
+  statusFilter: string;
+  priorityFilter: string; // "전체" | Priority
+  technicianFilter: string; // "" = 전체
+}
+
+const DEFAULT_FILTERS: PersistedFilters = {
+  search: "",
+  statusFilter: "전체",
+  priorityFilter: "전체",
+  technicianFilter: "",
+};
+
+function loadFilters(): PersistedFilters {
+  if (typeof window === "undefined") return DEFAULT_FILTERS;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_FILTERS;
+    return { ...DEFAULT_FILTERS, ...(JSON.parse(raw) as Partial<PersistedFilters>) };
+  } catch {
+    return DEFAULT_FILTERS;
+  }
+}
 
 export default function OnsiteRepairs() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("전체");
+  const initial = useMemo(loadFilters, []);
+  const [search, setSearch] = useState(initial.search);
+  const [statusFilter, setStatusFilter] = useState(initial.statusFilter);
+  const [priorityFilter, setPriorityFilter] = useState<string>(initial.priorityFilter);
+  const [technicianFilter, setTechnicianFilter] = useState<string>(initial.technicianFilter);
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const { toast } = useToast();
+
+  // 필터 상태를 localStorage에 저장
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ search, statusFilter, priorityFilter, technicianFilter }),
+      );
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [search, statusFilter, priorityFilter, technicianFilter]);
 
   const { rows: rawRows, isLoading, error, refresh } = useVisitRepairs();
   const rows: OnsiteRow[] = useMemo(
