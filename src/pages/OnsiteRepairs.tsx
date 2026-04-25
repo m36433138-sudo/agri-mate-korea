@@ -231,6 +231,8 @@ export default function OnsiteRepairs() {
   const [statusFilter, setStatusFilter] = useState("전체");
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState<OnsiteRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const { toast } = useToast();
 
   const { rows: rawRows, isLoading, error, refresh } = useVisitRepairs();
