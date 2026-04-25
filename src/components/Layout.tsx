@@ -24,6 +24,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/assets": "자산관리",
   "/accounting": "회계관리",
   "/banking": "뱅킹연동",
+  "/diagnostics/realtime-rls": "Realtime RLS 진단",
 };
 
 function Breadcrumb() {
