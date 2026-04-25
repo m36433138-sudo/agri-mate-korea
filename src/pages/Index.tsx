@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { RealtimeStatusBadge } from "@/components/RealtimeStatusBadge";
 import { measureQuery } from "@/lib/queryProfiler";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkline } from "@/components/dashboard/Sparkline";
@@ -49,10 +50,10 @@ function WidgetSkeleton({ className = "" }: { className?: string }) {
 }
 
 export default function Dashboard() {
-  useRealtimeSync("machines", [["machines-stats"], ["machines-sales-month"]]);
-  useRealtimeSync("customers", [["customers-count"]]);
-  useRealtimeSync("inventory", [["parts-count"]]);
-  useRealtimeSync("repairs", [["repairs-month-count"]]);
+  const machinesRT = useRealtimeSync("machines", [["machines-stats"], ["machines-sales-month"]]);
+  const customersRT = useRealtimeSync("customers", [["customers-count"]]);
+  const inventoryRT = useRealtimeSync("inventory", [["parts-count"]]);
+  const repairsRT = useRealtimeSync("repairs", [["repairs-month-count"]]);
 
   // 이번 달 범위 (월별 판매 집계 + 수리 카운트 공용)
   const dateNow = new Date();
@@ -169,14 +170,20 @@ export default function Dashboard() {
             오늘의 업무 현황
           </h1>
         </div>
-        {loading ? (
-          <Skeleton className="hidden sm:block h-10 w-40 rounded-2xl" />
-        ) : salesThisMonth > 0 ? (
-          <div className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-primary bg-primary/8 px-4 py-2 rounded-2xl border border-primary/15">
-            <ArrowUpRight className="h-3.5 w-3.5" />
-            이번 달 판매 {salesThisMonth}대
-          </div>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <RealtimeStatusBadge
+            states={[machinesRT, customersRT, inventoryRT, repairsRT]}
+            className="hidden sm:inline-flex"
+          />
+          {loading ? (
+            <Skeleton className="hidden sm:block h-10 w-40 rounded-2xl" />
+          ) : salesThisMonth > 0 ? (
+            <div className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-primary bg-primary/8 px-4 py-2 rounded-2xl border border-primary/15">
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              이번 달 판매 {salesThisMonth}대
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* ── Hero KPI Row: 1 large + 3 small (즉시 렌더, above the fold) ── */}
