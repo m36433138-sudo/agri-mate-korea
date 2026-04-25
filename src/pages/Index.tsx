@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { RealtimeStatusBadge } from "@/components/RealtimeStatusBadge";
 import { measureQuery } from "@/lib/queryProfiler";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkline } from "@/components/dashboard/Sparkline";
