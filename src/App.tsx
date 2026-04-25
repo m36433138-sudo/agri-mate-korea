@@ -110,6 +110,11 @@ const App = () => (
                             <RealtimeRlsReport />
                           </ProtectedRoute>
                         } />
+                        <Route path="/diagnostics/client-errors" element={
+                          <ProtectedRoute allowedRoles={["admin"]}>
+                            <ClientErrorsReport />
+                          </ProtectedRoute>
+                        } />
                         <Route path="/my-page" element={<MyPage />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
