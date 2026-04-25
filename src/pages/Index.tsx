@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { measureQuery } from "@/lib/queryProfiler";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import {
@@ -61,9 +62,9 @@ export default function Dashboard() {
     queryKey: ["machines-stats"],
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("machines")
-        .select("status, machine_type, sale_date");
+      const { data, error } = await measureQuery("machines-stats", () =>
+        supabase.from("machines").select("status, machine_type, sale_date")
+      );
       if (error) throw error;
       return data;
     },
@@ -74,12 +75,14 @@ export default function Dashboard() {
     queryKey: ["machines-recent"],
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("machines")
-        .select("id, model_name, serial_number, entry_date, status, machine_type, purchase_price")
-        .eq("status", "재고중")
-        .order("entry_date", { ascending: false })
-        .limit(5);
+      const { data, error } = await measureQuery("machines-recent", () =>
+        supabase
+          .from("machines")
+          .select("id, model_name, serial_number, entry_date, status, machine_type, purchase_price")
+          .eq("status", "재고중")
+          .order("entry_date", { ascending: false })
+          .limit(5)
+      );
       if (error) throw error;
       return data;
     },
@@ -89,11 +92,13 @@ export default function Dashboard() {
     queryKey: ["repairs-recent"],
     staleTime: 1000 * 60 * 2,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("repairs")
-        .select("id, repair_date, repair_content, total_cost, machines(model_name, serial_number)")
-        .order("repair_date", { ascending: false })
-        .limit(8);
+      const { data, error } = await measureQuery("repairs-recent", () =>
+        supabase
+          .from("repairs")
+          .select("id, repair_date, repair_content, total_cost, machines(model_name, serial_number)")
+          .order("repair_date", { ascending: false })
+          .limit(8)
+      );
       if (error) throw error;
       return data;
     },
@@ -102,9 +107,9 @@ export default function Dashboard() {
   const { data: customersCount } = useQuery({
     queryKey: ["customers-count"],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("customers")
-        .select("*", { count: "exact", head: true });
+      const { count, error } = await measureQuery("customers-count", () =>
+        supabase.from("customers").select("*", { count: "exact", head: true })
+      );
       if (error) throw error;
       return count ?? 0;
     },
@@ -114,9 +119,9 @@ export default function Dashboard() {
   const { data: partsCount } = useQuery({
     queryKey: ["parts-count"],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("inventory")
-        .select("*", { count: "exact", head: true });
+      const { count, error } = await measureQuery("parts-count", () =>
+        supabase.from("inventory").select("*", { count: "exact", head: true })
+      );
       if (error) throw error;
       return count ?? 0;
     },
