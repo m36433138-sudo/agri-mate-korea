@@ -104,6 +104,11 @@ const App = () => (
                             <LocationHistory />
                           </ProtectedRoute>
                         } />
+                        <Route path="/diagnostics/realtime-rls" element={
+                          <ProtectedRoute allowedRoles={["admin"]}>
+                            <RealtimeRlsReport />
+                          </ProtectedRoute>
+                        } />
                         <Route path="/my-page" element={<MyPage />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
