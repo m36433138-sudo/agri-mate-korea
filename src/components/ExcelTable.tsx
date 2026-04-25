@@ -199,6 +199,11 @@ export default function ExcelTable<T extends object>({
   };
 
   const totalWidth = table.getTotalSize();
+  const activeFilterCount = columnFilters.length + (globalFilter ? 1 : 0);
+  const handleClearFilters = () => {
+    setColumnFilters([]);
+    setGlobalFilter("");
+  };
 
   return (
     <div className="space-y-3">
@@ -217,6 +222,18 @@ export default function ExcelTable<T extends object>({
           <span className="text-xs text-muted-foreground tabular-nums">
             {rows.length.toLocaleString()}행
           </span>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              title="모든 필터 초기화"
+            >
+              <X className="h-3.5 w-3.5 mr-1" />
+              필터 초기화 <span className="ml-1 tabular-nums">({activeFilterCount})</span>
+            </Button>
+          )}
           {toolbarRight}
           <Button variant="outline" size="sm" onClick={handleExport} disabled={rows.length === 0}>
             <Download className="h-3.5 w-3.5 mr-1" /> 엑셀
