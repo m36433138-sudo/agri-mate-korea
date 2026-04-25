@@ -251,68 +251,58 @@ export default function InventoryManagement() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs">부품코드</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs">부품명</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs hidden lg:table-cell">설계변경코드</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground text-xs">수량</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground text-xs hidden sm:table-cell">적정재고</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground text-xs hidden sm:table-cell">매출가</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs hidden md:table-cell">위치</th>
-                  <th className="w-20"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {searchResults.map((item) => {
-                  const isLow = (item.quantity ?? 0) < (item.min_stock ?? 1);
-                  return (
-                    <tr
-                      key={item.id}
-                      className={`border-b last:border-0 transition-colors ${isLow ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/25"}`}
-                    >
-                      <td className="p-3 font-mono text-xs">{item.part_code}</td>
-                      <td className="p-3 font-medium">
-                        <span>{item.part_name}</span>
-                        {isLow && (
-                          <span className="ml-2 text-[10px] text-destructive font-semibold bg-destructive/10 px-1.5 py-0.5 rounded-full">부족</span>
-                        )}
-                      </td>
-                      <td className="p-3 font-mono text-xs text-muted-foreground hidden lg:table-cell">
-                        {item.alt_part_code || "-"}
-                      </td>
-                      <td className={`p-3 text-right font-bold tabular-nums ${isLow ? "text-destructive" : ""}`}>
-                        {item.quantity ?? 0}
-                      </td>
-                      <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
-                        {item.min_stock ?? 1}
-                      </td>
-                      <td className="p-3 text-right text-muted-foreground hidden sm:table-cell tabular-nums">
-                        {item.sales_price?.toLocaleString() ?? "-"}
-                      </td>
-                      <td className="p-3 text-muted-foreground hidden md:table-cell text-xs">
-                        {[item.location_main, item.location_sub].filter(Boolean).join(" / ") || "-"}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditItem(item)}>
-                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(item.id)}>
-                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <ExcelTable
+          data={searchResults}
+          columns={[
+            { accessorKey: "part_code", header: "부품코드", size: 160, sticky: true,
+              cell: ({ getValue }) => <span className="font-mono text-xs">{getValue() as string}</span> },
+            { accessorKey: "part_name", header: "부품명", size: 240,
+              cell: ({ row }) => {
+                const it = row.original as InventoryItem;
+                const isLow = (it.quantity ?? 0) < (it.min_stock ?? 1);
+                return (
+                  <span className="flex items-center gap-2 w-full">
+                    <span className="truncate font-medium">{it.part_name}</span>
+                    {isLow && <span className="text-[10px] text-destructive font-semibold bg-destructive/10 px-1.5 py-0.5 rounded-full shrink-0">부족</span>}
+                  </span>
+                );
+              } },
+            { accessorKey: "alt_part_code", header: "설계변경코드", size: 160,
+              cell: ({ getValue }) => <span className="font-mono text-xs text-muted-foreground">{(getValue() as string) || "-"}</span> },
+            { accessorKey: "quantity", header: "수량", size: 80,
+              cell: ({ row }) => {
+                const it = row.original as InventoryItem;
+                const isLow = (it.quantity ?? 0) < (it.min_stock ?? 1);
+                return <span className={`text-right tabular-nums font-bold w-full ${isLow ? "text-destructive" : ""}`}>{it.quantity ?? 0}</span>;
+              },
+              exportValue: (r) => r.quantity ?? 0 },
+            { accessorKey: "min_stock", header: "적정재고", size: 90,
+              cell: ({ getValue }) => <span className="text-right text-muted-foreground tabular-nums w-full">{(getValue() as number) ?? 1}</span>,
+              exportValue: (r) => r.min_stock ?? 1 },
+            { accessorKey: "sales_price", header: "매출가", size: 110,
+              cell: ({ getValue }) => <span className="text-right text-muted-foreground tabular-nums w-full">{(getValue() as number)?.toLocaleString() ?? "-"}</span>,
+              exportValue: (r) => r.sales_price ?? "" },
+            { id: "location", header: "위치", size: 140,
+              accessorFn: (r: any) => [r.location_main, r.location_sub].filter(Boolean).join(" / "),
+              cell: ({ getValue }) => <span className="text-muted-foreground text-xs truncate">{(getValue() as string) || "-"}</span> },
+            { id: "_actions", header: "", size: 80, disableSort: true,
+              cell: ({ row }) => (
+                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditItem(row.original as InventoryItem)}>
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId((row.original as InventoryItem).id)}>
+                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
+              ) },
+          ] as ExcelColumn<InventoryItem>[]}
+          searchPlaceholder="결과 내 추가 검색..."
+          exportFileName={`재고_${branch}`}
+          emptyMessage="결과가 없습니다."
+          rowClassName={(it) => ((it.quantity ?? 0) < (it.min_stock ?? 1) ? "bg-destructive/5" : "")}
+          height="calc(100vh - 380px)"
+        />
       )}
 
       <AddInventoryDialog open={addOpen} onOpenChange={setAddOpen} branch={branch} />
