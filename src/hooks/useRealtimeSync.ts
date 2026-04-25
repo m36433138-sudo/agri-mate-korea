@@ -15,18 +15,26 @@ export function useRealtimeSync(
   useEffect(() => {
     // 채널 이름을 고유하게 만들어 여러 컴포넌트가 동일 테이블을 구독해도 충돌하지 않도록 함
     const uniqueId = `${Math.random().toString(36).slice(2)}-${Date.now()}`;
-    const channel = supabase
-      .channel(`realtime-${table}-${uniqueId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        () => {
-          queryKeys.forEach((key) => qc.invalidateQueries({ queryKey: key }));
-        }
-      )
-      .subscribe();
+    const channel = supabase.channel(`realtime-${table}-${uniqueId}`);
 
+    // 반드시 subscribe() 이전에 .on() 콜백을 등록해야 함
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table },
+      () => {
+        queryKeys.forEach((key) => qc.invalidateQueries({ queryKey: key }));
+      }
+    );
+
+    channel.subscribe();
+
+    // 언마운트 시 구독 해제 후 채널 제거 (중복 콜백 방지)
     return () => {
+      try {
+        channel.unsubscribe();
+      } catch {
+        // ignore
+      }
       supabase.removeChannel(channel);
     };
   }, [table, qc]); // queryKeys intentionally excluded to avoid re-subscribing
