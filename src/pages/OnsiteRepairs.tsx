@@ -254,11 +254,36 @@ export default function OnsiteRepairs() {
         (qDigits ? r.전화번호.replace(/\D/g, "").includes(qDigits) : r.전화번호.includes(q))
       );
     }
-    return result;
+    return result.slice().sort((a, b) => {
+      const ra = PRIORITY_META[a.priority]?.rank ?? 99;
+      const rb = PRIORITY_META[b.priority]?.rank ?? 99;
+      if (ra !== rb) return ra - rb;
+      return (a._rowIndex ?? 0) - (b._rowIndex ?? 0);
+    });
   }, [rows, statusFilter, search]);
 
   const handleAdd = () => { setEditRow(null); setModalOpen(true); };
   const handleEdit = (r: OnsiteRow) => { setEditRow(r); setModalOpen(true); };
+
+  const handlePriority = async (r: OnsiteRow, p: Priority) => {
+    try {
+      await updateVisitPriority(r._rowIndex, p);
+      toast({ title: `우선순위 → ${p}` });
+      refresh();
+    } catch (err: any) {
+      toast({ title: "우선순위 변경 실패", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleTechnician = async (r: OnsiteRow, t: string) => {
+    try {
+      await updateVisitTechnician(r._rowIndex, t || null);
+      toast({ title: t ? `기사 배정 → ${t}` : "기사 배정 해제" });
+      refresh();
+    } catch (err: any) {
+      toast({ title: "기사 배정 실패", description: err.message, variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-4">
