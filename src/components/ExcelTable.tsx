@@ -148,12 +148,62 @@ export default function ExcelTable<T extends object>({
   height,
   rowClassName,
   presetKey,
+  urlKey,
 }: Props<T>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const urlPrefix = urlKey ? `${urlKey}_` : "";
+  // URL → 초기값
+  const initialFromUrl = useMemo(() => {
+    if (!urlKey || typeof window === "undefined") return null;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const raw = sp.get(`${urlPrefix}t`); // table state (compact JSON)
+      if (!raw) return null;
+      const parsed = JSON.parse(decodeURIComponent(raw));
+      return {
+        globalFilter: parsed.q ?? "",
+        columnFilters: (parsed.f ?? []) as ColumnFiltersState,
+        sorting: (parsed.s ?? []) as SortingState,
+      };
+    } catch { return null; }
+  }, [urlKey, urlPrefix]);
+
+  const [sorting, setSorting] = useState<SortingState>(initialFromUrl?.sorting ?? []);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialFromUrl?.columnFilters ?? []);
+  const [globalFilter, setGlobalFilter] = useState(initialFromUrl?.globalFilter ?? "");
   const [showFilterDetails, setShowFilterDetails] = useState(false);
   const [presets, setPresets] = useState<FilterPreset[]>([]);
+
+  // 상태 → URL 동기화 (replaceState로 히스토리 누적 방지)
+  useEffect(() => {
+    if (!urlKey || typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const key = `${urlPrefix}t`;
+    const isEmpty = !globalFilter && columnFilters.length === 0 && sorting.length === 0;
+    if (isEmpty) {
+      sp.delete(key);
+    } else {
+      const payload = JSON.stringify({
+        q: globalFilter || undefined,
+        f: columnFilters.length ? columnFilters : undefined,
+        s: sorting.length ? sorting : undefined,
+      });
+      sp.set(key, encodeURIComponent(payload));
+    }
+    const qs = sp.toString();
+    const next = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+    if (next !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState(null, "", next);
+    }
+  }, [urlKey, urlPrefix, globalFilter, columnFilters, sorting]);
+
+  const handleCopyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({ title: "공유 링크가 복사되었습니다" });
+    } catch {
+      toast({ title: "복사 실패", description: "주소창에서 직접 복사해주세요", variant: "destructive" });
+    }
+  };
 
   const presetStorageKey = presetKey ? `excel-table-presets:${presetKey}` : null;
 
