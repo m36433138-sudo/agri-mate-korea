@@ -506,6 +506,11 @@ export default function ExcelTable<T extends object>({
     setGlobalFilter("");
   };
 
+  // 서버 모드 페이지네이션 계산
+  const effectiveTotal = serverMode ? (totalCount ?? 0) : rows.length;
+  const totalPages = serverMode && pageSize > 0 ? Math.max(1, Math.ceil(effectiveTotal / pageSize)) : 1;
+  const currentPage = serverMode ? pageIndex : 0;
+
   return (
     <div className="space-y-3">
       {/* 툴바 */}
