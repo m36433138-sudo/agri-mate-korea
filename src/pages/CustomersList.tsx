@@ -180,7 +180,7 @@ export default function CustomersList() {
             <Users className="h-4 w-4 text-primary" />
           </div>
           <p className="text-sm font-semibold">
-            {isLoading ? "..." : `전체 ${customers?.length ?? 0}명`}
+            {server.isLoading ? "..." : `전체 ${server.total.toLocaleString()}명`}
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -191,7 +191,7 @@ export default function CustomersList() {
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
             <Upload className="h-4 w-4 mr-1" /> 일괄 등록
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCleanupConfirm(true)} disabled={cleaning || isLoading}>
+          <Button variant="outline" size="sm" onClick={() => setCleanupConfirm(true)} disabled={cleaning}>
             <UserMinus className="h-4 w-4 mr-1" /> 불완전 고객 정리
           </Button>
           <Button size="sm" onClick={() => setOpen(true)}>
@@ -200,18 +200,28 @@ export default function CustomersList() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-10 w-full rounded-md" />)}</div>
-      ) : (
-        <ExcelTable
-          data={customers ?? []}
-          columns={columns}
-          searchPlaceholder="이름·연락처·주소 검색..."
-          exportFileName="고객목록"
-          emptyMessage="등록된 고객이 없습니다."
-          onRowClick={(c) => navigate(`/customers/${(c as any).id}`)}
-        />
-      )}
+      <ExcelTable
+        data={server.rows}
+        columns={columns}
+        searchPlaceholder="이름·연락처·주소·비고 전체검색..."
+        exportFileName="고객목록"
+        emptyMessage="등록된 고객이 없습니다."
+        onRowClick={(c) => navigate(`/customers/${(c as any).id}`)}
+        serverMode
+        totalCount={server.total}
+        isLoading={server.isLoading}
+        sorting={server.state.sorting}
+        onSortingChange={server.setSorting}
+        columnFilters={server.state.columnFilters}
+        onColumnFiltersChange={server.setColumnFilters}
+        globalFilter={server.state.globalFilter}
+        onGlobalFilterChange={server.setGlobalFilter}
+        pageIndex={server.state.pageIndex}
+        pageSize={server.state.pageSize}
+        onPageChange={server.setPageIndex}
+        onPageSizeChange={server.setPageSize}
+        externalSelectOptions={externalSelectOptions}
+      />
 
       <AddCustomerDialog open={open} onOpenChange={setOpen} />
       <BulkCustomerDialog open={bulkOpen} onOpenChange={setBulkOpen} />
