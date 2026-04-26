@@ -312,31 +312,32 @@ export default function ExcelTable<T extends object>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns]);
 
-  // select 필터의 자동 옵션 (데이터에서 distinct, 값 타입에 맞게 정렬)
+  // select 필터의 자동 옵션 (data/columns 변경 시에만 재계산)
   const selectOptionsCache = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const col of table.getAllLeafColumns()) {
-      const def = col.columnDef as ExcelColumn<T>;
+    for (const def of columns as ExcelColumn<T>[]) {
       if (!def.enableColumnFilter || def.filterType !== "select") continue;
+      const colId = (def as any).id ?? (def as any).accessorKey;
+      if (!colId) continue;
 
       // 명시적 옵션 — 그대로 사용 (사용자가 의도한 순서 유지)
       if (def.filterOptions) {
-        map[col.id] = def.filterOptions;
+        map[colId] = def.filterOptions;
         continue;
       }
 
+      const accessorFn = (def as any).accessorFn;
+      const accessorKey = (def as any).accessorKey;
       const set = new Set<string>();
       for (const r of data) {
         try {
-          const v = (col as any).accessorFn ? (col as any).accessorFn(r) : (r as any)[(def as any).accessorKey];
+          const v = accessorFn ? accessorFn(r) : (r as any)[accessorKey];
           if (v != null && v !== "") set.add(String(v));
         } catch {}
       }
       const arr = Array.from(set);
 
-      // 모두 숫자로 변환 가능하면 숫자 정렬
       const allNumeric = arr.length > 0 && arr.every((s) => s !== "" && !isNaN(Number(s)));
-      // 모두 yyyy-mm-dd 또는 ISO 날짜로 보이면 날짜(문자열 ISO) 정렬
       const allDate = !allNumeric && arr.length > 0 && arr.every((s) => /^\d{4}[-./]\d{1,2}[-./]\d{1,2}/.test(s));
 
       if (allNumeric) {
@@ -348,33 +349,36 @@ export default function ExcelTable<T extends object>({
         arr.sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
       }
 
-      map[col.id] = arr;
+      map[colId] = arr;
     }
     return map;
-  }, [table, data, columns]);
+  }, [data, columns]);
 
-  // text 필터의 자동완성 후보 (데이터에서 distinct)
+  // text 필터의 자동완성 후보 (data/columns 변경 시에만 재계산)
   const textOptionsCache = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const col of table.getAllLeafColumns()) {
-      const def = col.columnDef as ExcelColumn<T>;
+    for (const def of columns as ExcelColumn<T>[]) {
       if (!def.enableColumnFilter) continue;
       const ftype = def.filterType ?? "text";
       if (ftype !== "text") continue;
+      const colId = (def as any).id ?? (def as any).accessorKey;
+      if (!colId) continue;
 
+      const accessorFn = (def as any).accessorFn;
+      const accessorKey = (def as any).accessorKey;
       const set = new Set<string>();
       for (const r of data) {
         try {
-          const v = (col as any).accessorFn ? (col as any).accessorFn(r) : (r as any)[(def as any).accessorKey];
+          const v = accessorFn ? accessorFn(r) : (r as any)[accessorKey];
           if (v != null && v !== "") set.add(String(v));
         } catch {}
         if (set.size > 500) break;
       }
       const arr = Array.from(set).sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
-      map[col.id] = arr;
+      map[colId] = arr;
     }
     return map;
-  }, [table, data, columns]);
+  }, [data, columns]);
 
 
   const handleExport = () => {
