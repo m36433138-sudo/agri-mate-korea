@@ -124,8 +124,32 @@ interface Props<T> {
   rowClassName?: (row: T) => string;
   /** 프리셋 저장에 사용할 고유 키 (없으면 프리셋 UI 비활성화) */
   presetKey?: string;
-  /** URL 쿼리스트링 동기화에 사용할 prefix (없으면 URL 동기화 비활성화). 같은 페이지에 여러 테이블이 있을 때 충돌 방지용 */
+  /** URL 쿼리스트링 동기화에 사용할 prefix (없으면 URL 동기화 비활성화) */
   urlKey?: string;
+
+  // ── 서버 사이드 모드 (필터/정렬/페이지네이션을 외부에서 제어) ───────────
+  /** 서버 모드 활성화 — true이면 외부에서 페이지/필터/정렬을 제어 */
+  serverMode?: boolean;
+  /** 서버 측 전체 행 수 (서버 모드 필수) */
+  totalCount?: number;
+  /** 로딩 상태 (서버 모드에서 페이지 전환 시 점멸 방지) */
+  isLoading?: boolean;
+  /** 외부 제어 sorting */
+  sorting?: SortingState;
+  onSortingChange?: (s: SortingState) => void;
+  /** 외부 제어 columnFilters */
+  columnFilters?: ColumnFiltersState;
+  onColumnFiltersChange?: (f: ColumnFiltersState) => void;
+  /** 외부 제어 globalFilter (전역 검색) */
+  globalFilter?: string;
+  onGlobalFilterChange?: (v: string) => void;
+  /** 외부 제어 페이지 (0-base) */
+  pageIndex?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  /** 컬럼별 select 옵션을 외부에서 미리 제공 (서버모드용) */
+  externalSelectOptions?: Record<string, string[]>;
 }
 
 type FilterPreset = {
@@ -149,6 +173,20 @@ export default function ExcelTable<T extends object>({
   rowClassName,
   presetKey,
   urlKey,
+  serverMode = false,
+  totalCount,
+  isLoading = false,
+  sorting: extSorting,
+  onSortingChange: extOnSortingChange,
+  columnFilters: extColumnFilters,
+  onColumnFiltersChange: extOnColumnFiltersChange,
+  globalFilter: extGlobalFilter,
+  onGlobalFilterChange: extOnGlobalFilterChange,
+  pageIndex = 0,
+  pageSize = 50,
+  onPageChange,
+  onPageSizeChange,
+  externalSelectOptions,
 }: Props<T>) {
   const urlPrefix = urlKey ? `${urlKey}_` : "";
   // URL → 초기값
@@ -167,11 +205,40 @@ export default function ExcelTable<T extends object>({
     } catch { return null; }
   }, [urlKey, urlPrefix]);
 
-  const [sorting, setSorting] = useState<SortingState>(initialFromUrl?.sorting ?? []);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialFromUrl?.columnFilters ?? []);
-  const [globalFilter, setGlobalFilter] = useState(initialFromUrl?.globalFilter ?? "");
+  const [intSorting, setIntSorting] = useState<SortingState>(initialFromUrl?.sorting ?? []);
+  const [intColumnFilters, setIntColumnFilters] = useState<ColumnFiltersState>(initialFromUrl?.columnFilters ?? []);
+  const [intGlobalFilter, setIntGlobalFilter] = useState(initialFromUrl?.globalFilter ?? "");
   const [showFilterDetails, setShowFilterDetails] = useState(false);
   const [presets, setPresets] = useState<FilterPreset[]>([]);
+
+  // 외부 제어 우선, 없으면 내부 state
+  const sorting = extSorting ?? intSorting;
+  const columnFilters = extColumnFilters ?? intColumnFilters;
+  const globalFilter = extGlobalFilter ?? intGlobalFilter;
+  const setSorting: React.Dispatch<React.SetStateAction<SortingState>> = (updater) => {
+    if (extOnSortingChange) {
+      const next = typeof updater === "function" ? (updater as (s: SortingState) => SortingState)(sorting) : updater;
+      extOnSortingChange(next);
+    } else {
+      setIntSorting(updater);
+    }
+  };
+  const setColumnFilters: React.Dispatch<React.SetStateAction<ColumnFiltersState>> = (updater) => {
+    if (extOnColumnFiltersChange) {
+      const next = typeof updater === "function" ? (updater as (s: ColumnFiltersState) => ColumnFiltersState)(columnFilters) : updater;
+      extOnColumnFiltersChange(next);
+    } else {
+      setIntColumnFilters(updater);
+    }
+  };
+  const setGlobalFilter: React.Dispatch<React.SetStateAction<string>> = (updater) => {
+    if (extOnGlobalFilterChange) {
+      const next = typeof updater === "function" ? (updater as (s: string) => string)(globalFilter) : updater;
+      extOnGlobalFilterChange(next);
+    } else {
+      setIntGlobalFilter(updater);
+    }
+  };
 
   // 상태 → URL 동기화 (replaceState로 히스토리 누적 방지)
   useEffect(() => {
@@ -273,8 +340,17 @@ export default function ExcelTable<T extends object>({
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    // 서버 모드면 외부에서 정렬·필터를 처리하므로 클라이언트 모델은 비활성화
+    ...(serverMode
+      ? {
+          manualSorting: true,
+          manualFiltering: true,
+          manualPagination: true,
+        }
+      : {
+          getSortedRowModel: getSortedRowModel(),
+          getFilteredRowModel: getFilteredRowModel(),
+        }),
     columnResizeMode: "onChange",
     enableColumnResizing: true,
     globalFilterFn: (row, _id, value) => {
@@ -312,7 +388,9 @@ export default function ExcelTable<T extends object>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns]);
 
-  // select 필터의 자동 옵션 (data/columns 변경 시에만 재계산)
+  // select 필터의 자동 옵션
+  // 서버 모드일 때는 외부에서 제공한 옵션 + 컬럼의 명시적 filterOptions만 사용
+  // (현재 페이지에서 distinct를 뽑으면 잘못된 옵션이 보이게 됨)
   const selectOptionsCache = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const def of columns as ExcelColumn<T>[]) {
@@ -323,6 +401,18 @@ export default function ExcelTable<T extends object>({
       // 명시적 옵션 — 그대로 사용 (사용자가 의도한 순서 유지)
       if (def.filterOptions) {
         map[colId] = def.filterOptions;
+        continue;
+      }
+
+      // 외부에서 제공한 옵션 (서버 모드용)
+      if (externalSelectOptions && externalSelectOptions[colId]) {
+        map[colId] = externalSelectOptions[colId];
+        continue;
+      }
+
+      // 서버 모드인데 옵션이 없으면 빈 배열
+      if (serverMode) {
+        map[colId] = [];
         continue;
       }
 
@@ -352,7 +442,7 @@ export default function ExcelTable<T extends object>({
       map[colId] = arr;
     }
     return map;
-  }, [data, columns]);
+  }, [data, columns, serverMode, externalSelectOptions]);
 
   // text 필터의 자동완성 후보 (data/columns 변경 시에만 재계산)
   const textOptionsCache = useMemo(() => {
@@ -415,6 +505,11 @@ export default function ExcelTable<T extends object>({
     setColumnFilters([]);
     setGlobalFilter("");
   };
+
+  // 서버 모드 페이지네이션 계산
+  const effectiveTotal = serverMode ? (totalCount ?? 0) : rows.length;
+  const totalPages = serverMode && pageSize > 0 ? Math.max(1, Math.ceil(effectiveTotal / pageSize)) : 1;
+  const currentPage = serverMode ? pageIndex : 0;
 
   return (
     <div className="space-y-3">
@@ -706,11 +801,15 @@ export default function ExcelTable<T extends object>({
                         {showFilterDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                       </button>
                       <span className="tabular-nums">
-                        <span className="font-semibold text-foreground">{rows.length.toLocaleString()}</span> / {data.length.toLocaleString()}건
+                        {serverMode ? (
+                          <><span className="font-semibold text-foreground">{effectiveTotal.toLocaleString()}</span>건 (서버 필터)</>
+                        ) : (
+                          <><span className="font-semibold text-foreground">{rows.length.toLocaleString()}</span> / {data.length.toLocaleString()}건</>
+                        )}
                       </span>
                     </>
                   ) : (
-                    <span className="tabular-nums">전체 <span className="font-semibold text-foreground">{data.length.toLocaleString()}</span>건</span>
+                    <span className="tabular-nums">전체 <span className="font-semibold text-foreground">{(serverMode ? effectiveTotal : data.length).toLocaleString()}</span>건</span>
                   )}
                   {globalFilter && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background border border-border/60 text-foreground">
@@ -820,9 +919,54 @@ export default function ExcelTable<T extends object>({
             </div>
           </div>
 
-          {/* 가상화 행 */}
-          {rows.length === 0 ? (
+          {/* 행 영역 */}
+          {rows.length === 0 && !isLoading ? (
             <div className="text-center text-sm text-muted-foreground py-12">{emptyMessage}</div>
+          ) : serverMode ? (
+            <div className={cn("relative", isLoading && "opacity-60 transition-opacity")}>
+              {rows.map((row) => {
+                const extra = rowClassName?.(row.original as T) ?? "";
+                return (
+                  <div
+                    key={row.id}
+                    onClick={() => onRowClick?.(row.original as T)}
+                    className={cn(
+                      "flex border-b border-border/30 hover:bg-muted/30 transition-colors",
+                      onRowClick && "cursor-pointer",
+                      extra
+                    )}
+                    style={{ width: totalWidth, height: rowHeight }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const def = cell.column.columnDef as ExcelColumn<T>;
+                      const sticky = def.sticky;
+                      const style: CSSProperties = {
+                        width: cell.column.getSize(),
+                        ...(sticky
+                          ? {
+                              position: "sticky",
+                              left: stickyOffsets[cell.column.id],
+                              zIndex: 1,
+                              background: "hsl(var(--card))",
+                            }
+                          : {}),
+                      };
+                      return (
+                        <div
+                          key={cell.id}
+                          style={style}
+                          className="flex items-center px-3 text-sm border-r border-border/20 truncate"
+                        >
+                          <span className="truncate w-full">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
               {rowVirtualizer.getVirtualItems().map((vRow) => {
@@ -878,6 +1022,125 @@ export default function ExcelTable<T extends object>({
             </div>
           )}
         </div>
+      </div>
+
+      {/* 서버 모드 페이지네이션 */}
+      {serverMode && (
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          total={effectiveTotal}
+          totalPages={totalPages}
+          onPageChange={(p) => onPageChange?.(p)}
+          onPageSizeChange={(s) => onPageSizeChange?.(s)}
+          isLoading={isLoading}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── 페이지네이션 컨트롤 ─────────────────────────────────────────
+function Pagination({
+  page, pageSize, total, totalPages, onPageChange, onPageSizeChange, isLoading,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+  onPageSizeChange: (s: number) => void;
+  isLoading: boolean;
+}) {
+  // 표시할 페이지 번호 범위 (현재 ± 2)
+  const pageNums: (number | "...")[] = [];
+  const window = 2;
+  const start = Math.max(0, page - window);
+  const end = Math.min(totalPages - 1, page + window);
+
+  if (start > 0) {
+    pageNums.push(0);
+    if (start > 1) pageNums.push("...");
+  }
+  for (let i = start; i <= end; i++) pageNums.push(i);
+  if (end < totalPages - 1) {
+    if (end < totalPages - 2) pageNums.push("...");
+    pageNums.push(totalPages - 1);
+  }
+
+  const fromRow = total === 0 ? 0 : page * pageSize + 1;
+  const toRow = Math.min((page + 1) * pageSize, total);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
+      <div className="text-muted-foreground tabular-nums">
+        {total === 0 ? "0건" : <><span className="font-semibold text-foreground">{fromRow.toLocaleString()}–{toRow.toLocaleString()}</span> / {total.toLocaleString()}건</>}
+      </div>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2"
+          disabled={page <= 0 || isLoading}
+          onClick={() => onPageChange(0)}
+          title="첫 페이지"
+        >
+          «
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2"
+          disabled={page <= 0 || isLoading}
+          onClick={() => onPageChange(page - 1)}
+        >
+          이전
+        </Button>
+        {pageNums.map((p, i) =>
+          p === "..." ? (
+            <span key={`e-${i}`} className="px-1 text-muted-foreground">…</span>
+          ) : (
+            <Button
+              key={p}
+              variant={p === page ? "default" : "outline"}
+              size="sm"
+              className="h-7 min-w-7 px-2 tabular-nums"
+              disabled={isLoading}
+              onClick={() => onPageChange(p)}
+            >
+              {p + 1}
+            </Button>
+          )
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2"
+          disabled={page >= totalPages - 1 || isLoading}
+          onClick={() => onPageChange(page + 1)}
+        >
+          다음
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2"
+          disabled={page >= totalPages - 1 || isLoading}
+          onClick={() => onPageChange(totalPages - 1)}
+          title="마지막 페이지"
+        >
+          »
+        </Button>
+        <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
+          <SelectTrigger className="h-7 text-xs w-20 ml-2">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[25, 50, 100, 200].map((n) => (
+              <SelectItem key={n} value={String(n)}>{n}/p</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
