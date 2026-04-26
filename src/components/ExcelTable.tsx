@@ -173,6 +173,20 @@ export default function ExcelTable<T extends object>({
   rowClassName,
   presetKey,
   urlKey,
+  serverMode = false,
+  totalCount,
+  isLoading = false,
+  sorting: extSorting,
+  onSortingChange: extOnSortingChange,
+  columnFilters: extColumnFilters,
+  onColumnFiltersChange: extOnColumnFiltersChange,
+  globalFilter: extGlobalFilter,
+  onGlobalFilterChange: extOnGlobalFilterChange,
+  pageIndex = 0,
+  pageSize = 50,
+  onPageChange,
+  onPageSizeChange,
+  externalSelectOptions,
 }: Props<T>) {
   const urlPrefix = urlKey ? `${urlKey}_` : "";
   // URL → 초기값
