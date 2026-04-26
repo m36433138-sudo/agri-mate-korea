@@ -297,7 +297,7 @@ export default function ExcelTable<T extends object>({
     overscan: 12,
   });
 
-  // sticky 열 left 오프셋 계산
+  // sticky 열 left 오프셋 계산 — columns만 의존 (table은 매 렌더 새 인스턴스라 의존성으로 부적합)
   const stickyOffsets = useMemo(() => {
     const offsets: Record<string, number> = {};
     let acc = 0;
@@ -309,7 +309,8 @@ export default function ExcelTable<T extends object>({
       }
     }
     return offsets;
-  }, [table, columns]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns]);
 
   // select 필터의 자동 옵션 (데이터에서 distinct, 값 타입에 맞게 정렬)
   const selectOptionsCache = useMemo(() => {
