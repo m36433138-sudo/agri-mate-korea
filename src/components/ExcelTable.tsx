@@ -919,9 +919,54 @@ export default function ExcelTable<T extends object>({
             </div>
           </div>
 
-          {/* 가상화 행 */}
-          {rows.length === 0 ? (
+          {/* 행 영역 */}
+          {rows.length === 0 && !isLoading ? (
             <div className="text-center text-sm text-muted-foreground py-12">{emptyMessage}</div>
+          ) : serverMode ? (
+            <div className={cn("relative", isLoading && "opacity-60 transition-opacity")}>
+              {rows.map((row) => {
+                const extra = rowClassName?.(row.original as T) ?? "";
+                return (
+                  <div
+                    key={row.id}
+                    onClick={() => onRowClick?.(row.original as T)}
+                    className={cn(
+                      "flex border-b border-border/30 hover:bg-muted/30 transition-colors",
+                      onRowClick && "cursor-pointer",
+                      extra
+                    )}
+                    style={{ width: totalWidth, height: rowHeight }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const def = cell.column.columnDef as ExcelColumn<T>;
+                      const sticky = def.sticky;
+                      const style: CSSProperties = {
+                        width: cell.column.getSize(),
+                        ...(sticky
+                          ? {
+                              position: "sticky",
+                              left: stickyOffsets[cell.column.id],
+                              zIndex: 1,
+                              background: "hsl(var(--card))",
+                            }
+                          : {}),
+                      };
+                      return (
+                        <div
+                          key={cell.id}
+                          style={style}
+                          className="flex items-center px-3 text-sm border-r border-border/20 truncate"
+                        >
+                          <span className="truncate w-full">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
               {rowVirtualizer.getVirtualItems().map((vRow) => {
@@ -977,6 +1022,125 @@ export default function ExcelTable<T extends object>({
             </div>
           )}
         </div>
+      </div>
+
+      {/* 서버 모드 페이지네이션 */}
+      {serverMode && (
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          total={effectiveTotal}
+          totalPages={totalPages}
+          onPageChange={(p) => onPageChange?.(p)}
+          onPageSizeChange={(s) => onPageSizeChange?.(s)}
+          isLoading={isLoading}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── 페이지네이션 컨트롤 ─────────────────────────────────────────
+function Pagination({
+  page, pageSize, total, totalPages, onPageChange, onPageSizeChange, isLoading,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+  onPageSizeChange: (s: number) => void;
+  isLoading: boolean;
+}) {
+  // 표시할 페이지 번호 범위 (현재 ± 2)
+  const pageNums: (number | "...")[] = [];
+  const window = 2;
+  const start = Math.max(0, page - window);
+  const end = Math.min(totalPages - 1, page + window);
+
+  if (start > 0) {
+    pageNums.push(0);
+    if (start > 1) pageNums.push("...");
+  }
+  for (let i = start; i <= end; i++) pageNums.push(i);
+  if (end < totalPages - 1) {
+    if (end < totalPages - 2) pageNums.push("...");
+    pageNums.push(totalPages - 1);
+  }
+
+  const fromRow = total === 0 ? 0 : page * pageSize + 1;
+  const toRow = Math.min((page + 1) * pageSize, total);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
+      <div className="text-muted-foreground tabular-nums">
+        {total === 0 ? "0건" : <><span className="font-semibold text-foreground">{fromRow.toLocaleString()}–{toRow.toLocaleString()}</span> / {total.toLocaleString()}건</>}
+      </div>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2"
+          disabled={page <= 0 || isLoading}
+          onClick={() => onPageChange(0)}
+          title="첫 페이지"
+        >
+          «
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2"
+          disabled={page <= 0 || isLoading}
+          onClick={() => onPageChange(page - 1)}
+        >
+          이전
+        </Button>
+        {pageNums.map((p, i) =>
+          p === "..." ? (
+            <span key={`e-${i}`} className="px-1 text-muted-foreground">…</span>
+          ) : (
+            <Button
+              key={p}
+              variant={p === page ? "default" : "outline"}
+              size="sm"
+              className="h-7 min-w-7 px-2 tabular-nums"
+              disabled={isLoading}
+              onClick={() => onPageChange(p)}
+            >
+              {p + 1}
+            </Button>
+          )
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2"
+          disabled={page >= totalPages - 1 || isLoading}
+          onClick={() => onPageChange(page + 1)}
+        >
+          다음
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2"
+          disabled={page >= totalPages - 1 || isLoading}
+          onClick={() => onPageChange(totalPages - 1)}
+          title="마지막 페이지"
+        >
+          »
+        </Button>
+        <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
+          <SelectTrigger className="h-7 text-xs w-20 ml-2">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[25, 50, 100, 200].map((n) => (
+              <SelectItem key={n} value={String(n)}>{n}/p</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
