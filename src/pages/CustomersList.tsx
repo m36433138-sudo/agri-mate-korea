@@ -47,30 +47,37 @@ export default function CustomersList() {
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
 
-  // 불완전 고객 정리: 주소 없음 + 보유기계 0대
+  // 불완전 고객 정리: 주소 없음 + 보유기계 0대 + 드라이브 링크 없음
   const handleCleanup = async () => {
     setCleaning(true);
     try {
-      // 보유기계가 있는 고객 ID 목록
+      // 1) 주소가 없는 고객 후보 (페이지네이션)
+      const candidates: Customer[] = [];
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("customers")
+          .select("id, name, address")
+          .or("address.is.null,address.eq.")
+          .range(from, from + PAGE - 1);
+        if (error) throw new Error(error.message);
+        candidates.push(...(data as Customer[]));
+        if (!data || data.length < PAGE) break;
+        from += PAGE;
+      }
+
       const { data: machineRows, error: me } = await supabase
-        .from("machines")
-        .select("customer_id")
-        .not("customer_id", "is", null);
+        .from("machines").select("customer_id").not("customer_id", "is", null);
       if (me) throw new Error(me.message);
       const ownedIds = new Set((machineRows ?? []).map((r: any) => r.customer_id));
 
-      // 드라이브 링크가 있는 고객 ID 목록 (FK 제약 방지)
       const { data: linkRows, error: le } = await supabase
-        .from("customer_drive_links")
-        .select("customer_id");
+        .from("customer_drive_links").select("customer_id");
       if (le) throw new Error(le.message);
       const linkedIds = new Set((linkRows ?? []).map((r: any) => r.customer_id));
 
-      // 조건: 주소 없음 + 기계 없음 + 드라이브 링크 없음
-      const incomplete = (customers ?? []).filter(c => {
-        const noAddress = !c.address || c.address.trim().length < 2;
-        return noAddress && !ownedIds.has(c.id) && !linkedIds.has(c.id);
-      });
+      const incomplete = candidates.filter(c => !ownedIds.has(c.id) && !linkedIds.has(c.id));
 
       if (incomplete.length === 0) {
         toast({ title: "삭제할 고객이 없습니다.", description: "모든 고객이 유효합니다." });
@@ -78,7 +85,6 @@ export default function CustomersList() {
         return;
       }
 
-      // 한 명씩 삭제해서 FK 오류 시에도 나머지 진행
       let deleted = 0;
       for (const c of incomplete) {
         const { error } = await supabase.from("customers").delete().eq("id", c.id);
@@ -95,26 +101,26 @@ export default function CustomersList() {
     }
   };
 
-  const { data: customers, isLoading } = useQuery({
+  const server = useServerTable<Customer>({
+    table: "customers",
+    select: "*",
+    searchColumn: "search_vec",
+    defaultSort: { column: "name", ascending: true },
     queryKey: ["customers"],
-    queryFn: async () => {
-      const all: Customer[] = [];
-      const PAGE = 1000;
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("customers")
-          .select("*")
-          .order("name")
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        all.push(...(data as Customer[]));
-        if (data.length < PAGE) break;
-        from += PAGE;
-      }
-      return all;
+    columnSpecs: {
+      name: { id: "name", dbColumn: "name", filterType: "text" },
+      grade: { id: "grade", dbColumn: "grade", filterType: "select" },
+      phone: { id: "phone", dbColumn: "phone", filterType: "text" },
+      address: { id: "address", dbColumn: "address", filterType: "text" },
+      branch: { id: "branch", dbColumn: "branch", filterType: "select" },
+      notes: { id: "notes", dbColumn: "notes", filterType: "text" },
     },
   });
+
+  const externalSelectOptions = useMemo(() => ({
+    grade: ["VVIP", "VIP", "GOLD", "SILVER"],
+    branch: ["장흥", "강진"],
+  }), []);
 
   const handleSheetImport = async () => {
     setImporting(true);
