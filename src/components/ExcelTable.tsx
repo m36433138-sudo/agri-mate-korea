@@ -124,8 +124,32 @@ interface Props<T> {
   rowClassName?: (row: T) => string;
   /** 프리셋 저장에 사용할 고유 키 (없으면 프리셋 UI 비활성화) */
   presetKey?: string;
-  /** URL 쿼리스트링 동기화에 사용할 prefix (없으면 URL 동기화 비활성화). 같은 페이지에 여러 테이블이 있을 때 충돌 방지용 */
+  /** URL 쿼리스트링 동기화에 사용할 prefix (없으면 URL 동기화 비활성화) */
   urlKey?: string;
+
+  // ── 서버 사이드 모드 (필터/정렬/페이지네이션을 외부에서 제어) ───────────
+  /** 서버 모드 활성화 — true이면 외부에서 페이지/필터/정렬을 제어 */
+  serverMode?: boolean;
+  /** 서버 측 전체 행 수 (서버 모드 필수) */
+  totalCount?: number;
+  /** 로딩 상태 (서버 모드에서 페이지 전환 시 점멸 방지) */
+  isLoading?: boolean;
+  /** 외부 제어 sorting */
+  sorting?: SortingState;
+  onSortingChange?: (s: SortingState) => void;
+  /** 외부 제어 columnFilters */
+  columnFilters?: ColumnFiltersState;
+  onColumnFiltersChange?: (f: ColumnFiltersState) => void;
+  /** 외부 제어 globalFilter (전역 검색) */
+  globalFilter?: string;
+  onGlobalFilterChange?: (v: string) => void;
+  /** 외부 제어 페이지 (0-base) */
+  pageIndex?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  /** 컬럼별 select 옵션을 외부에서 미리 제공 (서버모드용) */
+  externalSelectOptions?: Record<string, string[]>;
 }
 
 type FilterPreset = {
