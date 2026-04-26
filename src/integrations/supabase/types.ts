@@ -289,6 +289,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string
+          search_vec: unknown
           user_id: string | null
         }
         Insert: {
@@ -301,6 +302,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone: string
+          search_vec?: unknown
           user_id?: string | null
         }
         Update: {
@@ -313,6 +315,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string
+          search_vec?: unknown
           user_id?: string | null
         }
         Relationships: []
@@ -532,6 +535,7 @@ export type Database = {
           sale_date: string | null
           sale_price: number | null
           salesperson: string | null
+          search_vec: unknown
           serial_number: string
           status: string
         }
@@ -552,6 +556,7 @@ export type Database = {
           sale_date?: string | null
           sale_price?: number | null
           salesperson?: string | null
+          search_vec?: unknown
           serial_number: string
           status?: string
         }
@@ -572,6 +577,7 @@ export type Database = {
           sale_date?: string | null
           sale_price?: number | null
           salesperson?: string | null
+          search_vec?: unknown
           serial_number?: string
           status?: string
         }
@@ -1143,6 +1149,7 @@ export type Database = {
           operating_hours: number | null
           repair_content: string
           repair_date: string
+          search_vec: unknown
           technician: string | null
           total_cost: number | null
         }
@@ -1155,6 +1162,7 @@ export type Database = {
           operating_hours?: number | null
           repair_content: string
           repair_date: string
+          search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
         }
@@ -1167,6 +1175,7 @@ export type Database = {
           operating_hours?: number | null
           repair_content?: string
           repair_date?: string
+          search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
         }
