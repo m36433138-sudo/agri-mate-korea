@@ -388,7 +388,9 @@ export default function ExcelTable<T extends object>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns]);
 
-  // select 필터의 자동 옵션 (data/columns 변경 시에만 재계산)
+  // select 필터의 자동 옵션
+  // 서버 모드일 때는 외부에서 제공한 옵션 + 컬럼의 명시적 filterOptions만 사용
+  // (현재 페이지에서 distinct를 뽑으면 잘못된 옵션이 보이게 됨)
   const selectOptionsCache = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const def of columns as ExcelColumn<T>[]) {
@@ -399,6 +401,18 @@ export default function ExcelTable<T extends object>({
       // 명시적 옵션 — 그대로 사용 (사용자가 의도한 순서 유지)
       if (def.filterOptions) {
         map[colId] = def.filterOptions;
+        continue;
+      }
+
+      // 외부에서 제공한 옵션 (서버 모드용)
+      if (externalSelectOptions && externalSelectOptions[colId]) {
+        map[colId] = externalSelectOptions[colId];
+        continue;
+      }
+
+      // 서버 모드인데 옵션이 없으면 빈 배열
+      if (serverMode) {
+        map[colId] = [];
         continue;
       }
 
@@ -428,7 +442,7 @@ export default function ExcelTable<T extends object>({
       map[colId] = arr;
     }
     return map;
-  }, [data, columns]);
+  }, [data, columns, serverMode, externalSelectOptions]);
 
   // text 필터의 자동완성 후보 (data/columns 변경 시에만 재계산)
   const textOptionsCache = useMemo(() => {
