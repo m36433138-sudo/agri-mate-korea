@@ -112,21 +112,30 @@ export default function RepairsList() {
         </TabsList>
 
         <TabsContent value="history">
-          {isLoading ? (
-            <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : (
-            <ExcelTable
-              data={repairs ?? []}
-              columns={columns}
-              searchPlaceholder="제조번호·수리내용·담당기사 검색..."
-              exportFileName="수리이력"
-              emptyMessage="수리 이력이 없습니다."
-              onRowClick={(r) => {
-                const mid = (r as any).machines?.id;
-                if (mid) navigate(`/machines/${mid}`);
-              }}
-            />
-          )}
+          <ExcelTable
+            data={server.rows}
+            columns={columns}
+            searchPlaceholder="수리내용·담당기사·비고 전체검색..."
+            exportFileName="수리이력"
+            emptyMessage="수리 이력이 없습니다."
+            onRowClick={(r) => {
+              const mid = (r as any).machines?.id;
+              if (mid) navigate(`/machines/${mid}`);
+            }}
+            serverMode
+            totalCount={server.total}
+            isLoading={server.isLoading}
+            sorting={server.state.sorting}
+            onSortingChange={server.setSorting}
+            columnFilters={server.state.columnFilters}
+            onColumnFiltersChange={server.setColumnFilters}
+            globalFilter={server.state.globalFilter}
+            onGlobalFilterChange={server.setGlobalFilter}
+            pageIndex={server.state.pageIndex}
+            pageSize={server.state.pageSize}
+            onPageChange={server.setPageIndex}
+            onPageSizeChange={server.setPageSize}
+          />
         </TabsContent>
 
         <TabsContent value="mechanic-input">
