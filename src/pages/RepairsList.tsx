@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatPrice, formatDate } from "@/lib/formatters";
 import { Plus, Trash2 } from "lucide-react";
@@ -13,6 +12,7 @@ import RepairInputModal from "@/components/RepairInputModal";
 import MechanicRepairForm from "@/components/MechanicRepairForm";
 import RepairLogHistory from "@/components/RepairLogHistory";
 import ExcelTable, { type ExcelColumn } from "@/components/ExcelTable";
+import { useServerTable } from "@/hooks/useServerTable";
 import type { RepairWithMachine } from "@/types/database";
 
 export default function RepairsList() {
@@ -23,15 +23,18 @@ export default function RepairsList() {
 
   useRealtimeSync("repairs", [["all-repairs"]]);
 
-  const { data: repairs, isLoading } = useQuery({
+  const server = useServerTable<RepairWithMachine>({
+    table: "repairs",
+    select: "*, machines(id, model_name, serial_number)",
+    searchColumn: "search_vec",
+    defaultSort: { column: "repair_date", ascending: false },
     queryKey: ["all-repairs"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("repairs")
-        .select("*, machines(id, model_name, serial_number)")
-        .order("repair_date", { ascending: false });
-      if (error) throw error;
-      return data as RepairWithMachine[];
+    columnSpecs: {
+      repair_date: { id: "repair_date", dbColumn: "repair_date", filterType: "dateRange" },
+      repair_content: { id: "repair_content", dbColumn: "repair_content", filterType: "text" },
+      technician: { id: "technician", dbColumn: "technician", filterType: "select" },
+      labor_cost: { id: "labor_cost", dbColumn: "labor_cost", filterType: "numberRange" },
+      total_cost: { id: "total_cost", dbColumn: "total_cost", filterType: "numberRange" },
     },
   });
 
@@ -53,14 +56,14 @@ export default function RepairsList() {
       cell: ({ getValue }) => <span className="whitespace-nowrap">{formatDate(getValue() as string)}</span>,
       exportValue: (r) => r.repair_date },
     { id: "machine_model", header: "기계", size: 200,
-      enableColumnFilter: true, filterType: "text",
+      enableColumnFilter: false,
       accessorFn: (r: any) => r.machines?.model_name ?? "",
       cell: ({ row }) => {
         const r = row.original as any;
         return <span className="font-medium truncate">{r.machines?.model_name ?? "-"}</span>;
       } },
     { id: "machine_serial", header: "제조번호", size: 160,
-      enableColumnFilter: true, filterType: "text",
+      enableColumnFilter: false,
       accessorFn: (r: any) => r.machines?.serial_number ?? "",
       cell: ({ getValue }) => <span className="font-mono text-xs text-muted-foreground">{(getValue() as string) || "-"}</span> },
     { accessorKey: "repair_content", header: "수리내용", size: 320,
