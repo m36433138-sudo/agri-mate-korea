@@ -205,11 +205,40 @@ export default function ExcelTable<T extends object>({
     } catch { return null; }
   }, [urlKey, urlPrefix]);
 
-  const [sorting, setSorting] = useState<SortingState>(initialFromUrl?.sorting ?? []);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialFromUrl?.columnFilters ?? []);
-  const [globalFilter, setGlobalFilter] = useState(initialFromUrl?.globalFilter ?? "");
+  const [intSorting, setIntSorting] = useState<SortingState>(initialFromUrl?.sorting ?? []);
+  const [intColumnFilters, setIntColumnFilters] = useState<ColumnFiltersState>(initialFromUrl?.columnFilters ?? []);
+  const [intGlobalFilter, setIntGlobalFilter] = useState(initialFromUrl?.globalFilter ?? "");
   const [showFilterDetails, setShowFilterDetails] = useState(false);
   const [presets, setPresets] = useState<FilterPreset[]>([]);
+
+  // 외부 제어 우선, 없으면 내부 state
+  const sorting = extSorting ?? intSorting;
+  const columnFilters = extColumnFilters ?? intColumnFilters;
+  const globalFilter = extGlobalFilter ?? intGlobalFilter;
+  const setSorting: React.Dispatch<React.SetStateAction<SortingState>> = (updater) => {
+    if (extOnSortingChange) {
+      const next = typeof updater === "function" ? (updater as (s: SortingState) => SortingState)(sorting) : updater;
+      extOnSortingChange(next);
+    } else {
+      setIntSorting(updater);
+    }
+  };
+  const setColumnFilters: React.Dispatch<React.SetStateAction<ColumnFiltersState>> = (updater) => {
+    if (extOnColumnFiltersChange) {
+      const next = typeof updater === "function" ? (updater as (s: ColumnFiltersState) => ColumnFiltersState)(columnFilters) : updater;
+      extOnColumnFiltersChange(next);
+    } else {
+      setIntColumnFilters(updater);
+    }
+  };
+  const setGlobalFilter: React.Dispatch<React.SetStateAction<string>> = (updater) => {
+    if (extOnGlobalFilterChange) {
+      const next = typeof updater === "function" ? (updater as (s: string) => string)(globalFilter) : updater;
+      extOnGlobalFilterChange(next);
+    } else {
+      setIntGlobalFilter(updater);
+    }
+  };
 
   // 상태 → URL 동기화 (replaceState로 히스토리 누적 방지)
   useEffect(() => {
