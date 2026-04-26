@@ -801,11 +801,15 @@ export default function ExcelTable<T extends object>({
                         {showFilterDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                       </button>
                       <span className="tabular-nums">
-                        <span className="font-semibold text-foreground">{rows.length.toLocaleString()}</span> / {data.length.toLocaleString()}건
+                        {serverMode ? (
+                          <><span className="font-semibold text-foreground">{effectiveTotal.toLocaleString()}</span>건 (서버 필터)</>
+                        ) : (
+                          <><span className="font-semibold text-foreground">{rows.length.toLocaleString()}</span> / {data.length.toLocaleString()}건</>
+                        )}
                       </span>
                     </>
                   ) : (
-                    <span className="tabular-nums">전체 <span className="font-semibold text-foreground">{data.length.toLocaleString()}</span>건</span>
+                    <span className="tabular-nums">전체 <span className="font-semibold text-foreground">{(serverMode ? effectiveTotal : data.length).toLocaleString()}</span>건</span>
                   )}
                   {globalFilter && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background border border-border/60 text-foreground">
