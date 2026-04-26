@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ExcelTable, { type ExcelColumn } from "@/components/ExcelTable";
+import { useServerTable } from "@/hooks/useServerTable";
 import type { Customer } from "@/types/database";
 
 export default function CustomersList() {
@@ -46,30 +47,37 @@ export default function CustomersList() {
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
 
-  // 불완전 고객 정리: 주소 없음 + 보유기계 0대
+  // 불완전 고객 정리: 주소 없음 + 보유기계 0대 + 드라이브 링크 없음
   const handleCleanup = async () => {
     setCleaning(true);
     try {
-      // 보유기계가 있는 고객 ID 목록
+      // 1) 주소가 없는 고객 후보 (페이지네이션)
+      const candidates: Customer[] = [];
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("customers")
+          .select("id, name, address")
+          .or("address.is.null,address.eq.")
+          .range(from, from + PAGE - 1);
+        if (error) throw new Error(error.message);
+        candidates.push(...(data as Customer[]));
+        if (!data || data.length < PAGE) break;
+        from += PAGE;
+      }
+
       const { data: machineRows, error: me } = await supabase
-        .from("machines")
-        .select("customer_id")
-        .not("customer_id", "is", null);
+        .from("machines").select("customer_id").not("customer_id", "is", null);
       if (me) throw new Error(me.message);
       const ownedIds = new Set((machineRows ?? []).map((r: any) => r.customer_id));
 
-      // 드라이브 링크가 있는 고객 ID 목록 (FK 제약 방지)
       const { data: linkRows, error: le } = await supabase
-        .from("customer_drive_links")
-        .select("customer_id");
+        .from("customer_drive_links").select("customer_id");
       if (le) throw new Error(le.message);
       const linkedIds = new Set((linkRows ?? []).map((r: any) => r.customer_id));
 
-      // 조건: 주소 없음 + 기계 없음 + 드라이브 링크 없음
-      const incomplete = (customers ?? []).filter(c => {
-        const noAddress = !c.address || c.address.trim().length < 2;
-        return noAddress && !ownedIds.has(c.id) && !linkedIds.has(c.id);
-      });
+      const incomplete = candidates.filter(c => !ownedIds.has(c.id) && !linkedIds.has(c.id));
 
       if (incomplete.length === 0) {
         toast({ title: "삭제할 고객이 없습니다.", description: "모든 고객이 유효합니다." });
@@ -77,7 +85,6 @@ export default function CustomersList() {
         return;
       }
 
-      // 한 명씩 삭제해서 FK 오류 시에도 나머지 진행
       let deleted = 0;
       for (const c of incomplete) {
         const { error } = await supabase.from("customers").delete().eq("id", c.id);
@@ -94,26 +101,26 @@ export default function CustomersList() {
     }
   };
 
-  const { data: customers, isLoading } = useQuery({
+  const server = useServerTable<Customer>({
+    table: "customers",
+    select: "*",
+    searchColumn: "search_vec",
+    defaultSort: { column: "name", ascending: true },
     queryKey: ["customers"],
-    queryFn: async () => {
-      const all: Customer[] = [];
-      const PAGE = 1000;
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("customers")
-          .select("*")
-          .order("name")
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        all.push(...(data as Customer[]));
-        if (data.length < PAGE) break;
-        from += PAGE;
-      }
-      return all;
+    columnSpecs: {
+      name: { id: "name", dbColumn: "name", filterType: "text" },
+      grade: { id: "grade", dbColumn: "grade", filterType: "select" },
+      phone: { id: "phone", dbColumn: "phone", filterType: "text" },
+      address: { id: "address", dbColumn: "address", filterType: "text" },
+      branch: { id: "branch", dbColumn: "branch", filterType: "select" },
+      notes: { id: "notes", dbColumn: "notes", filterType: "text" },
     },
   });
+
+  const externalSelectOptions = useMemo(() => ({
+    grade: ["VVIP", "VIP", "GOLD", "SILVER"],
+    branch: ["장흥", "강진"],
+  }), []);
 
   const handleSheetImport = async () => {
     setImporting(true);
@@ -173,7 +180,7 @@ export default function CustomersList() {
             <Users className="h-4 w-4 text-primary" />
           </div>
           <p className="text-sm font-semibold">
-            {isLoading ? "..." : `전체 ${customers?.length ?? 0}명`}
+            {server.isLoading ? "..." : `전체 ${server.total.toLocaleString()}명`}
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -184,7 +191,7 @@ export default function CustomersList() {
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
             <Upload className="h-4 w-4 mr-1" /> 일괄 등록
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCleanupConfirm(true)} disabled={cleaning || isLoading}>
+          <Button variant="outline" size="sm" onClick={() => setCleanupConfirm(true)} disabled={cleaning}>
             <UserMinus className="h-4 w-4 mr-1" /> 불완전 고객 정리
           </Button>
           <Button size="sm" onClick={() => setOpen(true)}>
@@ -193,18 +200,28 @@ export default function CustomersList() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-10 w-full rounded-md" />)}</div>
-      ) : (
-        <ExcelTable
-          data={customers ?? []}
-          columns={columns}
-          searchPlaceholder="이름·연락처·주소 검색..."
-          exportFileName="고객목록"
-          emptyMessage="등록된 고객이 없습니다."
-          onRowClick={(c) => navigate(`/customers/${(c as any).id}`)}
-        />
-      )}
+      <ExcelTable
+        data={server.rows}
+        columns={columns}
+        searchPlaceholder="이름·연락처·주소·비고 전체검색..."
+        exportFileName="고객목록"
+        emptyMessage="등록된 고객이 없습니다."
+        onRowClick={(c) => navigate(`/customers/${(c as any).id}`)}
+        serverMode
+        totalCount={server.total}
+        isLoading={server.isLoading}
+        sorting={server.state.sorting}
+        onSortingChange={server.setSorting}
+        columnFilters={server.state.columnFilters}
+        onColumnFiltersChange={server.setColumnFilters}
+        globalFilter={server.state.globalFilter}
+        onGlobalFilterChange={server.setGlobalFilter}
+        pageIndex={server.state.pageIndex}
+        pageSize={server.state.pageSize}
+        onPageChange={server.setPageIndex}
+        onPageSizeChange={server.setPageSize}
+        externalSelectOptions={externalSelectOptions}
+      />
 
       <AddCustomerDialog open={open} onOpenChange={setOpen} />
       <BulkCustomerDialog open={bulkOpen} onOpenChange={setBulkOpen} />
