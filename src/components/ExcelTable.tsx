@@ -340,8 +340,17 @@ export default function ExcelTable<T extends object>({
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    // 서버 모드면 외부에서 정렬·필터를 처리하므로 클라이언트 모델은 비활성화
+    ...(serverMode
+      ? {
+          manualSorting: true,
+          manualFiltering: true,
+          manualPagination: true,
+        }
+      : {
+          getSortedRowModel: getSortedRowModel(),
+          getFilteredRowModel: getFilteredRowModel(),
+        }),
     columnResizeMode: "onChange",
     enableColumnResizing: true,
     globalFilterFn: (row, _id, value) => {
