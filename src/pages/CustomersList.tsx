@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ExcelTable, { type ExcelColumn } from "@/components/ExcelTable";
+import { useServerTable } from "@/hooks/useServerTable";
 import type { Customer } from "@/types/database";
 
 export default function CustomersList() {
