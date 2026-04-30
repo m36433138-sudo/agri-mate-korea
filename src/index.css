@@ -5,7 +5,62 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 
 @layer base {
+  /* ── 라이트 모드 (기본) ── */
   :root {
+    --background: 210 40% 98%;         /* #F6F9FC */
+    --foreground: 222 47% 11%;         /* #0F172A */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 217 91% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 94%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 94%;
+    --muted-foreground: 215 16% 42%;
+
+    --accent: 210 40% 92%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 217 91% 55%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 15%;
+    --sidebar-primary: 217 91% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 94%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 88%;
+    --sidebar-ring: 217 91% 55%;
+
+    --status-stock: 142 76% 36%;
+    --status-sold: 215 16% 47%;
+    --type-new: 217 91% 60%;
+    --type-used: 38 92% 50%;
+
+    --info: 217 91% 55%;
+    --info-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+  }
+
+  /* ── 다크 모드 ── */
+  .dark {
     /* ── 배경 / 텍스트 ── */
     --background: 222 47% 7%;          /* #060F1E */
     --foreground: 210 40% 96%;         /* 거의 흰색 #F0F4FA */
@@ -90,7 +145,7 @@
   /* 입력 플레이스홀더 */
   input::placeholder,
   textarea::placeholder {
-    color: hsl(215 20% 35%);
+    color: hsl(var(--muted-foreground) / 0.7);
   }
 
   /* 스크롤바 */
@@ -102,11 +157,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(216 45% 20%);
+    background: hsl(var(--border));
     border-radius: 99px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(216 45% 28%);
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 
   /* 포커스 링 */
@@ -176,16 +231,16 @@
 /* ── 카드 표준 그림자 ── */
 .card-shadow {
   box-shadow:
-    0 1px 3px hsl(0 0% 0% / 0.4),
-    0 0 0 1px hsl(216 45% 18% / 0.8);
+    0 1px 3px hsl(var(--foreground) / 0.08),
+    0 0 0 1px hsl(var(--border) / 0.8);
 }
 
 /* ── 유리 효과 헤더 ── */
 .glass-header {
-  background: hsl(222 47% 7% / 0.85);
+  background: hsl(var(--background) / 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid hsl(216 45% 18%);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 /* ── 그라데이션 배지 공통 ── */

@@ -289,6 +289,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string
+          search_vec: unknown
           user_id: string | null
         }
         Insert: {
@@ -301,6 +302,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone: string
+          search_vec?: unknown
           user_id?: string | null
         }
         Update: {
@@ -313,6 +315,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string
+          search_vec?: unknown
           user_id?: string | null
         }
         Relationships: []
@@ -532,6 +535,7 @@ export type Database = {
           sale_date: string | null
           sale_price: number | null
           salesperson: string | null
+          search_vec: unknown
           serial_number: string
           status: string
         }
@@ -552,6 +556,7 @@ export type Database = {
           sale_date?: string | null
           sale_price?: number | null
           salesperson?: string | null
+          search_vec?: unknown
           serial_number: string
           status?: string
         }
@@ -572,6 +577,7 @@ export type Database = {
           sale_date?: string | null
           sale_price?: number | null
           salesperson?: string | null
+          search_vec?: unknown
           serial_number?: string
           status?: string
         }
@@ -668,6 +674,93 @@ export type Database = {
           row_index?: number
           technician?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      operation_rows: {
+        Row: {
+          address: string | null
+          branch: string
+          contact_note: string | null
+          contacted: string | null
+          created_at: string
+          customer_name: string | null
+          dispatch_date: string | null
+          entry_date: string | null
+          id: string
+          is_completed: boolean
+          location: string | null
+          machine: string | null
+          model: string | null
+          notes: string | null
+          phone: string | null
+          priority: string
+          repair_done_date: string | null
+          repair_start_date: string | null
+          requirements: string | null
+          row_index: number
+          serial_number: string | null
+          source_tab: string
+          status_label: string | null
+          technician: string | null
+          updated_at: string
+          writer: string | null
+        }
+        Insert: {
+          address?: string | null
+          branch: string
+          contact_note?: string | null
+          contacted?: string | null
+          created_at?: string
+          customer_name?: string | null
+          dispatch_date?: string | null
+          entry_date?: string | null
+          id?: string
+          is_completed?: boolean
+          location?: string | null
+          machine?: string | null
+          model?: string | null
+          notes?: string | null
+          phone?: string | null
+          priority?: string
+          repair_done_date?: string | null
+          repair_start_date?: string | null
+          requirements?: string | null
+          row_index: number
+          serial_number?: string | null
+          source_tab?: string
+          status_label?: string | null
+          technician?: string | null
+          updated_at?: string
+          writer?: string | null
+        }
+        Update: {
+          address?: string | null
+          branch?: string
+          contact_note?: string | null
+          contacted?: string | null
+          created_at?: string
+          customer_name?: string | null
+          dispatch_date?: string | null
+          entry_date?: string | null
+          id?: string
+          is_completed?: boolean
+          location?: string | null
+          machine?: string | null
+          model?: string | null
+          notes?: string | null
+          phone?: string | null
+          priority?: string
+          repair_done_date?: string | null
+          repair_start_date?: string | null
+          requirements?: string | null
+          row_index?: number
+          serial_number?: string | null
+          source_tab?: string
+          status_label?: string | null
+          technician?: string | null
+          updated_at?: string
+          writer?: string | null
         }
         Relationships: []
       }
@@ -1056,6 +1149,7 @@ export type Database = {
           operating_hours: number | null
           repair_content: string
           repair_date: string
+          search_vec: unknown
           technician: string | null
           total_cost: number | null
         }
@@ -1068,6 +1162,7 @@ export type Database = {
           operating_hours?: number | null
           repair_content: string
           repair_date: string
+          search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
         }
@@ -1080,6 +1175,7 @@ export type Database = {
           operating_hours?: number | null
           repair_content?: string
           repair_date?: string
+          search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
         }
@@ -1284,11 +1380,81 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_repair_rows: {
+        Row: {
+          address: string | null
+          cost: number | null
+          created_at: string
+          customer_name: string | null
+          id: string
+          is_completed: boolean
+          machine: string | null
+          model: string | null
+          notes: string | null
+          parts_used: string | null
+          phone: string | null
+          priority: string
+          requirements: string | null
+          row_index: number
+          serial_number: string | null
+          status_label: string | null
+          technician: string | null
+          updated_at: string
+          visit_date: string | null
+          writer: string | null
+        }
+        Insert: {
+          address?: string | null
+          cost?: number | null
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          is_completed?: boolean
+          machine?: string | null
+          model?: string | null
+          notes?: string | null
+          parts_used?: string | null
+          phone?: string | null
+          priority?: string
+          requirements?: string | null
+          row_index: number
+          serial_number?: string | null
+          status_label?: string | null
+          technician?: string | null
+          updated_at?: string
+          visit_date?: string | null
+          writer?: string | null
+        }
+        Update: {
+          address?: string | null
+          cost?: number | null
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          is_completed?: boolean
+          machine?: string | null
+          model?: string | null
+          notes?: string | null
+          parts_used?: string | null
+          phone?: string | null
+          priority?: string
+          requirements?: string | null
+          row_index?: number
+          serial_number?: string | null
+          status_label?: string | null
+          technician?: string | null
+          updated_at?: string
+          visit_date?: string | null
+          writer?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      current_employee_branch: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
