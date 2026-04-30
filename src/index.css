@@ -231,16 +231,16 @@
 /* ── 카드 표준 그림자 ── */
 .card-shadow {
   box-shadow:
-    0 1px 3px hsl(0 0% 0% / 0.4),
-    0 0 0 1px hsl(216 45% 18% / 0.8);
+    0 1px 3px hsl(var(--foreground) / 0.08),
+    0 0 0 1px hsl(var(--border) / 0.8);
 }
 
 /* ── 유리 효과 헤더 ── */
 .glass-header {
-  background: hsl(222 47% 7% / 0.85);
+  background: hsl(var(--background) / 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid hsl(216 45% 18%);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 /* ── 그라데이션 배지 공통 ── */
