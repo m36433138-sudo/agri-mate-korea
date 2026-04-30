@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import GlobalSearch from "@/components/GlobalSearch";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import CursorGlow from "@/components/CursorGlow";
 import { useLocation, Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
@@ -77,6 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Breadcrumb />
             <div className="flex-1" />
             <GlobalSearch />
+            <ThemeToggle />
           </header>
 
           {/* 메인 콘텐츠 */}
