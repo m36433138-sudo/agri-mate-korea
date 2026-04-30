@@ -145,7 +145,7 @@
   /* 입력 플레이스홀더 */
   input::placeholder,
   textarea::placeholder {
-    color: hsl(215 20% 35%);
+    color: hsl(var(--muted-foreground) / 0.7);
   }
 
   /* 스크롤바 */
@@ -157,11 +157,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(216 45% 20%);
+    background: hsl(var(--border));
     border-radius: 99px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(216 45% 28%);
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 
   /* 포커스 링 */
