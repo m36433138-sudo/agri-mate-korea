@@ -1,10 +1,7 @@
 import { useState, useMemo } from "react";
-import { useGoogleSheets, markRowComplete, updateRowStatus, updateRowPriority, updateRowTechnician } from "@/hooks/useGoogleSheets";
+import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGoogleSheets";
 import { supabase } from "@/integrations/supabase/client";
 import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, formatSheetDate, isCompleted } from "@/types/operations";
-import { PRIORITY_META, type Priority, TECHNICIANS } from "@/lib/priority";
-import { PriorityPicker } from "@/components/operations/PriorityPicker";
-import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
 import { RepairDraftModal } from "@/components/operations/RepairDraftModal";
@@ -23,7 +20,7 @@ import {
 import {
   RefreshCw, AlertCircle, Plus, PackageOpen, Wrench, CheckCircle2,
   Truck, PauseCircle, Package, Phone, MapPin, Pencil, FileText,
-  ArrowRight, ChevronDown, ChevronUp, Flame,
+  ArrowRight, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 type Branch = "전체" | "장흥" | "강진";
@@ -64,7 +61,6 @@ export default function OperationsDashboard() {
   const [branch, setBranch] = useState<Branch>("전체");
   const [statusFilter, setStatusFilter] = useState<OperationStatus | "전체">("전체");
   const [techFilter, setTechFilter] = useState("전체");
-  const [priorityFilter, setPriorityFilter] = useState<Priority | "전체">("전체");
   const [confirmRow, setConfirmRow] = useState<SheetRow | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ label: string; next: OperationStatus | "완료" } | null>(null);
   const [isMarking, setIsMarking] = useState(false);
@@ -89,46 +85,17 @@ export default function OperationsDashboard() {
     if (branch !== "전체") rows = rows.filter(r => r._branch === branch);
     if (techFilter !== "전체") rows = rows.filter(r => r.수리기사 === techFilter);
     if (statusFilter !== "전체") rows = rows.filter(r => getStatus(r) === statusFilter);
-    if (priorityFilter !== "전체") rows = rows.filter(r => r.priority === priorityFilter);
-    // 우선순위(긴급 먼저) → 상태 순서
+    // 상태 순서대로 정렬
     return rows.slice().sort((a, b) => {
-      const pa = PRIORITY_META[a.priority].rank;
-      const pb = PRIORITY_META[b.priority].rank;
-      if (pa !== pb) return pa - pb;
       return STATUS_ORDER.indexOf(getStatus(a)) - STATUS_ORDER.indexOf(getStatus(b));
     });
-  }, [allData, branch, techFilter, statusFilter, priorityFilter]);
+  }, [allData, branch, techFilter, statusFilter]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { 전체: allData.length };
     STATUS_ORDER.forEach(s => { c[s] = allData.filter(r => getStatus(r) === s).length; });
     return c;
   }, [allData]);
-
-  const urgentCount = useMemo(
-    () => allData.filter(r => r.priority === "긴급").length,
-    [allData],
-  );
-
-  const handlePriorityChange = async (row: SheetRow, p: Priority) => {
-    try {
-      await updateRowPriority(row._branch, row._rowIndex, p);
-      toast({ title: "우선순위 변경", description: `${row.손님성명 || "행"} → ${p}` });
-      refresh();
-    } catch (err: any) {
-      toast({ title: "오류", description: err.message, variant: "destructive" });
-    }
-  };
-
-  const handleTechChange = async (row: SheetRow, name: string) => {
-    try {
-      await updateRowTechnician(row._branch, row._rowIndex, name || null);
-      toast({ title: "기사 배정", description: `${row.손님성명 || "행"} → ${name || "미배정"}` });
-      refresh();
-    } catch (err: any) {
-      toast({ title: "오류", description: err.message, variant: "destructive" });
-    }
-  };
 
   const handleTransition = (row: SheetRow) => {
     const transition = STATUS_TRANSITIONS[getStatus(row)];
@@ -245,27 +212,6 @@ export default function OperationsDashboard() {
               </button>
             );
           })}
-          {/* 우선순위 필터 */}
-          {(["전체", "긴급", "높음", "보통", "낮음"] as const).map(p => {
-            const active = priorityFilter === p;
-            const meta = p !== "전체" ? PRIORITY_META[p] : null;
-            return (
-              <button
-                key={p}
-                onClick={() => setPriorityFilter(p as any)}
-                className={`text-[11px] font-bold px-2 py-1 rounded-md border inline-flex items-center gap-1 transition-all ${
-                  active ? "border-primary/60 bg-primary/10 text-primary" : "border-border/40 text-muted-foreground hover:text-foreground"
-                } ${p === "긴급" && urgentCount > 0 ? "animate-pulse" : ""}`}
-                style={active && meta ? { borderColor: meta.color + "88", color: meta.color, background: meta.color + "18" } : undefined}
-              >
-                {p === "긴급" && <Flame className="h-3 w-3" />}
-                {p}
-                {p === "긴급" && urgentCount > 0 && (
-                  <span className="ml-0.5 text-[9px] tabular-nums">{urgentCount}</span>
-                )}
-              </button>
-            );
-          })}
         </div>
 
         <div className="flex items-center gap-2">
@@ -311,13 +257,12 @@ export default function OperationsDashboard() {
         <div
           className="grid text-[11px] font-semibold text-muted-foreground uppercase tracking-wide"
           style={{
-            gridTemplateColumns: "70px 110px 52px 90px 1fr 120px 110px 1fr 110px 110px",
+            gridTemplateColumns: "110px 52px 90px 1fr 120px 110px 1fr 80px 110px",
             background: "hsl(var(--card))",
             borderBottom: "1px solid hsl(var(--border) / 0.6)",
             padding: "10px 14px",
           }}
         >
-          <span>우선</span>
           <span>상태</span>
           <span>지점</span>
           <span>성함</span>
@@ -357,26 +302,18 @@ export default function OperationsDashboard() {
           return (
             <div
               key={rowKey + idx}
-              className={`group border-b border-border/30 last:border-0 transition-colors hover:brightness-110 ${row.priority === "긴급" ? "ring-1 ring-inset ring-red-500/40" : ""}`}
-              style={{
-                background: row.priority === "긴급" ? "hsl(0 80% 50% / 0.08)" : meta.rowBg,
-                borderLeft: `4px solid ${row.priority === "긴급" ? PRIORITY_META["긴급"].color : meta.color}`,
-              }}
+              className="group border-b border-border/30 last:border-0 transition-colors hover:brightness-110"
+              style={{ background: meta.rowBg, borderLeft: `3px solid ${meta.color}` }}
             >
               {/* 메인 행 */}
               <div
                 className="grid items-center"
                 style={{
-                  gridTemplateColumns: "70px 110px 52px 90px 1fr 120px 110px 1fr 110px 110px",
+                  gridTemplateColumns: "110px 52px 90px 1fr 120px 110px 1fr 80px 110px",
                   padding: "9px 14px",
                   gap: 0,
                 }}
               >
-                {/* 우선순위 */}
-                <div>
-                  <PriorityPicker value={row.priority} onChange={(p) => handlePriorityChange(row, p)} />
-                </div>
-
                 {/* 상태 */}
                 <div><StatusBadge status={status} /></div>
 
@@ -442,12 +379,8 @@ export default function OperationsDashboard() {
                 </div>
 
                 {/* 기사 */}
-                <div onClick={(e) => e.stopPropagation()}>
-                  <TechnicianPicker
-                    value={row.수리기사}
-                    onChange={(name) => handleTechChange(row, name)}
-                    stopPropagation
-                  />
+                <div className="text-xs text-muted-foreground truncate pr-1">
+                  {row.수리기사 || "-"}
                 </div>
 
                 {/* 액션 */}

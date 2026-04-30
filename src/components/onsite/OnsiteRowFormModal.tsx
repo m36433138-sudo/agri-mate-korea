@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  upsertVisitFromValues, deleteVisitRow,
-  updateVisitPriority, updateVisitTechnician,
-} from "@/hooks/useVisitRepairs";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
@@ -15,9 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
-import { PriorityPicker } from "@/components/operations/PriorityPicker";
-import { TechnicianPicker } from "@/components/operations/TechnicianPicker";
-import { normalizePriority, type Priority } from "@/lib/priority";
 
 const STATUSES = ["진행중", "완료", "보류"];
 const MACHINE_TYPES = ["농업용 트랙터", "콤바인", "이앙기", "기타"];
@@ -30,28 +24,24 @@ interface OnsiteRow {
   전화번호: string;
   주소: string;
   내역: string;
-  기사?: string;
-  priority?: Priority;
   _rowIndex?: number;
 }
 
 interface FormData {
   status: string;
   name: string;
-  machine: string;
-  model: string;
-  serial_number: string;
+  machine: string;       // 기계 종류
+  model: string;         // 품목 (모델명)
+  serial_number: string; // 제조번호 (UI 전용)
   phone: string;
   address: string;
   detail: string;
-  technician: string;
-  priority: Priority;
 }
 
 function rowToForm(row?: OnsiteRow): FormData {
   if (!row) return {
     status: "", name: "", machine: "", model: "", serial_number: "",
-    phone: "", address: "", detail: "", technician: "", priority: "보통",
+    phone: "", address: "", detail: "",
   };
   return {
     status: row.진행사항,
@@ -62,15 +52,13 @@ function rowToForm(row?: OnsiteRow): FormData {
     phone: row.전화번호,
     address: row.주소,
     detail: row.내역,
-    technician: row.기사 ?? "",
-    priority: normalizePriority(row.priority),
   };
 }
 
 function formToValues(f: FormData): string[] {
-  // visit_repair_rows: status, name, machine, model, phone, address, detail, technician, priority
+  // 방문수리 시트 컬럼: 진행사항, 손님성함, 기계, 품목, 전화번호, 주소, 내역
   const modelWithSerial = f.model + (f.serial_number ? ` (${f.serial_number})` : "");
-  return [f.status, f.name, f.machine, modelWithSerial, f.phone, f.address, f.detail, f.technician, f.priority];
+  return [f.status, f.name, f.machine, modelWithSerial, f.phone, f.address, f.detail];
 }
 
 interface Props {
@@ -109,10 +97,14 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
       const values = formToValues(form);
 
       if (isEdit && row?._rowIndex) {
-        await upsertVisitFromValues(row._rowIndex, values);
+        await supabase.functions.invoke("google-sheets", {
+          body: { action: "updateRow", sheetName: "방문수리", rowIndex: row._rowIndex, values },
+        });
         toast({ title: "수정 완료" });
       } else {
-        await upsertVisitFromValues(undefined, values);
+        await supabase.functions.invoke("google-sheets", {
+          body: { action: "addRow", sheetName: "방문수리", values },
+        });
         toast({ title: "추가 완료" });
       }
       onSuccess();
@@ -128,7 +120,9 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
     if (!row?._rowIndex) return;
     setDeleting(true);
     try {
-      await deleteVisitRow(row._rowIndex);
+      await supabase.functions.invoke("google-sheets", {
+        body: { action: "clearRow", sheetName: "방문수리", rowIndex: row._rowIndex },
+      });
       toast({ title: "삭제 완료" });
       onSuccess();
       onClose();
@@ -157,26 +151,6 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
                 {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* 우선순위 + 기사 */}
-          <div className="col-span-2 flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-muted-foreground">우선순위</Label>
-              <PriorityPicker
-                value={form.priority}
-                onChange={(p) => setForm(prev => ({ ...prev, priority: p }))}
-                size="md"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-muted-foreground">담당 기사</Label>
-              <TechnicianPicker
-                value={form.technician}
-                onChange={(t) => setForm(prev => ({ ...prev, technician: t }))}
-                size="md"
-              />
-            </div>
           </div>
 
           {/* 손님 성함 */}

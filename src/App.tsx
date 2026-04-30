@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import AppErrorBoundary from "@/components/AppErrorBoundary";
 import { useUserRole } from "@/hooks/useUserRole";
 
 // 페이지 lazy loading - 첫 방문 시에만 JS 로드
@@ -33,8 +32,6 @@ const AssetsPage = lazy(() => import("@/pages/AssetsPage"));
 const AccountingPage = lazy(() => import("@/pages/AccountingPage"));
 const BankingPage = lazy(() => import("@/pages/BankingPage"));
 const LocationHistory = lazy(() => import("@/pages/LocationHistory"));
-const RealtimeRlsReport = lazy(() => import("@/pages/RealtimeRlsReport"));
-const ClientErrorsReport = lazy(() => import("@/pages/ClientErrorsReport"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
@@ -64,8 +61,7 @@ function HomePage() {
 }
 
 const App = () => (
-  <AppErrorBoundary>
-    <QueryClientProvider client={queryClient}>
+  <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <BrowserRouter>
@@ -107,16 +103,6 @@ const App = () => (
                             <LocationHistory />
                           </ProtectedRoute>
                         } />
-                        <Route path="/diagnostics/realtime-rls" element={
-                          <ProtectedRoute allowedRoles={["admin"]}>
-                            <RealtimeRlsReport />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/diagnostics/client-errors" element={
-                          <ProtectedRoute allowedRoles={["admin"]}>
-                            <ClientErrorsReport />
-                          </ProtectedRoute>
-                        } />
                         <Route path="/my-page" element={<MyPage />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
@@ -129,8 +115,7 @@ const App = () => (
         </Suspense>
       </BrowserRouter>
     </TooltipProvider>
-    </QueryClientProvider>
-  </AppErrorBoundary>
+  </QueryClientProvider>
 );
 
 export default App;

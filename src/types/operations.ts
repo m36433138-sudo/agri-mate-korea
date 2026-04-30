@@ -1,5 +1,3 @@
-import type { Priority } from "@/lib/priority";
-
 export interface SheetRow {
   status_label: string;
   손님성명: string;
@@ -21,7 +19,6 @@ export interface SheetRow {
   전체완료: string;
   비고: string;
   입력자: string;
-  priority: Priority;
   _branch: "장흥" | "강진";
   _rowIndex: number;
   _doneCol: string; // Column letter for 전체완료 (for write-back)
@@ -176,7 +173,6 @@ export function parseRows(values: string[][], branch: "장흥" | "강진"): Shee
       전체완료: (row[iDone] || "").trim(),
       비고: (row[iNote] || "").trim(),
       입력자: iWriter >= 0 ? (row[iWriter] || "").trim() : "",
-      priority: "보통" as Priority,
       _branch: branch,
       _rowIndex: idx + 2,
       _doneCol: doneColLetter,

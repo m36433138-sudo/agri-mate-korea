@@ -1,15 +1,16 @@
-import { useState, useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { useNavigate } from "react-router-dom";
+import { useListFilter } from "@/hooks/useListFilter";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Plus, Upload, Trash2, FileSpreadsheet, Zap } from "lucide-react";
+import { Plus, Search, Upload, Trash2, FileSpreadsheet, Zap } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -17,8 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import ExcelTable, { type ExcelColumn } from "@/components/ExcelTable";
-import { useServerTable } from "@/hooks/useServerTable";
 import type { MachineWithCustomer } from "@/types/database";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
@@ -30,7 +29,6 @@ export default function MachinesList() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
-  const navigate = useNavigate();
 
   useRealtimeSync("machines", [["machines"]]);
 
@@ -46,90 +44,23 @@ export default function MachinesList() {
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
 
-  const extraFilters = useMemo(() => {
-    const list: { column: string; op: "eq"; value: any }[] = [];
-    if (typeTab !== "전체") list.push({ column: "machine_type", op: "eq", value: typeTab });
-    if (statusTab !== "전체") list.push({ column: "status", op: "eq", value: statusTab });
-    return list;
-  }, [typeTab, statusTab]);
-
-  const server = useServerTable<MachineWithCustomer>({
-    table: "machines",
-    select: "*, customers(name)",
-    searchColumn: "search_vec",
-    defaultSort: { column: "created_at", ascending: false },
+  const { data: machines, isLoading } = useQuery({
     queryKey: ["machines"],
-    extraFilters,
-    columnSpecs: {
-      manufacturer: { id: "manufacturer", dbColumn: "manufacturer", filterType: "select" },
-      model_name: { id: "model_name", dbColumn: "model_name", filterType: "text" },
-      serial_number: { id: "serial_number", dbColumn: "serial_number", filterType: "text" },
-      machine_type: { id: "machine_type", dbColumn: "machine_type", filterType: "select" },
-      status: { id: "status", dbColumn: "status", filterType: "select" },
-      entry_date: { id: "entry_date", dbColumn: "entry_date", filterType: "dateRange" },
-      sale_date: { id: "sale_date", dbColumn: "sale_date", filterType: "dateRange" },
-      purchase_price: { id: "purchase_price", dbColumn: "purchase_price", filterType: "numberRange" },
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("machines")
+        .select("*, customers(name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as MachineWithCustomer[];
     },
   });
 
-  const externalSelectOptions = useMemo(() => ({
-    manufacturer: MANUFACTURERS,
-    machine_type: ["새기계", "중고기계", "타사구매"],
-    status: ["재고중", "판매완료"],
-  }), []);
-
-  const columns = useMemo<ExcelColumn<MachineWithCustomer>[]>(() => [
-    { accessorKey: "manufacturer", header: "제조사", size: 100,
-      enableColumnFilter: true, filterType: "select",
-      cell: ({ getValue }) => <span className="text-muted-foreground">{(getValue() as string) || "-"}</span> },
-    { accessorKey: "model_name", header: "모델명", size: 200, sticky: true,
-      enableColumnFilter: true, filterType: "text",
-      cell: ({ row }) => {
-        const m = row.original as any;
-        return (
-          <div className="flex items-center gap-2 w-full">
-            <span className="font-medium truncate">{m.model_name}</span>
-            {m.ecu_mapped && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-gradient-to-r from-blue-600 to-violet-600 text-white whitespace-nowrap shrink-0">
-                <Zap className="h-2.5 w-2.5" />ECU{m.ecu_hp ? ` ${m.ecu_hp}HP` : ""}
-              </span>
-            )}
-          </div>
-        );
-      } },
-    { accessorKey: "serial_number", header: "제조번호", size: 160,
-      enableColumnFilter: true, filterType: "text",
-      cell: ({ getValue }) => <span className="font-mono text-xs text-muted-foreground">{getValue() as string}</span> },
-    { accessorKey: "machine_type", header: "구분", size: 100,
-      enableColumnFilter: true, filterType: "select",
-      cell: ({ getValue }) => <TypeBadge type={getValue() as string} /> },
-    { accessorKey: "status", header: "상태", size: 100,
-      enableColumnFilter: true, filterType: "select",
-      cell: ({ getValue }) => <StatusBadge status={getValue() as string} /> },
-    { accessorKey: "entry_date", header: "입고일", size: 200,
-      enableColumnFilter: true, filterType: "dateRange",
-      cell: ({ getValue }) => <span className="text-muted-foreground">{formatDate(getValue() as string)}</span>,
-      exportValue: (r) => r.entry_date },
-    { accessorKey: "sale_date", header: "판매일", size: 200,
-      enableColumnFilter: true, filterType: "dateRange",
-      cell: ({ getValue }) => <span className="text-muted-foreground">{getValue() ? formatDate(getValue() as string) : "-"}</span>,
-      exportValue: (r) => r.sale_date ?? "" },
-    { id: "customer_name", header: "고객명", size: 140,
-      enableColumnFilter: false,
-      accessorFn: (r: any) => r.customers?.name ?? "",
-      cell: ({ getValue }) => <span className="text-muted-foreground">{(getValue() as string) || "-"}</span> },
-    { accessorKey: "purchase_price", header: "매입가", size: 180,
-      enableColumnFilter: true, filterType: "numberRange",
-      cell: ({ getValue }) => <span className="text-right tabular-nums font-medium w-full">{formatPrice(getValue() as number)}</span>,
-      exportValue: (r) => r.purchase_price },
-    { id: "_actions", header: "", size: 56, disableSort: true, enableResizing: false,
-      cell: ({ row }) => (
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-          onClick={(e) => { e.stopPropagation(); if (confirm("이 기계를 삭제하시겠습니까?")) deleteMutation.mutate((row.original as any).id); }}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      ) },
-  ], [deleteMutation]);
+  const { search, setSearch, filtered } = useListFilter<MachineWithCustomer>({
+    data: machines,
+    searchFields: ["model_name", "serial_number"],
+    tabFilters: { machine_type: typeTab, status: statusTab },
+  });
 
   return (
     <div>
@@ -162,30 +93,68 @@ export default function MachinesList() {
             <TabsTrigger value="판매완료">판매완료</TabsTrigger>
           </TabsList>
         </Tabs>
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="모델명 또는 제조번호 검색..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
       </div>
 
-      <ExcelTable
-        data={server.rows}
-        columns={columns}
-        searchPlaceholder="모델명·제조번호·엔진번호·비고 전체검색..."
-        exportFileName="기계관리"
-        emptyMessage="등록된 기계가 없습니다."
-        onRowClick={(m) => navigate(`/machines/${(m as any).id}`)}
-        serverMode
-        totalCount={server.total}
-        isLoading={server.isLoading}
-        sorting={server.state.sorting}
-        onSortingChange={server.setSorting}
-        columnFilters={server.state.columnFilters}
-        onColumnFiltersChange={server.setColumnFilters}
-        globalFilter={server.state.globalFilter}
-        onGlobalFilterChange={server.setGlobalFilter}
-        pageIndex={server.state.pageIndex}
-        pageSize={server.state.pageSize}
-        onPageChange={server.setPageIndex}
-        onPageSizeChange={server.setPageSize}
-        externalSelectOptions={externalSelectOptions}
-      />
+      {isLoading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+      ) : filtered?.length === 0 ? (
+        <Card className="shadow-card border-0"><CardContent className="py-12 text-center text-muted-foreground">등록된 기계가 없습니다. 새로운 기계를 등록하여 관리를 시작하세요.</CardContent></Card>
+      ) : (
+        <Card className="shadow-card border-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-3 font-medium text-muted-foreground">제조사</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">모델명</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">제조번호</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">구분</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">상태</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">입고일</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">판매일</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">고객명</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">매입가</th>
+                  <th className="p-3 w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered?.map((m: any) => (
+                  <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                    <td className="p-3 text-muted-foreground">{m.manufacturer || "-"}</td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Link to={`/machines/${m.id}`} className="font-medium text-foreground hover:text-primary">{m.model_name}</Link>
+                        {(m as any).ecu_mapped && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-blue-600 to-violet-600 text-white whitespace-nowrap">
+                            <Zap className="h-2.5 w-2.5" />ECU{(m as any).ecu_hp ? ` ${(m as any).ecu_hp}HP` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-3 font-mono text-xs text-muted-foreground">{m.serial_number}</td>
+                    <td className="p-3"><TypeBadge type={m.machine_type} /></td>
+                    <td className="p-3"><StatusBadge status={m.status} /></td>
+                    <td className="p-3 text-muted-foreground">{formatDate(m.entry_date)}</td>
+                    <td className="p-3 text-muted-foreground">{m.sale_date ? formatDate(m.sale_date) : "-"}</td>
+                    <td className="p-3 text-muted-foreground">{m.customers?.name || "-"}</td>
+                    <td className="p-3 text-right tabular-nums font-medium">{formatPrice(m.purchase_price)}</td>
+                    <td className="p-3">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); if (confirm("이 기계를 삭제하시겠습니까?")) deleteMutation.mutate(m.id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <AddMachineDialog open={open} onOpenChange={setOpen} />
       <BulkMachineDialog open={bulkOpen} onOpenChange={setBulkOpen} />

@@ -1,41 +1,44 @@
-import { useState, useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { useNavigate } from "react-router-dom";
+import { useListFilter } from "@/hooks/useListFilter";
+import { Link } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Plus, Trash2 } from "lucide-react";
+import { Search, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RepairInputModal from "@/components/RepairInputModal";
 import MechanicRepairForm from "@/components/MechanicRepairForm";
 import RepairLogHistory from "@/components/RepairLogHistory";
-import ExcelTable, { type ExcelColumn } from "@/components/ExcelTable";
-import { useServerTable } from "@/hooks/useServerTable";
 import type { RepairWithMachine } from "@/types/database";
 
 export default function RepairsList() {
   const [repairOpen, setRepairOpen] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
-  const navigate = useNavigate();
 
   useRealtimeSync("repairs", [["all-repairs"]]);
 
-  const server = useServerTable<RepairWithMachine>({
-    table: "repairs",
-    select: "*, machines(id, model_name, serial_number)",
-    searchColumn: "search_vec",
-    defaultSort: { column: "repair_date", ascending: false },
+  const { data: repairs, isLoading } = useQuery({
     queryKey: ["all-repairs"],
-    columnSpecs: {
-      repair_date: { id: "repair_date", dbColumn: "repair_date", filterType: "dateRange" },
-      repair_content: { id: "repair_content", dbColumn: "repair_content", filterType: "text" },
-      technician: { id: "technician", dbColumn: "technician", filterType: "select" },
-      labor_cost: { id: "labor_cost", dbColumn: "labor_cost", filterType: "numberRange" },
-      total_cost: { id: "total_cost", dbColumn: "total_cost", filterType: "numberRange" },
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("repairs")
+        .select("*, machines(id, model_name, serial_number)")
+        .order("repair_date", { ascending: false });
+      if (error) throw error;
+      return data as RepairWithMachine[];
     },
+  });
+
+  const { search, setSearch, filtered } = useListFilter<RepairWithMachine>({
+    data: repairs,
+    searchFields: ["repair_content", "technician", "machines.serial_number", "machines.model_name"],
   });
 
   const deleteMutation = useMutation({
@@ -49,51 +52,6 @@ export default function RepairsList() {
     },
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
-
-  const columns = useMemo<ExcelColumn<RepairWithMachine>[]>(() => [
-    { accessorKey: "repair_date", header: "수리일", size: 220, sticky: true,
-      enableColumnFilter: true, filterType: "dateRange",
-      cell: ({ getValue }) => <span className="whitespace-nowrap">{formatDate(getValue() as string)}</span>,
-      exportValue: (r) => r.repair_date },
-    { id: "machine_model", header: "기계", size: 200,
-      enableColumnFilter: false,
-      accessorFn: (r: any) => r.machines?.model_name ?? "",
-      cell: ({ row }) => {
-        const r = row.original as any;
-        return <span className="font-medium truncate">{r.machines?.model_name ?? "-"}</span>;
-      } },
-    { id: "machine_serial", header: "제조번호", size: 160,
-      enableColumnFilter: false,
-      accessorFn: (r: any) => r.machines?.serial_number ?? "",
-      cell: ({ getValue }) => <span className="font-mono text-xs text-muted-foreground">{(getValue() as string) || "-"}</span> },
-    { accessorKey: "repair_content", header: "수리내용", size: 320,
-      enableColumnFilter: true, filterType: "text",
-      cell: ({ getValue }) => <span className="truncate">{getValue() as string}</span> },
-    { accessorKey: "technician", header: "담당", size: 120,
-      enableColumnFilter: true, filterType: "select",
-      cell: ({ getValue }) => <span className="text-muted-foreground">{(getValue() as string) || "-"}</span> },
-    { accessorKey: "labor_cost", header: "공임비", size: 180,
-      enableColumnFilter: true, filterType: "numberRange",
-      cell: ({ getValue }) => {
-        const v = getValue() as number;
-        return <span className="text-right tabular-nums w-full">{v > 0 ? formatPrice(v) : "-"}</span>;
-      },
-      exportValue: (r) => r.labor_cost ?? 0 },
-    { accessorKey: "total_cost", header: "총비용", size: 200,
-      enableColumnFilter: true, filterType: "numberRange",
-      cell: ({ getValue }) => {
-        const v = getValue() as number;
-        return <span className="text-right tabular-nums font-medium w-full">{v > 0 ? formatPrice(v) : "-"}</span>;
-      },
-      exportValue: (r) => r.total_cost ?? 0 },
-    { id: "_actions", header: "", size: 56, disableSort: true,
-      cell: ({ row }) => (
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-          onClick={(e) => { e.stopPropagation(); if (confirm("이 수리 이력을 삭제하시겠습니까?")) deleteMutation.mutate((row.original as any).id); }}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      ) },
-  ], [deleteMutation]);
 
   return (
     <div>
@@ -112,30 +70,61 @@ export default function RepairsList() {
         </TabsList>
 
         <TabsContent value="history">
-          <ExcelTable
-            data={server.rows}
-            columns={columns}
-            searchPlaceholder="수리내용·담당기사·비고 전체검색..."
-            exportFileName="수리이력"
-            emptyMessage="수리 이력이 없습니다."
-            onRowClick={(r) => {
-              const mid = (r as any).machines?.id;
-              if (mid) navigate(`/machines/${mid}`);
-            }}
-            serverMode
-            totalCount={server.total}
-            isLoading={server.isLoading}
-            sorting={server.state.sorting}
-            onSortingChange={server.setSorting}
-            columnFilters={server.state.columnFilters}
-            onColumnFiltersChange={server.setColumnFilters}
-            globalFilter={server.state.globalFilter}
-            onGlobalFilterChange={server.setGlobalFilter}
-            pageIndex={server.state.pageIndex}
-            pageSize={server.state.pageSize}
-            onPageChange={server.setPageIndex}
-            onPageSizeChange={server.setPageSize}
-          />
+          <div className="relative max-w-xs mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="제조번호, 수리내용, 담당기사 검색..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+          ) : filtered?.length === 0 ? (
+            <Card className="shadow-card border-0"><CardContent className="py-12 text-center text-muted-foreground">수리 이력이 없습니다.</CardContent></Card>
+          ) : (
+            <Card className="shadow-card border-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left p-3 font-medium text-muted-foreground">수리일</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">기계</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">수리내용</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">담당</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">공임비</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">총비용</th>
+                      <th className="p-3 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered?.map((r: any) => (
+                      <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="p-3 whitespace-nowrap">{formatDate(r.repair_date)}</td>
+                        <td className="p-3">
+                          <Link to={`/machines/${r.machines?.id}`} className="hover:text-primary">
+                            <span className="font-medium">{r.machines?.model_name}</span>
+                            <span className="block text-xs text-muted-foreground font-mono">{r.machines?.serial_number}</span>
+                          </Link>
+                        </td>
+                        <td className="p-3">{r.repair_content}</td>
+                        <td className="p-3 text-muted-foreground">{r.technician || "-"}</td>
+                        <td className="p-3 text-right tabular-nums">{r.labor_cost > 0 ? formatPrice(r.labor_cost) : "-"}</td>
+                        <td className="p-3 text-right tabular-nums font-medium">{r.total_cost > 0 ? formatPrice(r.total_cost) : "-"}</td>
+                        <td className="p-3">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => { if (confirm("이 수리 이력을 삭제하시겠습니까?")) deleteMutation.mutate(r.id); }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="mechanic-input">
@@ -151,4 +140,3 @@ export default function RepairsList() {
     </div>
   );
 }
-
