@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MachineWithCustomer } from "@/types/database";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
+const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
 
 export default function MachinesList() {
   const [typeTab, setTypeTab] = useState("전체");
