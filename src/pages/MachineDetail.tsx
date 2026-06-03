@@ -554,15 +554,24 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
           </div>
           <div><Label>모델명</Label><Input value={form.model_name} onChange={e => setForm(f => ({...f, model_name: e.target.value}))} /></div>
           <div><Label>제조번호</Label><Input value={form.serial_number} onChange={e => setForm(f => ({...f, serial_number: e.target.value}))} /></div>
+          <div><Label>엔진번호</Label><Input value={form.engine_number} onChange={e => setForm(f => ({...f, engine_number: e.target.value}))} placeholder="엔진번호 (선택)" /></div>
+          <div>
+            <Label>종류</Label>
+            <Select value={form.classification} onValueChange={v => setForm(f => ({...f, classification: v}))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{CLASSIFICATIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>구분</Label>
             <Select value={form.machine_type} onValueChange={v => setForm(f => ({...f, machine_type: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고기계</SelectItem></SelectContent>
+              <SelectContent>{MACHINE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div><Label>입고일</Label><Input type="date" value={form.entry_date} onChange={e => setForm(f => ({...f, entry_date: e.target.value}))} /></div>
           <div><Label>매입가 (원)</Label><Input type="number" value={form.purchase_price} onChange={e => setForm(f => ({...f, purchase_price: e.target.value}))} /></div>
+          <div><Label>영업담당</Label><Input value={form.salesperson} onChange={e => setForm(f => ({...f, salesperson: e.target.value}))} placeholder="영업 담당자 이름 (선택)" /></div>
           <div><Label>특이사항</Label><Input value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} /></div>
 
           {/* ECU 맵핑/업그레이드 */}
