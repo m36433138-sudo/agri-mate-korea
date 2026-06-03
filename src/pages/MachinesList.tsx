@@ -60,7 +60,7 @@ export default function MachinesList() {
   const { search, setSearch, filtered } = useListFilter<MachineWithCustomer>({
     data: machines,
     searchFields: ["model_name", "serial_number"],
-    tabFilters: { machine_type: typeTab, status: statusTab },
+    tabFilters: { classification: typeTab, status: statusTab },
   });
 
   return (
