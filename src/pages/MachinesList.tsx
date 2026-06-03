@@ -289,7 +289,8 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const mutation = useMutation({
     mutationFn: async () => {
       const inserts = validRows.map((r) => ({
-        model_name: r.model_name, serial_number: r.serial_number, machine_type: r.machine_type,
+        model_name: r.model_name, serial_number: r.serial_number,
+        classification: r.classification, machine_type: r.machine_type,
         entry_date: r.entry_date, purchase_price: parseInt(r.purchase_price), notes: r.notes || null,
       }));
       const { error } = await supabase.from("machines").insert(inserts);
