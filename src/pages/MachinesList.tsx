@@ -310,7 +310,7 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>기계 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 구분, 입고일, 매입가, 특이사항</p>
+          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 종류, 구분, 입고일, 매입가, 특이사항</p>
         </DialogHeader>
         <div>
           <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium text-primary hover:underline">
@@ -321,16 +321,21 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-3">
             {rows.map((row, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1fr_100px_120px_130px_auto] gap-2 items-end">
+              <div key={i} className="grid grid-cols-[1fr_1fr_110px_100px_120px_130px_auto] gap-2 items-end">
                 {i === 0 && (
                   <>
                     <Label className="text-xs">모델명 *</Label><Label className="text-xs">제조번호 *</Label>
+                    <Label className="text-xs">종류 *</Label>
                     <Label className="text-xs">구분 *</Label><Label className="text-xs">입고일 *</Label>
                     <Label className="text-xs">매입가 *</Label><div />
                   </>
                 )}
                 <Input value={row.model_name} onChange={(e) => updateRow(i, "model_name", e.target.value)} placeholder="모델명" className="h-9 text-sm" />
                 <Input value={row.serial_number} onChange={(e) => updateRow(i, "serial_number", e.target.value)} placeholder="제조번호" className="h-9 text-sm" />
+                <Select value={row.classification} onValueChange={(v) => updateRow(i, "classification", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>{CLASSIFICATIONS.map(c => <SelectItem key={c} value={c}>{c === "농업용트랙터" ? "트랙터" : c}</SelectItem>)}</SelectContent>
+                </Select>
                 <Select value={row.machine_type} onValueChange={(v) => updateRow(i, "machine_type", v)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고</SelectItem><SelectItem value="타사구매">타사구매</SelectItem></SelectContent>
