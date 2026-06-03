@@ -521,10 +521,13 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
       const { error } = await supabase.from("machines").update({
         model_name: form.model_name, serial_number: form.serial_number,
         machine_type: form.machine_type, manufacturer: form.manufacturer,
+        classification: form.classification,
         entry_date: form.entry_date,
         purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
         ecu_mapped: form.ecu_mapped,
         ecu_hp: form.ecu_mapped && form.ecu_hp ? parseInt(form.ecu_hp) : null,
+        engine_number: form.engine_number || null,
+        salesperson: form.salesperson || null,
       } as any).eq("id", machine.id);
       if (error) throw error;
     },
