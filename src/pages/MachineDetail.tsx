@@ -19,6 +19,8 @@ import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
+const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
+const MACHINE_TYPES = ["새기계", "중고기계", "타사구매"];
 
 export default function MachineDetail() {
   const { id } = useParams<{ id: string }>();
