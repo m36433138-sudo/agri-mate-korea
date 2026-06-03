@@ -507,10 +507,13 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
   const [form, setForm] = useState({
     model_name: machine.model_name, serial_number: machine.serial_number,
     machine_type: machine.machine_type, manufacturer: machine.manufacturer || "얀마",
+    classification: (machine as any).classification || "농업용트랙터",
     entry_date: machine.entry_date,
     purchase_price: String(machine.purchase_price), notes: machine.notes || "",
     ecu_mapped: !!(machine as any).ecu_mapped,
     ecu_hp: String((machine as any).ecu_hp || ""),
+    engine_number: (machine as any).engine_number || "",
+    salesperson: (machine as any).salesperson || "",
   });
 
   const mutation = useMutation({
