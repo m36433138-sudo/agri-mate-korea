@@ -19,6 +19,8 @@ import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
+const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
+const MACHINE_TYPES = ["새기계", "중고기계", "타사구매"];
 
 export default function MachineDetail() {
   const { id } = useParams<{ id: string }>();
@@ -116,8 +118,11 @@ export default function MachineDetail() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t">
             <InfoItem label="제조사" value={machine.manufacturer || "-"} />
+            <InfoItem label="종류" value={(machine as any).classification ? ((machine as any).classification === "농업용트랙터" ? "트랙터" : (machine as any).classification) : "-"} />
             <InfoItem label="입고일" value={formatDate(machine.entry_date)} />
             <InfoItem label="매입가" value={formatPrice(machine.purchase_price)} bold />
+            {(machine as any).engine_number && <InfoItem label="엔진번호" value={(machine as any).engine_number} />}
+            {(machine as any).salesperson && <InfoItem label="영업담당" value={(machine as any).salesperson} />}
             {machine.status === "판매완료" && (
               <>
                 <InfoItem label="판매가" value={machine.sale_price ? formatPrice(machine.sale_price) : "-"} bold primary />
@@ -505,10 +510,13 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
   const [form, setForm] = useState({
     model_name: machine.model_name, serial_number: machine.serial_number,
     machine_type: machine.machine_type, manufacturer: machine.manufacturer || "얀마",
+    classification: (machine as any).classification || "농업용트랙터",
     entry_date: machine.entry_date,
     purchase_price: String(machine.purchase_price), notes: machine.notes || "",
     ecu_mapped: !!(machine as any).ecu_mapped,
     ecu_hp: String((machine as any).ecu_hp || ""),
+    engine_number: (machine as any).engine_number || "",
+    salesperson: (machine as any).salesperson || "",
   });
 
   const mutation = useMutation({
@@ -516,10 +524,13 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
       const { error } = await supabase.from("machines").update({
         model_name: form.model_name, serial_number: form.serial_number,
         machine_type: form.machine_type, manufacturer: form.manufacturer,
+        classification: form.classification,
         entry_date: form.entry_date,
         purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
         ecu_mapped: form.ecu_mapped,
         ecu_hp: form.ecu_mapped && form.ecu_hp ? parseInt(form.ecu_hp) : null,
+        engine_number: form.engine_number || null,
+        salesperson: form.salesperson || null,
       } as any).eq("id", machine.id);
       if (error) throw error;
     },
@@ -546,15 +557,24 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
           </div>
           <div><Label>모델명</Label><Input value={form.model_name} onChange={e => setForm(f => ({...f, model_name: e.target.value}))} /></div>
           <div><Label>제조번호</Label><Input value={form.serial_number} onChange={e => setForm(f => ({...f, serial_number: e.target.value}))} /></div>
+          <div><Label>엔진번호</Label><Input value={form.engine_number} onChange={e => setForm(f => ({...f, engine_number: e.target.value}))} placeholder="엔진번호 (선택)" /></div>
+          <div>
+            <Label>종류</Label>
+            <Select value={form.classification} onValueChange={v => setForm(f => ({...f, classification: v}))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{CLASSIFICATIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>구분</Label>
             <Select value={form.machine_type} onValueChange={v => setForm(f => ({...f, machine_type: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고기계</SelectItem></SelectContent>
+              <SelectContent>{MACHINE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div><Label>입고일</Label><Input type="date" value={form.entry_date} onChange={e => setForm(f => ({...f, entry_date: e.target.value}))} /></div>
           <div><Label>매입가 (원)</Label><Input type="number" value={form.purchase_price} onChange={e => setForm(f => ({...f, purchase_price: e.target.value}))} /></div>
+          <div><Label>영업담당</Label><Input value={form.salesperson} onChange={e => setForm(f => ({...f, salesperson: e.target.value}))} placeholder="영업 담당자 이름 (선택)" /></div>
           <div><Label>특이사항</Label><Input value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} /></div>
 
           {/* ECU 맵핑/업그레이드 */}
