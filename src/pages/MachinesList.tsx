@@ -138,6 +138,7 @@ export default function MachinesList() {
                       </div>
                     </td>
                     <td className="p-3 font-mono text-xs text-muted-foreground">{m.serial_number}</td>
+                    <td className="p-3 text-muted-foreground">{(m as any).classification ? ((m as any).classification === "농업용트랙터" ? "트랙터" : (m as any).classification) : "-"}</td>
                     <td className="p-3"><TypeBadge type={m.machine_type} /></td>
                     <td className="p-3"><StatusBadge status={m.status} /></td>
                     <td className="p-3 text-muted-foreground">{formatDate(m.entry_date)}</td>
