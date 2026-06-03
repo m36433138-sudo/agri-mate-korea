@@ -166,13 +166,13 @@ export default function MachinesList() {
 function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [form, setForm] = useState({ model_name: "", serial_number: "", machine_type: "새기계", manufacturer: "얀마", entry_date: "", purchase_price: "", notes: "" });
+  const [form, setForm] = useState({ model_name: "", serial_number: "", machine_type: "새기계", classification: "농업용트랙터", manufacturer: "얀마", entry_date: "", purchase_price: "", notes: "" });
 
   const mutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("machines").insert({
         model_name: form.model_name, serial_number: form.serial_number,
-        machine_type: form.machine_type, manufacturer: form.manufacturer,
+        machine_type: form.machine_type, classification: form.classification, manufacturer: form.manufacturer,
         entry_date: form.entry_date,
         purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
       });
@@ -182,7 +182,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       qc.invalidateQueries({ queryKey: ["machines"] });
       toast({ title: "기계가 성공적으로 등록되었습니다." });
       onOpenChange(false);
-      setForm({ model_name: "", serial_number: "", machine_type: "새기계", manufacturer: "얀마", entry_date: "", purchase_price: "", notes: "" });
+      setForm({ model_name: "", serial_number: "", machine_type: "새기계", classification: "농업용트랙터", manufacturer: "얀마", entry_date: "", purchase_price: "", notes: "" });
     },
     onError: (e: any) => toast({ title: "오류 발생", description: e.message, variant: "destructive" }),
   });
@@ -201,10 +201,17 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               <SelectContent>{MANUFACTURERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label>모델명 *</Label><Input value={form.model_name} onChange={e => setForm(f => ({...f, model_name: e.target.value}))} placeholder="예: YT5101 트랙터" /></div>
+          <div>
+            <Label>기계 종류 *</Label>
+            <Select value={form.classification} onValueChange={v => setForm(f => ({...f, classification: v}))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{CLASSIFICATIONS.map(c => <SelectItem key={c} value={c}>{c === "농업용트랙터" ? "트랙터" : c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label>모델명 *</Label><Input value={form.model_name} onChange={e => setForm(f => ({...f, model_name: e.target.value}))} placeholder="예: YT5101" /></div>
           <div><Label>제조번호 *</Label><Input value={form.serial_number} onChange={e => setForm(f => ({...f, serial_number: e.target.value}))} placeholder="예: YT5101-2023001" /></div>
           <div>
-            <Label>구분 *</Label>
+            <Label>구분 (신/중고) *</Label>
             <Select value={form.machine_type} onValueChange={v => setForm(f => ({...f, machine_type: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고기계</SelectItem><SelectItem value="타사구매">타사구매</SelectItem></SelectContent>
