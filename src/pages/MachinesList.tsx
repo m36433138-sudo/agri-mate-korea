@@ -232,7 +232,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
-type BulkMachineRow = { model_name: string; serial_number: string; machine_type: string; entry_date: string; purchase_price: string; notes: string };
+type BulkMachineRow = { model_name: string; serial_number: string; classification: string; machine_type: string; entry_date: string; purchase_price: string; notes: string };
 
 const formatExcelDate = (v: any): string => {
   if (!v) return "";
@@ -243,7 +243,7 @@ const formatExcelDate = (v: any): string => {
   return String(v);
 };
 
-const emptyMachineRow = (): BulkMachineRow => ({ model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
+const emptyMachineRow = (): BulkMachineRow => ({ model_name: "", serial_number: "", classification: "농업용트랙터", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
 
 function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { toast } = useToast();
