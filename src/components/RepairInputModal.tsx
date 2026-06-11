@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -140,6 +141,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [laborCost, setLaborCost] = useState("");
   const [operatingHours, setOperatingHours] = useState("");
   const [notes, setNotes] = useState("");
+  const [accountingPosted, setAccountingPosted] = useState(false);
 
   const { data: employees } = useQuery({
     queryKey: ["employees-list"],
@@ -233,6 +235,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setMachineResults([]);
       setAppliedTemplates([]);
       setDraggedPartIndex(null);
+      setAccountingPosted(false);
 
       const resolveDraftMachine = async () => {
         if (machineId || !draftPrefill) return;
@@ -437,6 +440,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           total_cost: totalCost,
           notes: notes || null,
           operating_hours: parseInt(operatingHours) || null,
+          accounting_posted: accountingPosted,
         })
         .select("id")
         .single();
@@ -800,6 +804,17 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               )}
             </div>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 px-1">
+          <Checkbox
+            id="accounting-posted"
+            checked={accountingPosted}
+            onCheckedChange={(v) => setAccountingPosted(!!v)}
+          />
+          <Label htmlFor="accounting-posted" className="cursor-pointer text-sm">
+            전산 기표 완료
+          </Label>
         </div>
 
         <DialogFooter className="pt-4 border-t">
