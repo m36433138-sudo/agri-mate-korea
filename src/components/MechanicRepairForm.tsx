@@ -16,13 +16,24 @@ type PartUsed = {
   quantity: number;
 };
 
-const MECHANICS = ["유호상", "마성수", "김영일", "이재현", "이동진", "정찬교"];
-
 export default function MechanicRepairForm() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [mechanicName, setMechanicName] = useState(MECHANICS[0]);
+  const { data: employees } = useQuery({
+    queryKey: ["employees-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const [mechanicName, setMechanicName] = useState("");
   const [branch, setBranch] = useState<"장흥" | "강진">("장흥");
   const [operatingHours, setOperatingHours] = useState("");
   const [description, setDescription] = useState("");
@@ -159,8 +170,9 @@ export default function MechanicRepairForm() {
                 onChange={(e) => setMechanicName(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {MECHANICS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
+                <option value="">선택하세요</option>
+                {employees?.map((emp: any) => (
+                  <option key={emp.id} value={emp.name}>{emp.name}</option>
                 ))}
               </select>
             </div>
