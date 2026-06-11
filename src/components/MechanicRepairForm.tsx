@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search, X, Wrench } from "lucide-react";
@@ -38,6 +39,7 @@ export default function MechanicRepairForm() {
   const [operatingHours, setOperatingHours] = useState("");
   const [description, setDescription] = useState("");
   const [partsUsed, setPartsUsed] = useState<PartUsed[]>([]);
+  const [accountingPosted, setAccountingPosted] = useState(false);
 
   // Customer search
   const [customerSearch, setCustomerSearch] = useState("");
@@ -116,6 +118,7 @@ export default function MechanicRepairForm() {
           operating_hours: operatingHours ? parseInt(operatingHours) : null,
           description: description || null,
           branch,
+          accounting_posted: accountingPosted,
         })
         .select("id")
         .single();
@@ -145,6 +148,7 @@ export default function MechanicRepairForm() {
       setSelectedCustomerName("");
       setSelectedMachineId("");
       setSelectedMachineName("");
+      setAccountingPosted(false);
     },
     onError: (e: any) => toast({ title: "저장 실패", description: e.message, variant: "destructive" }),
   });
@@ -280,6 +284,17 @@ export default function MechanicRepairForm() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <Checkbox
+              id="mech-accounting"
+              checked={accountingPosted}
+              onCheckedChange={(v) => setAccountingPosted(!!v)}
+            />
+            <Label htmlFor="mech-accounting" className="cursor-pointer text-sm">
+              전산 기표 완료
+            </Label>
           </div>
 
           <Button type="submit" disabled={!canSubmit || saveMutation.isPending} className="w-full">
