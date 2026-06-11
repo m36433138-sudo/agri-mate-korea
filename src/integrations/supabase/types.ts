@@ -961,6 +961,7 @@ export type Database = {
       }
       repair_logs: {
         Row: {
+          accounting_posted: boolean
           branch: string | null
           created_at: string
           customer_id: string | null
@@ -972,6 +973,7 @@ export type Database = {
           repair_date: string | null
         }
         Insert: {
+          accounting_posted?: boolean
           branch?: string | null
           created_at?: string
           customer_id?: string | null
@@ -983,6 +985,7 @@ export type Database = {
           repair_date?: string | null
         }
         Update: {
+          accounting_posted?: boolean
           branch?: string | null
           created_at?: string
           customer_id?: string | null
@@ -1141,6 +1144,7 @@ export type Database = {
       }
       repairs: {
         Row: {
+          accounting_posted: boolean
           created_at: string
           id: string
           labor_cost: number | null
@@ -1154,6 +1158,7 @@ export type Database = {
           total_cost: number | null
         }
         Insert: {
+          accounting_posted?: boolean
           created_at?: string
           id?: string
           labor_cost?: number | null
@@ -1167,6 +1172,7 @@ export type Database = {
           total_cost?: number | null
         }
         Update: {
+          accounting_posted?: boolean
           created_at?: string
           id?: string
           labor_cost?: number | null
