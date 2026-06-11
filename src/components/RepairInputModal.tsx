@@ -141,6 +141,19 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [operatingHours, setOperatingHours] = useState("");
   const [notes, setNotes] = useState("");
 
+  const { data: employees } = useQuery({
+    queryKey: ["employees-list"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const [machineSearch, setMachineSearch] = useState("");
   const [selectedMachineId, setSelectedMachineId] = useState(machineId || "");
   const [selectedMachineName, setSelectedMachineName] = useState(machineName || "");
@@ -598,7 +611,16 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                 </div>
                 <div>
                   <Label>담당 기사</Label>
-                  <Input value={technician} onChange={(e) => setTechnician(e.target.value)} placeholder="예: 박기사" />
+                  <select
+                    value={technician}
+                    onChange={(e) => setTechnician(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">선택하세요</option>
+                    {employees?.map((emp: any) => (
+                      <option key={emp.id} value={emp.name}>{emp.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
