@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, X, Wrench } from "lucide-react";
+import { Plus, Trash2, Search, X, Wrench, Camera, Loader2 } from "lucide-react";
+import { useRef } from "react";
 import PartCodeAutocomplete from "./PartCodeAutocomplete";
 
 type PartUsed = {
