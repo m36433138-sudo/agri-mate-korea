@@ -106,6 +106,56 @@ export default function MechanicRepairForm() {
 
   const removePart = (i: number) => setPartsUsed((prev) => prev.filter((_, idx) => idx !== i));
 
+  // ── Photo-based part recognition ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [recognizing, setRecognizing] = useState(false);
+
+  const handlePhotoSelected = async (file: File) => {
+    if (!file) return;
+    setRecognizing(true);
+    try {
+      // Convert to base64 data URL
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("recognize-parts", {
+        body: { image: dataUrl, branch },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const found: Array<{ part_code: string; part_name: string; quantity: number }> = data?.parts || [];
+      if (found.length === 0) {
+        toast({
+          title: "부품을 찾지 못했습니다",
+          description: `${branch}지점 재고에서 일치하는 부품이 없습니다. 사진을 다시 찍거나 수동으로 추가해 주세요.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setPartsUsed((prev) => {
+        const next = [...prev];
+        for (const f of found) {
+          const idx = next.findIndex((p) => p.part_code === f.part_code);
+          if (idx >= 0) next[idx] = { ...next[idx], quantity: next[idx].quantity + f.quantity };
+          else next.push({ part_code: f.part_code, part_name: f.part_name, quantity: f.quantity });
+        }
+        return next;
+      });
+      toast({ title: `${found.length}개 부품을 인식했습니다.` });
+    } catch (e: any) {
+      toast({ title: "부품 인식 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setRecognizing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       // 1. Insert repair_log
