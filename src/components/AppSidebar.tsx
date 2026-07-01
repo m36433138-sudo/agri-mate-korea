@@ -74,8 +74,6 @@ export function AppSidebar() {
     ...(isAdmin || isEmployee ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
     ...(isAdmin || isEmployee ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),
     ...(isAdmin || isEmployee ? [{ title: "자산관리", url: "/assets", icon: Landmark }] : []),
-    ...(isAdmin ? [{ title: "회계관리", url: "/accounting", icon: Calculator }] : []),
-    ...(isAdmin ? [{ title: "뱅킹연동", url: "/banking", icon: Banknote }] : []),
   ];
 
   // 시스템 그룹

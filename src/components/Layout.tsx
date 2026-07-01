@@ -23,8 +23,6 @@ const PAGE_LABELS: Record<string, string> = {
   "/my-page": "마이페이지",
   "/vendors": "업체관리",
   "/assets": "자산관리",
-  "/accounting": "회계관리",
-  "/banking": "뱅킹연동",
 };
 
 function Breadcrumb() {
