@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, X, Wrench } from "lucide-react";
+import { Plus, Trash2, Search, X, Wrench, Camera, Loader2 } from "lucide-react";
 import PartCodeAutocomplete from "./PartCodeAutocomplete";
 
 type PartUsed = {
@@ -105,6 +105,56 @@ export default function MechanicRepairForm() {
   };
 
   const removePart = (i: number) => setPartsUsed((prev) => prev.filter((_, idx) => idx !== i));
+
+  // ── Photo-based part recognition ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [recognizing, setRecognizing] = useState(false);
+
+  const handlePhotoSelected = async (file: File) => {
+    if (!file) return;
+    setRecognizing(true);
+    try {
+      // Convert to base64 data URL
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("recognize-parts", {
+        body: { image: dataUrl, branch },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const found: Array<{ part_code: string; part_name: string; quantity: number }> = data?.parts || [];
+      if (found.length === 0) {
+        toast({
+          title: "부품을 찾지 못했습니다",
+          description: `${branch}지점 재고에서 일치하는 부품이 없습니다. 사진을 다시 찍거나 수동으로 추가해 주세요.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setPartsUsed((prev) => {
+        const next = [...prev];
+        for (const f of found) {
+          const idx = next.findIndex((p) => p.part_code === f.part_code);
+          if (idx >= 0) next[idx] = { ...next[idx], quantity: next[idx].quantity + f.quantity };
+          else next.push({ part_code: f.part_code, part_name: f.part_name, quantity: f.quantity });
+        }
+        return next;
+      });
+      toast({ title: `${found.length}개 부품을 인식했습니다.` });
+    } catch (e: any) {
+      toast({ title: "부품 인식 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setRecognizing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -259,8 +309,37 @@ export default function MechanicRepairForm() {
 
           {/* Parts section */}
           <div className="space-y-3 border-t pt-4">
-            <Label className="text-sm font-semibold text-muted-foreground">사용 부품 내역</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold text-muted-foreground">사용 부품 내역</Label>
+              <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handlePhotoSelected(e.target.files[0])}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={recognizing}
+                >
+                  {recognizing ? (
+                    <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> 인식 중...</>
+                  ) : (
+                    <><Camera className="h-4 w-4 mr-1" /> 사진으로 부품 인식</>
+                  )}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              사진을 찍거나 이미지를 선택하면 AI가 {branch}지점 재고에서 부품을 자동으로 찾아 추가합니다.
+            </p>
             <PartCodeAutocomplete branch={branch} onSelect={addPart} />
+
 
             {partsUsed.length > 0 && (
               <div className="space-y-2 mt-3">
