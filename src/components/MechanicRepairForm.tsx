@@ -309,8 +309,37 @@ export default function MechanicRepairForm() {
 
           {/* Parts section */}
           <div className="space-y-3 border-t pt-4">
-            <Label className="text-sm font-semibold text-muted-foreground">사용 부품 내역</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold text-muted-foreground">사용 부품 내역</Label>
+              <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handlePhotoSelected(e.target.files[0])}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={recognizing}
+                >
+                  {recognizing ? (
+                    <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> 인식 중...</>
+                  ) : (
+                    <><Camera className="h-4 w-4 mr-1" /> 사진으로 부품 인식</>
+                  )}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              사진을 찍거나 이미지를 선택하면 AI가 {branch}지점 재고에서 부품을 자동으로 찾아 추가합니다.
+            </p>
             <PartCodeAutocomplete branch={branch} onSelect={addPart} />
+
 
             {partsUsed.length > 0 && (
               <div className="space-y-2 mt-3">
