@@ -102,6 +102,8 @@ const App = () => (
                           </ProtectedRoute>
                         } />
                         <Route path="/my-page" element={<MyPage />} />
+                        <Route path="/accounting" element={<Navigate to="/" replace />} />
+                        <Route path="/banking" element={<Navigate to="/" replace />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </Suspense>
