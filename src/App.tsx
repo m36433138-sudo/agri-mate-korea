@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -102,6 +102,8 @@ const App = () => (
                           </ProtectedRoute>
                         } />
                         <Route path="/my-page" element={<MyPage />} />
+                        <Route path="/accounting" element={<Navigate to="/" replace />} />
+                        <Route path="/banking" element={<Navigate to="/" replace />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </Suspense>
