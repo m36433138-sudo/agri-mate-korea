@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search, X, Wrench, Camera, Loader2 } from "lucide-react";
-import { useRef } from "react";
 import PartCodeAutocomplete from "./PartCodeAutocomplete";
 
 type PartUsed = {
