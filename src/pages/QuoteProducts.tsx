@@ -9,6 +9,7 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { QuoteProduct } from "@/lib/quoteTypes";
 import { won } from "@/lib/quoteTypes";
+import ProductBulkUpload from "@/components/quotes/ProductBulkUpload";
 
 export default function QuoteProducts() {
   const [items, setItems] = useState<QuoteProduct[]>([]);
@@ -57,9 +58,12 @@ export default function QuoteProducts() {
           <h1 className="text-2xl font-bold">견적 제품 관리</h1>
           <p className="text-sm text-muted-foreground mt-1">견적서에서 선택할 제품/규격/단가</p>
         </div>
-        <Button onClick={() => { setEditing({ is_active: true }); setOpen(true); }}>
-          <Plus className="w-4 h-4 mr-1" /> 제품 추가
-        </Button>
+        <div className="flex gap-2">
+          <ProductBulkUpload onDone={load} />
+          <Button onClick={() => { setEditing({ is_active: true }); setOpen(true); }}>
+            <Plus className="w-4 h-4 mr-1" /> 제품 추가
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
