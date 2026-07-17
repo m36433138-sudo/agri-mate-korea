@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { setAutoLogin } from "@/lib/authStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Tractor } from "lucide-react";
@@ -12,6 +14,10 @@ export default function Auth() {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(() => {
+    const saved = localStorage.getItem("agrimate-auto-login");
+    return saved !== "false";
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -22,6 +28,7 @@ export default function Auth() {
     try {
       // If input looks like email, use as-is; otherwise append @ym.local
       const email = loginId.includes("@") ? loginId : `${loginId}@ym.local`;
+      setAutoLogin(autoLogin);
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       navigate("/");
@@ -73,6 +80,16 @@ export default function Auth() {
                 required
                 minLength={6}
               />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="autoLogin"
+                checked={autoLogin}
+                onCheckedChange={(checked) => setAutoLogin(checked === true)}
+              />
+              <Label htmlFor="autoLogin" className="text-sm font-normal cursor-pointer">
+                자동 로그인
+              </Label>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
