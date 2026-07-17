@@ -81,6 +81,16 @@ export default function Auth() {
                 minLength={6}
               />
             </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="autoLogin"
+                checked={autoLogin}
+                onCheckedChange={(checked) => setAutoLogin(checked === true)}
+              />
+              <Label htmlFor="autoLogin" className="text-sm font-normal cursor-pointer">
+                자동 로그인
+              </Label>
+            </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               로그인
