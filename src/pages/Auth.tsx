@@ -28,6 +28,7 @@ export default function Auth() {
     try {
       // If input looks like email, use as-is; otherwise append @ym.local
       const email = loginId.includes("@") ? loginId : `${loginId}@ym.local`;
+      setAutoLogin(autoLogin);
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       navigate("/");
