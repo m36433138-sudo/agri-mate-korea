@@ -14,6 +14,10 @@ export default function Auth() {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(() => {
+    const saved = localStorage.getItem("agrimate-auto-login");
+    return saved !== "false";
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
 
