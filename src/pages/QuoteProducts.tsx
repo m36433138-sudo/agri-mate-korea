@@ -9,6 +9,7 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { QuoteProduct } from "@/lib/quoteTypes";
 import { won } from "@/lib/quoteTypes";
+import ProductBulkUpload from "@/components/quotes/ProductBulkUpload";
 
 export default function QuoteProducts() {
   const [items, setItems] = useState<QuoteProduct[]>([]);
