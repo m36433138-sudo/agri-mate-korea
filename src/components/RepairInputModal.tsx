@@ -288,6 +288,11 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setAppliedTemplates([]);
       setDraggedPartIndex(null);
       setAccountingPosted(false);
+      setSelectedCustomerId("");
+      setSelectedCustomerName("");
+      setCustomerSearch("");
+      setCustomerResults([]);
+      setCustomerMachines([]);
 
       const resolveDraftMachine = async () => {
         if (machineId || !draftPrefill) return;
