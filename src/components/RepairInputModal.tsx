@@ -156,6 +156,12 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     },
   });
 
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [selectedCustomerName, setSelectedCustomerName] = useState<string>("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerResults, setCustomerResults] = useState<any[]>([]);
+  const [customerMachines, setCustomerMachines] = useState<any[]>([]);
+
   const [machineSearch, setMachineSearch] = useState("");
   const [selectedMachineId, setSelectedMachineId] = useState(machineId || "");
   const [selectedMachineName, setSelectedMachineName] = useState(machineName || "");
@@ -181,20 +187,66 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     },
   });
 
+  const searchCustomers = async (q: string) => {
+    setCustomerSearch(q);
+    if (!q.trim()) {
+      setCustomerResults([]);
+      return;
+    }
+    const like = `%${q}%`;
+    const { data } = await supabase
+      .from("customers")
+      .select("id, name, phone, address")
+      .or(`name.ilike.${like},phone.ilike.${like}`)
+      .order("name")
+      .limit(10);
+    setCustomerResults(data || []);
+  };
+
+  const pickCustomer = async (c: any) => {
+    setSelectedCustomerId(c.id);
+    setSelectedCustomerName(c.name);
+    setCustomerSearch("");
+    setCustomerResults([]);
+    const { data } = await supabase
+      .from("machines")
+      .select("id, model_name, serial_number, machine_type")
+      .eq("customer_id", c.id)
+      .order("model_name");
+    setCustomerMachines(data || []);
+  };
+
+  const clearCustomer = () => {
+    setSelectedCustomerId("");
+    setSelectedCustomerName("");
+    setCustomerMachines([]);
+    setSelectedMachineId("");
+    setSelectedMachineName("");
+    setMachineSearch("");
+    setMachineResults([]);
+  };
+
   const searchMachines = async (q: string) => {
     setMachineSearch(q);
     if (!q.trim()) {
       setMachineResults([]);
       return;
     }
-
     const like = `%${q}%`;
-    const { data } = await supabase
+    let query = supabase
       .from("machines")
-      .select("id, model_name, serial_number, machine_type")
+      .select("id, model_name, serial_number, machine_type, customer_id")
       .or(`model_name.ilike.${like},serial_number.ilike.${like},machine_type.ilike.${like}`)
       .limit(8);
-
+    if (selectedCustomerId) {
+      query = supabase
+        .from("machines")
+        .select("id, model_name, serial_number, machine_type, customer_id")
+        .eq("customer_id", selectedCustomerId)
+        .or(`model_name.ilike.${like},serial_number.ilike.${like},machine_type.ilike.${like}`)
+        .limit(8);
+    }
+    const { data } = await query;
     setMachineResults(data || []);
   };
 
