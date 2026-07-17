@@ -246,6 +246,51 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          address: string | null
+          business_number: string | null
+          ceo_name: string | null
+          company_name: string
+          created_at: string
+          fax: string | null
+          id: string
+          is_default: boolean
+          phone: string | null
+          sort_order: number
+          stamp_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          business_number?: string | null
+          ceo_name?: string | null
+          company_name: string
+          created_at?: string
+          fax?: string | null
+          id?: string
+          is_default?: boolean
+          phone?: string | null
+          sort_order?: number
+          stamp_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          business_number?: string | null
+          ceo_name?: string | null
+          company_name?: string
+          created_at?: string
+          fax?: string | null
+          id?: string
+          is_default?: boolean
+          phone?: string | null
+          sort_order?: number
+          stamp_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_drive_links: {
         Row: {
           created_at: string | null
@@ -874,6 +919,183 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_items: {
+        Row: {
+          created_at: string
+          discount_rate: number
+          id: string
+          line_total: number
+          product_id: string | null
+          product_name: string
+          quantity: number
+          quote_id: string
+          sort_order: number
+          spec: string | null
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          discount_rate?: number
+          id?: string
+          line_total?: number
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          quote_id: string
+          sort_order?: number
+          spec?: string | null
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          discount_rate?: number
+          id?: string
+          line_total?: number
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          quote_id?: string
+          sort_order?: number
+          spec?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "quote_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_products: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          sort_order: number
+          spec: string | null
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          sort_order?: number
+          spec?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          sort_order?: number
+          spec?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quotes: {
+        Row: {
+          branch: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_address: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          customer_ssn: string | null
+          discount_total: number
+          id: string
+          memo: string | null
+          quote_date: string
+          quote_number: string
+          signature_data: string | null
+          subtotal: number
+          total_amount: number
+          trade_in_amount: number
+          updated_at: string
+        }
+        Insert: {
+          branch?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          customer_ssn?: string | null
+          discount_total?: number
+          id?: string
+          memo?: string | null
+          quote_date?: string
+          quote_number: string
+          signature_data?: string | null
+          subtotal?: number
+          total_amount?: number
+          trade_in_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          branch?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          customer_ssn?: string | null
+          discount_total?: number
+          id?: string
+          memo?: string | null
+          quote_date?: string
+          quote_number?: string
+          signature_data?: string | null
+          subtotal?: number
+          total_amount?: number
+          trade_in_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       repair_history: {
         Row: {
           cost: number | null
@@ -1476,6 +1698,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_quote_number: { Args: never; Returns: string }
     }
     Enums: {
       app_role: "admin" | "employee" | "customer"
