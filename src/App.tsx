@@ -31,6 +31,10 @@ const WorkspacePage = lazy(() => import("@/components/workspace/WorkspacePage"))
 const VendorsList = lazy(() => import("@/pages/VendorsList"));
 const AssetsPage = lazy(() => import("@/pages/AssetsPage"));
 const LocationHistory = lazy(() => import("@/pages/LocationHistory"));
+const QuotesList = lazy(() => import("@/pages/QuotesList"));
+const QuoteEditor = lazy(() => import("@/pages/QuoteEditor"));
+const QuoteProducts = lazy(() => import("@/pages/QuoteProducts"));
+const QuoteCompanies = lazy(() => import("@/pages/QuoteCompanies"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
@@ -102,6 +106,13 @@ const App = () => (
                           </ProtectedRoute>
                         } />
                         <Route path="/my-page" element={<MyPage />} />
+                        <Route path="/quotes" element={<QuotesList />} />
+                        <Route path="/quotes/new" element={<QuoteEditor />} />
+                        <Route path="/quotes/products" element={<QuoteProducts />} />
+                        <Route path="/quotes/companies" element={
+                          <ProtectedRoute allowedRoles={["admin"]}><QuoteCompanies /></ProtectedRoute>
+                        } />
+                        <Route path="/quotes/:id" element={<QuoteEditor />} />
                         <Route path="/accounting" element={<Navigate to="/" replace />} />
                         <Route path="/banking" element={<Navigate to="/" replace />} />
                         <Route path="*" element={<NotFound />} />
