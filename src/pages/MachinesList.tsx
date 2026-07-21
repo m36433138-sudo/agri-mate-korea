@@ -233,7 +233,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
-type BulkMachineRow = { model_name: string; serial_number: string; classification: string; machine_type: string; entry_date: string; purchase_price: string; notes: string };
+type BulkMachineRow = { model_name: string; serial_number: string; classification: string; machine_type: string; entry_date: string; purchase_price: string; notes: string; customer_name: string; customer_phone: string };
 
 const formatExcelDate = (v: any): string => {
   if (!v) return "";
@@ -244,7 +244,9 @@ const formatExcelDate = (v: any): string => {
   return String(v);
 };
 
-const emptyMachineRow = (): BulkMachineRow => ({ model_name: "", serial_number: "", classification: "농업용트랙터", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
+const normalizePhone = (v: string) => v.replace(/[^0-9]/g, "");
+
+const emptyMachineRow = (): BulkMachineRow => ({ model_name: "", serial_number: "", classification: "농업용트랙터", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "", customer_name: "", customer_phone: "" });
 
 function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { toast } = useToast();
@@ -273,6 +275,8 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             machine_type: String(row[3] || "새기계"), entry_date: formatExcelDate(row[4]),
             purchase_price: String(row[5] || "").replace(/[^0-9]/g, ""),
             notes: String(row[6] || ""),
+            customer_name: String(row[7] || ""),
+            customer_phone: String(row[8] || ""),
           };
         });
         setRows((prev) => [...prev.filter(r => r.model_name || r.serial_number), ...mapped]);
@@ -285,23 +289,57 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     e.target.value = "";
   };
 
-  const validRows = rows.filter((r) => r.model_name && r.serial_number && r.entry_date && r.purchase_price);
+  const validRows = rows.filter((r) => r.model_name && r.serial_number && r.entry_date);
 
   const mutation = useMutation({
     mutationFn: async () => {
+      // 1) Resolve/create customers by phone
+      const phoneRows = validRows.filter(r => normalizePhone(r.customer_phone));
+      const phones = Array.from(new Set(phoneRows.map(r => normalizePhone(r.customer_phone))));
+      const phoneToId = new Map<string, string>();
+
+      if (phones.length > 0) {
+        const { data: existing, error: e1 } = await supabase
+          .from("customers").select("id, phone").in("phone", phones);
+        if (e1) throw e1;
+        (existing || []).forEach((c: any) => phoneToId.set(normalizePhone(c.phone || ""), c.id));
+
+        const toCreate = phoneRows
+          .filter(r => !phoneToId.has(normalizePhone(r.customer_phone)))
+          .reduce((acc: any[], r) => {
+            const p = normalizePhone(r.customer_phone);
+            if (acc.find(x => normalizePhone(x.phone) === p)) return acc;
+            acc.push({ name: r.customer_name || "미상", phone: r.customer_phone });
+            return acc;
+          }, []);
+
+        if (toCreate.length > 0) {
+          const { data: created, error: e2 } = await supabase
+            .from("customers").insert(toCreate).select("id, phone");
+          if (e2) throw e2;
+          (created || []).forEach((c: any) => phoneToId.set(normalizePhone(c.phone || ""), c.id));
+        }
+      }
+
       const inserts = validRows.map((r) => {
-        const price = parseInt(String(r.purchase_price).replace(/[^0-9]/g, ""), 10);
+        const priceRaw = String(r.purchase_price).replace(/[^0-9]/g, "");
+        const price = priceRaw ? parseInt(priceRaw, 10) : null;
+        const phone = normalizePhone(r.customer_phone);
+        const customer_id = phone ? phoneToId.get(phone) || null : null;
         return {
           model_name: r.model_name, serial_number: r.serial_number,
           classification: r.classification, machine_type: r.machine_type,
-          entry_date: r.entry_date, purchase_price: isNaN(price) ? 0 : price, notes: r.notes || null,
+          entry_date: r.entry_date, purchase_price: price, notes: r.notes || null,
+          customer_id,
+          status: customer_id ? "판매완료" : "재고중",
         };
       });
-      const { error } = await supabase.from("machines").insert(inserts);
+      const { error } = await supabase.from("machines").insert(inserts as any);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machines"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
       toast({ title: `${validRows.length}대의 기계가 일괄 등록되었습니다.` });
       onOpenChange(false);
       setRows([emptyMachineRow(), emptyMachineRow(), emptyMachineRow()]);
@@ -311,10 +349,11 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>기계 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 종류, 구분, 입고일, 매입가, 특이사항</p>
+          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 종류, 구분, 입고일, 매입가, 특이사항, 고객명, 고객전화번호<br />
+            · 매입가는 선택 항목입니다. · 고객 전화번호가 있으면 기존 고객과 자동 연결되며, 없으면 새 고객으로 등록됩니다.</p>
         </DialogHeader>
         <div>
           <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium text-primary hover:underline">
@@ -325,13 +364,16 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-3">
             {rows.map((row, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1fr_110px_100px_120px_130px_auto] gap-2 items-end">
+              <div key={i} className="grid grid-cols-[1fr_1fr_100px_90px_115px_110px_1fr_120px_auto] gap-2 items-end">
                 {i === 0 && (
                   <>
                     <Label className="text-xs">모델명 *</Label><Label className="text-xs">제조번호 *</Label>
                     <Label className="text-xs">종류 *</Label>
                     <Label className="text-xs">구분 *</Label><Label className="text-xs">입고일 *</Label>
-                    <Label className="text-xs">매입가 *</Label><div />
+                    <Label className="text-xs">매입가</Label>
+                    <Label className="text-xs">고객명</Label>
+                    <Label className="text-xs">고객전화</Label>
+                    <div />
                   </>
                 )}
                 <Input value={row.model_name} onChange={(e) => updateRow(i, "model_name", e.target.value)} placeholder="모델명" className="h-9 text-sm" />
@@ -345,7 +387,9 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                   <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고</SelectItem><SelectItem value="타사구매">타사구매</SelectItem></SelectContent>
                 </Select>
                 <Input type="date" value={row.entry_date} onChange={(e) => updateRow(i, "entry_date", e.target.value)} className="h-9 text-sm" />
-                <Input type="number" value={row.purchase_price} onChange={(e) => updateRow(i, "purchase_price", e.target.value)} placeholder="매입가" className="h-9 text-sm" />
+                <Input type="number" value={row.purchase_price} onChange={(e) => updateRow(i, "purchase_price", e.target.value)} placeholder="선택" className="h-9 text-sm" />
+                <Input value={row.customer_name} onChange={(e) => updateRow(i, "customer_name", e.target.value)} placeholder="고객명" className="h-9 text-sm" />
+                <Input value={row.customer_phone} onChange={(e) => updateRow(i, "customer_phone", e.target.value)} placeholder="010-0000-0000" className="h-9 text-sm" />
                 <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(i)} disabled={rows.length <= 1}>
                   <Trash2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
