@@ -576,7 +576,7 @@ export type Database = {
           manufacturer: string | null
           model_name: string
           notes: string | null
-          purchase_price: number
+          purchase_price: number | null
           sale_date: string | null
           sale_price: number | null
           salesperson: string | null
@@ -597,7 +597,7 @@ export type Database = {
           manufacturer?: string | null
           model_name: string
           notes?: string | null
-          purchase_price: number
+          purchase_price?: number | null
           sale_date?: string | null
           sale_price?: number | null
           salesperson?: string | null
@@ -618,7 +618,7 @@ export type Database = {
           manufacturer?: string | null
           model_name?: string
           notes?: string | null
-          purchase_price?: number
+          purchase_price?: number | null
           sale_date?: string | null
           sale_price?: number | null
           salesperson?: string | null

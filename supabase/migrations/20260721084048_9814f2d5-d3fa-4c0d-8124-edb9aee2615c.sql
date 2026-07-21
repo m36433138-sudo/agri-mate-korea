@@ -1,0 +1,1 @@
+ALTER TABLE public.machines ALTER COLUMN purchase_price DROP NOT NULL;
