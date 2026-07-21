@@ -172,12 +172,13 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const price = form.purchase_price ? parseInt(form.purchase_price) : null;
       const { error } = await supabase.from("machines").insert({
         model_name: form.model_name, serial_number: form.serial_number,
         machine_type: form.machine_type, classification: form.classification, manufacturer: form.manufacturer,
         entry_date: form.entry_date,
-        purchase_price: parseInt(form.purchase_price), notes: form.notes || null,
-      });
+        purchase_price: price, notes: form.notes || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -189,7 +190,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     onError: (e: any) => toast({ title: "오류 발생", description: e.message, variant: "destructive" }),
   });
 
-  const valid = form.model_name && form.serial_number && form.entry_date && form.purchase_price;
+  const valid = form.model_name && form.serial_number && form.entry_date;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
