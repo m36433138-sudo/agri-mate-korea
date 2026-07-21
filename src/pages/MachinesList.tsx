@@ -293,8 +293,29 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   const mutation = useMutation({
     mutationFn: async () => {
+      // 0) Dedupe within batch + check existing serials in DB
+      const serials = Array.from(new Set(validRows.map(r => r.serial_number.trim()).filter(Boolean)));
+      const existingSerials = new Set<string>();
+      // chunk to avoid URL limits
+      for (let i = 0; i < serials.length; i += 200) {
+        const chunk = serials.slice(i, i + 200);
+        const { data, error } = await supabase.from("machines").select("serial_number").in("serial_number", chunk);
+        if (error) throw error;
+        (data || []).forEach((m: any) => existingSerials.add(m.serial_number));
+      }
+      const seen = new Set<string>();
+      const dupInBatch: string[] = [];
+      const dupInDb: string[] = [];
+      const filteredRows = validRows.filter((r) => {
+        const s = r.serial_number.trim();
+        if (existingSerials.has(s)) { dupInDb.push(s); return false; }
+        if (seen.has(s)) { dupInBatch.push(s); return false; }
+        seen.add(s);
+        return true;
+      });
+
       // 1) Resolve/create customers by phone
-      const phoneRows = validRows.filter(r => normalizePhone(r.customer_phone));
+      const phoneRows = filteredRows.filter(r => normalizePhone(r.customer_phone));
       const phones = Array.from(new Set(phoneRows.map(r => normalizePhone(r.customer_phone))));
       const phoneToId = new Map<string, string>();
 
@@ -321,26 +342,34 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         }
       }
 
-      const inserts = validRows.map((r) => {
+      const inserts = filteredRows.map((r) => {
         const priceRaw = String(r.purchase_price).replace(/[^0-9]/g, "");
         const price = priceRaw ? parseInt(priceRaw, 10) : null;
         const phone = normalizePhone(r.customer_phone);
         const customer_id = phone ? phoneToId.get(phone) || null : null;
         return {
-          model_name: r.model_name, serial_number: r.serial_number,
+          model_name: r.model_name, serial_number: r.serial_number.trim(),
           classification: r.classification, machine_type: r.machine_type,
           entry_date: r.entry_date, purchase_price: price, notes: r.notes || null,
           customer_id,
           status: customer_id ? "판매완료" : "재고중",
         };
       });
-      const { error } = await supabase.from("machines").insert(inserts as any);
-      if (error) throw error;
+      if (inserts.length > 0) {
+        const { error } = await supabase.from("machines").insert(inserts as any);
+        if (error) throw error;
+      }
+      return { inserted: inserts.length, dupInDb, dupInBatch };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["machines"] });
       qc.invalidateQueries({ queryKey: ["customers"] });
-      toast({ title: `${validRows.length}대의 기계가 일괄 등록되었습니다.` });
+      const skipped = res.dupInDb.length + res.dupInBatch.length;
+      const skipMsg = skipped > 0
+        ? ` (중복 제외 ${skipped}건${res.dupInDb.length ? ` · 기존 ${res.dupInDb.slice(0,3).join(", ")}${res.dupInDb.length>3?" 외":""}` : ""})`
+        : "";
+      toast({ title: `${res.inserted}대 등록 완료${skipMsg}` });
+      if (res.inserted === 0) return;
       onOpenChange(false);
       setRows([emptyMachineRow(), emptyMachineRow(), emptyMachineRow()]);
     },
