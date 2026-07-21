@@ -264,14 +264,14 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       try {
         const wb = XLSX.read(evt.target?.result, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
-        const mapped: BulkMachineRow[] = json.map((row) => {
-          const raw = Object.values(row);
+        const rows2D = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 });
+        const mapped: BulkMachineRow[] = rows2D.slice(1).map((row: any[]) => {
           return {
-            model_name: String(raw[0] || ""), serial_number: String(raw[1] || ""),
-            classification: String(raw[2] || "농업용트랙터"),
-            machine_type: String(raw[3] || "새기계"), entry_date: formatExcelDate(raw[4]),
-            purchase_price: String(raw[5] || ""), notes: String(raw[6] || ""),
+            model_name: String(row[0] || ""), serial_number: String(row[1] || ""),
+            classification: String(row[2] || "농업용트랙터"),
+            machine_type: String(row[3] || "새기계"), entry_date: formatExcelDate(row[4]),
+            purchase_price: String(row[5] || "").replace(/[^0-9]/g, ""),
+            notes: String(row[6] || ""),
           };
         });
         setRows((prev) => [...prev.filter(r => r.model_name || r.serial_number), ...mapped]);
@@ -288,11 +288,14 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const inserts = validRows.map((r) => ({
-        model_name: r.model_name, serial_number: r.serial_number,
-        classification: r.classification, machine_type: r.machine_type,
-        entry_date: r.entry_date, purchase_price: parseInt(r.purchase_price), notes: r.notes || null,
-      }));
+      const inserts = validRows.map((r) => {
+        const price = parseInt(String(r.purchase_price).replace(/[^0-9]/g, ""), 10);
+        return {
+          model_name: r.model_name, serial_number: r.serial_number,
+          classification: r.classification, machine_type: r.machine_type,
+          entry_date: r.entry_date, purchase_price: isNaN(price) ? 0 : price, notes: r.notes || null,
+        };
+      });
       const { error } = await supabase.from("machines").insert(inserts);
       if (error) throw error;
     },
