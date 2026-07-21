@@ -221,7 +221,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             </Select>
           </div>
           <div><Label>입고일 *</Label><Input type="date" value={form.entry_date} onChange={e => setForm(f => ({...f, entry_date: e.target.value}))} /></div>
-          <div><Label>매입가 (원) *</Label><Input type="number" value={form.purchase_price} onChange={e => setForm(f => ({...f, purchase_price: e.target.value}))} placeholder="45000000" /></div>
+          <div><Label>매입가 (원)</Label><Input type="number" value={form.purchase_price} onChange={e => setForm(f => ({...f, purchase_price: e.target.value}))} placeholder="선택 사항" /></div>
           <div><Label>특이사항</Label><Input value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} /></div>
         </div>
         <DialogFooter>
