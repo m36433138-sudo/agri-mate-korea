@@ -175,6 +175,42 @@ export type Database = {
         }
         Relationships: []
       }
+      attachment_catalog: {
+        Row: {
+          brand: string
+          category: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          model: string | null
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       attendance_records: {
         Row: {
           afternoon_ot_minutes: number
@@ -526,6 +562,8 @@ export type Database = {
       }
       machine_attachments: {
         Row: {
+          brand: string | null
+          catalog_id: string | null
           created_at: string | null
           id: string
           machine_id: string
@@ -535,6 +573,8 @@ export type Database = {
           serial_number: string | null
         }
         Insert: {
+          brand?: string | null
+          catalog_id?: string | null
           created_at?: string | null
           id?: string
           machine_id: string
@@ -544,6 +584,8 @@ export type Database = {
           serial_number?: string | null
         }
         Update: {
+          brand?: string | null
+          catalog_id?: string | null
           created_at?: string | null
           id?: string
           machine_id?: string
@@ -553,6 +595,13 @@ export type Database = {
           serial_number?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "machine_attachments_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "attachment_catalog"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "machine_attachments_machine_id_fkey"
             columns: ["machine_id"]
