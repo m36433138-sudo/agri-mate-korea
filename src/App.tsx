@@ -36,6 +36,7 @@ const QuotesList = lazy(() => import("@/pages/QuotesList"));
 const QuoteEditor = lazy(() => import("@/pages/QuoteEditor"));
 const QuoteProducts = lazy(() => import("@/pages/QuoteProducts"));
 const QuoteCompanies = lazy(() => import("@/pages/QuoteCompanies"));
+const AttachmentsCatalog = lazy(() => import("@/pages/AttachmentsCatalog"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
