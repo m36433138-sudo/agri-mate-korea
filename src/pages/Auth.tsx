@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { setAutoLogin } from "@/lib/authStorage";
+import { withRetry, classifyTransient, describeReason } from "@/lib/retry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ export default function Auth() {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [retryInfo, setRetryInfo] = useState<string | null>(null);
   const [autoLogin, setAutoLogin] = useState(() => {
     const saved = localStorage.getItem("agrimate-auto-login");
     return saved !== "false";
@@ -24,24 +26,43 @@ export default function Auth() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setRetryInfo(null);
 
     try {
-      // If input looks like email, use as-is; otherwise append @ym.local
       const email = loginId.includes("@") ? loginId : `${loginId}@ym.local`;
       setAutoLogin(autoLogin);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await withRetry(
+        () => supabase.auth.signInWithPassword({ email, password }),
+        {
+          retries: 3,
+          onAttempt: (attempt, reason) => {
+            setRetryInfo(`${describeReason(reason)} 자동 재시도 중… (${attempt}/3)`);
+          },
+        },
+      );
       if (error) throw error;
+      setRetryInfo(null);
       navigate("/");
     } catch (error: any) {
-      toast({
-        title: "로그인 실패",
-        description: error.message === "Invalid login credentials"
-          ? "아이디 또는 비밀번호가 올바르지 않습니다."
-          : error.message,
-        variant: "destructive",
-      });
+      const reason = classifyTransient(error) ?? (error as any)?.reason ?? null;
+      if (reason) {
+        toast({
+          title: "로그인 실패 (서버 응답 불가)",
+          description: `${describeReason(reason)} 잠시 후 다시 시도해주세요.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "로그인 실패",
+          description: error.message === "Invalid login credentials"
+            ? "아이디 또는 비밀번호가 올바르지 않습니다."
+            : (error.message ?? "알 수 없는 오류가 발생했습니다."),
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
+      setRetryInfo(null);
     }
   };
 
@@ -95,6 +116,11 @@ export default function Auth() {
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               로그인
             </Button>
+            {retryInfo && (
+              <p className="text-xs text-center text-muted-foreground animate-pulse">
+                {retryInfo}
+              </p>
+            )}
           </form>
           <p className="mt-4 text-center text-xs text-muted-foreground">
             계정이 없으시면 관리자에게 문의하세요.
