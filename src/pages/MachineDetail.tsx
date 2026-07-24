@@ -302,6 +302,7 @@ export default function MachineDetail() {
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} machineName={`${machine.model_name} (${machine.serial_number})`} />
       <EditMachineDialog open={editOpen} onOpenChange={setEditOpen} machine={machine} />
       <AttachmentDialog open={attachOpen} onOpenChange={setAttachOpen} machineId={machine.id} />
+      <TradeInDialog open={tradeInOpen} onOpenChange={setTradeInOpen} machine={machine} />
     </div>
   );
 }
