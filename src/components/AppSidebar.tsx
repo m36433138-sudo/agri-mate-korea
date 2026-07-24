@@ -68,6 +68,7 @@ export function AppSidebar() {
   // 데이터관리 그룹
   const dataItems: NavItem[] = [
     ...(isAdmin || hasPermission("view_machines") ? [{ title: "기계관리", url: "/machines", icon: Tractor }] : []),
+    ...(isAdmin || isEmployee ? [{ title: "작업기 관리", url: "/attachments", icon: Tractor }] : []),
     ...(isAdmin || hasPermission("view_customers") ? [{ title: "고객관리", url: "/customers", icon: Users }] : []),
     ...(isAdmin || hasPermission("manage_repairs") ? [{ title: "수리이력", url: "/repairs", icon: Wrench }] : []),
     ...(isAdmin || isEmployee ? [{ title: "부품관리", url: "/parts", icon: Package }] : []),
