@@ -190,7 +190,10 @@ export default function MachineDetail() {
                     <Tractor className="h-3.5 w-3.5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{a.name}</p>
+                    <p className="text-sm font-semibold">
+                      {a.brand && <span className="text-xs text-muted-foreground mr-1">[{a.brand}]</span>}
+                      {a.name}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {[a.model, a.serial_number ? `S/N: ${a.serial_number}` : null, a.notes].filter(Boolean).join(" · ")}
                     </p>
@@ -320,53 +323,161 @@ function InfoItem({ label, value, bold, primary }: { label: string; value: any; 
 function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; onOpenChange: (v: boolean) => void; machineId: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [form, setForm] = useState({ name: "", model: "", serial_number: "", notes: "" });
+  const [mode, setMode] = useState<"catalog" | "manual">("catalog");
+  const [catalogId, setCatalogId] = useState<string>("");
+  const [brandFilter, setBrandFilter] = useState<string>("전체");
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [form, setForm] = useState({ name: "", model: "", serial_number: "", brand: "", notes: "" });
+
+  const { data: catalog = [] } = useQuery({
+    queryKey: ["attachment-catalog-active"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("attachment_catalog")
+        .select("id, brand, name, model, category")
+        .eq("is_active", true)
+        .order("brand").order("name");
+      if (error) throw error;
+      return data as Array<{ id: string; brand: string; name: string; model: string | null; category: string | null }>;
+    },
+  });
+
+  const brands = ["전체", ...Array.from(new Set(catalog.map(c => c.brand))).sort()];
+  const filteredCatalog = catalog.filter(c => {
+    if (brandFilter !== "전체" && c.brand !== brandFilter) return false;
+    if (catalogSearch.trim()) {
+      const s = catalogSearch.toLowerCase();
+      return c.name.toLowerCase().includes(s) || (c.model || "").toLowerCase().includes(s) || (c.category || "").toLowerCase().includes(s);
+    }
+    return true;
+  });
+  const selected = catalog.find(c => c.id === catalogId);
+
+  const reset = () => {
+    setMode("catalog"); setCatalogId(""); setBrandFilter("전체"); setCatalogSearch("");
+    setForm({ name: "", model: "", serial_number: "", brand: "", notes: "" });
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("machine_attachments").insert({
-        machine_id: machineId,
-        name: form.name,
-        model: form.model || null,
-        serial_number: form.serial_number || null,
-        notes: form.notes || null,
-      });
+      const payload = mode === "catalog" && selected
+        ? {
+            machine_id: machineId,
+            catalog_id: selected.id,
+            brand: selected.brand,
+            name: selected.name,
+            model: selected.model,
+            serial_number: form.serial_number || null,
+            notes: form.notes || null,
+          }
+        : {
+            machine_id: machineId,
+            catalog_id: null,
+            brand: form.brand || null,
+            name: form.name,
+            model: form.model || null,
+            serial_number: form.serial_number || null,
+            notes: form.notes || null,
+          };
+      const { error } = await (supabase as any).from("machine_attachments").insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machine-attachments", machineId] });
       toast({ title: "작업기가 등록되었습니다." });
       onOpenChange(false);
-      setForm({ name: "", model: "", serial_number: "", notes: "" });
+      reset();
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
 
+  const canSubmit = mode === "catalog" ? !!catalogId : !!form.name;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Tractor className="h-4 w-4" /> 작업기 추가</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label>작업기명 *</Label>
-            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="로터리, 쟁기, 파종기..." />
-          </div>
-          <div>
-            <Label>모델명</Label>
-            <Input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder="모델명 (선택)" />
-          </div>
-          <div>
-            <Label>제조번호</Label>
-            <Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))} placeholder="S/N (선택)" />
-          </div>
-          <div>
-            <Label>비고</Label>
-            <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="특이사항" />
-          </div>
+
+        <div className="flex gap-2 border-b pb-2">
+          <Button size="sm" variant={mode === "catalog" ? "default" : "ghost"} onClick={() => setMode("catalog")}>
+            카탈로그에서 선택
+          </Button>
+          <Button size="sm" variant={mode === "manual" ? "default" : "ghost"} onClick={() => setMode("manual")}>
+            직접 입력
+          </Button>
         </div>
+
+        {mode === "catalog" ? (
+          <div className="space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              {brands.map(b => (
+                <Button key={b} size="sm" variant={brandFilter === b ? "default" : "outline"}
+                  onClick={() => setBrandFilter(b)} className="h-7">
+                  {b}
+                </Button>
+              ))}
+            </div>
+            <Input placeholder="작업기 검색..." value={catalogSearch} onChange={e => setCatalogSearch(e.target.value)} />
+            <div className="border rounded-lg max-h-56 overflow-y-auto">
+              {catalog.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  등록된 카탈로그가 없습니다. <Link to="/attachments" className="text-primary underline">작업기 관리</Link>에서 먼저 등록하세요.
+                </p>
+              ) : filteredCatalog.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">검색 결과가 없습니다.</p>
+              ) : (
+                filteredCatalog.map(c => (
+                  <button key={c.id} type="button" onClick={() => setCatalogId(c.id)}
+                    className={`w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-muted/60 transition-colors ${catalogId === c.id ? "bg-primary/10" : ""}`}>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-xs text-muted-foreground shrink-0">[{c.brand}]</span>
+                      <span className="font-medium">{c.name}</span>
+                      {c.category && <span className="text-xs text-muted-foreground">· {c.category}</span>}
+                      {c.model && <span className="text-xs text-muted-foreground ml-auto">{c.model}</span>}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+            <div>
+              <Label>제조번호</Label>
+              <Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))}
+                placeholder="S/N (선택)" disabled={!catalogId} />
+            </div>
+            <div>
+              <Label>비고</Label>
+              <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="특이사항 (선택)" disabled={!catalogId} />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <Label>브랜드</Label>
+              <Input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder="브랜드 (선택)" />
+            </div>
+            <div>
+              <Label>작업기명 *</Label>
+              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="로터리, 쟁기, 파종기..." />
+            </div>
+            <div>
+              <Label>모델명</Label>
+              <Input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder="모델명 (선택)" />
+            </div>
+            <div>
+              <Label>제조번호</Label>
+              <Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))} placeholder="S/N (선택)" />
+            </div>
+            <div>
+              <Label>비고</Label>
+              <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="특이사항" />
+            </div>
+          </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!form.name || mutation.isPending}>
+          <Button onClick={() => mutation.mutate()} disabled={!canSubmit || mutation.isPending}>
             {mutation.isPending ? "등록 중..." : "등록"}
           </Button>
         </DialogFooter>
