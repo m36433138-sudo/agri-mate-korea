@@ -381,7 +381,7 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       <DialogContent className="sm:max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>기계 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 종류, 구분, 입고일, 매입가, 특이사항, 고객명, 고객전화번호<br />
+          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 기종(트랙터/콤바인/이앙기), 구분(새기계/중고기계), 입고일, 매입가, 특이사항, 고객명, 고객전화번호<br />
             · 매입가는 선택 항목입니다. · 고객 전화번호가 있으면 기존 고객과 자동 연결되며, 없으면 새 고객으로 등록됩니다.</p>
         </DialogHeader>
         <div>
