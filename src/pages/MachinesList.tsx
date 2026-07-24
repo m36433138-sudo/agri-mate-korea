@@ -57,10 +57,23 @@ export default function MachinesList() {
     },
   });
 
+  const KNOWN_TYPES = ["농업용트랙터", "콤바인", "이앙기"];
+  const normalizeClassification = (c: any) => {
+    const s = String(c ?? "").replace(/\s+/g, "");
+    if (s === "트랙터" || s === "농업용트랙터") return "농업용트랙터";
+    if (s === "콤바인") return "콤바인";
+    if (s === "이앙기") return "이앙기";
+    return "기타";
+  };
+  const typeFilteredData = useMemo(() => {
+    if (typeTab === "전체") return machines;
+    return machines.filter((m) => normalizeClassification((m as any).classification) === typeTab);
+  }, [machines, typeTab]);
+
   const { search, setSearch, filtered } = useListFilter<MachineWithCustomer>({
-    data: machines,
+    data: typeFilteredData,
     searchFields: ["model_name", "serial_number"],
-    tabFilters: { classification: typeTab, status: statusTab },
+    tabFilters: { status: statusTab },
   });
 
   return (
