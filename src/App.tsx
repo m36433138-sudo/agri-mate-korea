@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import BackendHealthMonitor from "@/components/BackendHealthMonitor";
 import { useUserRole } from "@/hooks/useUserRole";
 
 // 페이지 lazy loading - 첫 방문 시에만 JS 로드
