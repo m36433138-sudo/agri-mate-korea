@@ -113,7 +113,7 @@ export default function MachinesList() {
                   <th className="text-left p-3 font-medium text-muted-foreground">제조사</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">모델명</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">제조번호</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">종류</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">기종</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">구분</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">상태</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">입고일</th>
