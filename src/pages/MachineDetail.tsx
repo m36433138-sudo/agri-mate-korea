@@ -531,6 +531,8 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const check = validateMachineTypeClassification({ machine_type: form.machine_type, classification: form.classification });
+      if (check.ok === false) throw new Error(check.message);
       const { error } = await supabase.from("machines").update({
         model_name: form.model_name, serial_number: form.serial_number,
         machine_type: form.machine_type, manufacturer: form.manufacturer,
