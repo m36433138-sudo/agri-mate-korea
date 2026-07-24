@@ -186,6 +186,8 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const check = validateMachineTypeClassification({ machine_type: form.machine_type, classification: form.classification });
+      if (!check.ok) throw new Error(check.message);
       const price = form.purchase_price ? parseInt(form.purchase_price) : null;
       const { error } = await supabase.from("machines").insert({
         model_name: form.model_name, serial_number: form.serial_number,
