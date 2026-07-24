@@ -116,6 +116,11 @@ export default function Auth() {
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               로그인
             </Button>
+            {retryInfo && (
+              <p className="text-xs text-center text-muted-foreground animate-pulse">
+                {retryInfo}
+              </p>
+            )}
           </form>
           <p className="mt-4 text-center text-xs text-muted-foreground">
             계정이 없으시면 관리자에게 문의하세요.
