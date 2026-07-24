@@ -358,7 +358,9 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         }
       }
 
-      const inserts = filteredRows.map((r) => {
+      const inserts = filteredRows.map((r, idx) => {
+        const check = validateMachineTypeClassification({ machine_type: r.machine_type, classification: r.classification });
+        if (check.ok === false) throw new Error(`${idx + 1}행: ${check.message}`);
         const priceRaw = String(r.purchase_price).replace(/[^0-9]/g, "");
         const price = priceRaw ? parseInt(priceRaw, 10) : null;
         const phone = normalizePhone(r.customer_phone);
