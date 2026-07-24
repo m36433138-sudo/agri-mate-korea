@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
-import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap, Undo2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
@@ -31,6 +31,7 @@ export default function MachineDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [expandedRepair, setExpandedRepair] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [tradeInOpen, setTradeInOpen] = useState(false);
 
   const { data: machine, isLoading } = useQuery({
     queryKey: ["machine", id],
@@ -151,6 +152,13 @@ export default function MachineDetail() {
             <div className="mt-6 pt-4 border-t print:hidden">
               <Button onClick={() => setSaleOpen(true)}>
                 {machine.machine_type === "타사구매" ? "고객 연결" : "판매 처리"}
+              </Button>
+            </div>
+          )}
+          {machine.status === "판매완료" && (
+            <div className="mt-6 pt-4 border-t print:hidden flex gap-2">
+              <Button variant="outline" onClick={() => setTradeInOpen(true)}>
+                <Undo2 className="h-4 w-4 mr-1.5" /> 중고 인수 (재고 편입)
               </Button>
             </div>
           )}
@@ -294,6 +302,7 @@ export default function MachineDetail() {
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} machineName={`${machine.model_name} (${machine.serial_number})`} />
       <EditMachineDialog open={editOpen} onOpenChange={setEditOpen} machine={machine} />
       <AttachmentDialog open={attachOpen} onOpenChange={setAttachOpen} machineId={machine.id} />
+      <TradeInDialog open={tradeInOpen} onOpenChange={setTradeInOpen} machine={machine} />
     </div>
   );
 }
@@ -613,6 +622,90 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>{mutation.isPending ? "저장 중..." : "저장"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TradeInDialog({ open, onOpenChange, machine }: { open: boolean; onOpenChange: (v: boolean) => void; machine: any }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({
+    trade_in_price: "",
+    trade_in_date: today,
+    notes: "",
+  });
+
+  const prevOwnerName = machine.customers?.name || "";
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const historyNote = `[중고 인수 ${form.trade_in_date}]${prevOwnerName ? ` 이전 소유자: ${prevOwnerName}` : ""}${
+        machine.sale_price ? ` / 판매가: ${machine.sale_price.toLocaleString()}원` : ""
+      }${form.notes ? ` / ${form.notes}` : ""}`;
+      const mergedNotes = machine.notes ? `${machine.notes}\n${historyNote}` : historyNote;
+
+      const { error } = await supabase
+        .from("machines")
+        .update({
+          status: "재고중",
+          machine_type: "중고기계",
+          customer_id: null,
+          sale_price: null,
+          sale_date: null,
+          entry_date: form.trade_in_date,
+          purchase_price: form.trade_in_price ? parseInt(form.trade_in_price) : null,
+          notes: mergedNotes,
+        } as any)
+        .eq("id", machine.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["machine", machine.id] });
+      qc.invalidateQueries({ queryKey: ["machines"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      toast({ title: "중고 인수 완료", description: "재고(중고기계)로 편입되었습니다. 수리 이력은 그대로 유지됩니다." });
+      onOpenChange(false);
+    },
+    onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Undo2 className="h-4 w-4" /> 중고 인수 (재고 편입)
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="rounded-md bg-muted/60 p-3 text-sm space-y-1">
+            <div><span className="text-muted-foreground">기계: </span><span className="font-medium">{machine.model_name} ({machine.serial_number})</span></div>
+            {prevOwnerName && <div><span className="text-muted-foreground">이전 소유자: </span><span className="font-medium">{prevOwnerName}</span></div>}
+            <p className="text-xs text-muted-foreground pt-1">
+              인수 후: 재고중 · 중고기계로 변경되며, 고객 연결은 해제됩니다. 수리 이력은 기계에 계속 남습니다.
+            </p>
+          </div>
+          <div>
+            <Label>인수일 *</Label>
+            <Input type="date" value={form.trade_in_date} onChange={(e) => setForm(f => ({ ...f, trade_in_date: e.target.value }))} />
+          </div>
+          <div>
+            <Label>인수가 (원)</Label>
+            <Input type="number" value={form.trade_in_price} onChange={(e) => setForm(f => ({ ...f, trade_in_price: e.target.value }))} placeholder="선택" />
+          </div>
+          <div>
+            <Label>비고</Label>
+            <Textarea rows={2} value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="인수 사유·상태 등 (선택)" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!form.trade_in_date || mutation.isPending}>
+            {mutation.isPending ? "처리 중..." : "재고로 편입"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
