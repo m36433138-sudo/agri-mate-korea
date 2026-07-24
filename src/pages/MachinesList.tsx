@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MachineWithCustomer } from "@/types/database";
+import { validateMachineTypeClassification } from "@/lib/machineValidation";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
@@ -185,6 +186,8 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const check = validateMachineTypeClassification({ machine_type: form.machine_type, classification: form.classification });
+      if (check.ok === false) throw new Error(check.message);
       const price = form.purchase_price ? parseInt(form.purchase_price) : null;
       const { error } = await supabase.from("machines").insert({
         model_name: form.model_name, serial_number: form.serial_number,
@@ -355,7 +358,9 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         }
       }
 
-      const inserts = filteredRows.map((r) => {
+      const inserts = filteredRows.map((r, idx) => {
+        const check = validateMachineTypeClassification({ machine_type: r.machine_type, classification: r.classification });
+        if (check.ok === false) throw new Error(`${idx + 1}행: ${check.message}`);
         const priceRaw = String(r.purchase_price).replace(/[^0-9]/g, "");
         const price = priceRaw ? parseInt(priceRaw, 10) : null;
         const phone = normalizePhone(r.customer_phone);

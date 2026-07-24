@@ -17,6 +17,7 @@ import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Tras
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
+import { validateMachineTypeClassification } from "@/lib/machineValidation";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
@@ -530,6 +531,8 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const check = validateMachineTypeClassification({ machine_type: form.machine_type, classification: form.classification });
+      if (check.ok === false) throw new Error(check.message);
       const { error } = await supabase.from("machines").update({
         model_name: form.model_name, serial_number: form.serial_number,
         machine_type: form.machine_type, manufacturer: form.manufacturer,
