@@ -361,6 +361,21 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const sn = (form.serial_number || "").trim();
+      if (sn) {
+        const { data: dup, error: dupErr } = await (supabase as any)
+          .from("machine_attachments")
+          .select("id, machine_id, name")
+          .eq("serial_number", sn)
+          .limit(1);
+        if (dupErr) throw dupErr;
+        if (dup && dup.length > 0) {
+          const sameMachine = dup[0].machine_id === machineId;
+          throw new Error(
+            `이미 등록된 제조번호입니다 (${sn}) — ${dup[0].name}${sameMachine ? " (이 기계)" : " (다른 기계)"}`
+          );
+        }
+      }
       const payload = mode === "catalog" && selected
         ? {
             machine_id: machineId,
@@ -368,7 +383,7 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
             brand: selected.brand,
             name: selected.name,
             model: selected.model,
-            serial_number: form.serial_number || null,
+            serial_number: sn || null,
             notes: form.notes || null,
           }
         : {
@@ -377,12 +392,13 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
             brand: form.brand || null,
             name: form.name,
             model: form.model || null,
-            serial_number: form.serial_number || null,
+            serial_number: sn || null,
             notes: form.notes || null,
           };
       const { error } = await (supabase as any).from("machine_attachments").insert(payload);
       if (error) throw error;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machine-attachments", machineId] });
       toast({ title: "작업기가 등록되었습니다." });
