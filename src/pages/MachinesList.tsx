@@ -397,7 +397,7 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                 {i === 0 && (
                   <>
                     <Label className="text-xs">모델명 *</Label><Label className="text-xs">제조번호 *</Label>
-                    <Label className="text-xs">종류 *</Label>
+                    <Label className="text-xs">기종 *</Label>
                     <Label className="text-xs">구분 *</Label><Label className="text-xs">입고일 *</Label>
                     <Label className="text-xs">매입가</Label>
                     <Label className="text-xs">고객명</Label>
