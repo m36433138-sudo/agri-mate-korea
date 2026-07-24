@@ -575,7 +575,7 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
             </Select>
           </div>
           <div>
-            <Label>구분</Label>
+            <Label>구분 <span className="text-xs text-muted-foreground">(새기계/중고기계)</span></Label>
             <Select value={form.machine_type} onValueChange={v => setForm(f => ({...f, machine_type: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{MACHINE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
