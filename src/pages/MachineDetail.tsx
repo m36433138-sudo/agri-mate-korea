@@ -119,7 +119,7 @@ export default function MachineDetail() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t">
             <InfoItem label="제조사" value={machine.manufacturer || "-"} />
-            <InfoItem label="종류" value={(machine as any).classification ? ((machine as any).classification === "농업용트랙터" ? "트랙터" : (machine as any).classification) : "-"} />
+            <InfoItem label="기종" value={(machine as any).classification ? ((machine as any).classification === "농업용트랙터" ? "트랙터" : (machine as any).classification) : "-"} />
             <InfoItem label="입고일" value={formatDate(machine.entry_date)} />
             <InfoItem label="매입가" value={formatPrice(machine.purchase_price)} bold />
             {(machine as any).engine_number && <InfoItem label="엔진번호" value={(machine as any).engine_number} />}
@@ -568,14 +568,14 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
           <div><Label>제조번호</Label><Input value={form.serial_number} onChange={e => setForm(f => ({...f, serial_number: e.target.value}))} /></div>
           <div><Label>엔진번호</Label><Input value={form.engine_number} onChange={e => setForm(f => ({...f, engine_number: e.target.value}))} placeholder="엔진번호 (선택)" /></div>
           <div>
-            <Label>종류</Label>
+            <Label>기종 <span className="text-xs text-muted-foreground">(트랙터/콤바인/이앙기)</span></Label>
             <Select value={form.classification} onValueChange={v => setForm(f => ({...f, classification: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{CLASSIFICATIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
-            <Label>구분</Label>
+            <Label>구분 <span className="text-xs text-muted-foreground">(새기계/중고기계)</span></Label>
             <Select value={form.machine_type} onValueChange={v => setForm(f => ({...f, machine_type: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{MACHINE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>

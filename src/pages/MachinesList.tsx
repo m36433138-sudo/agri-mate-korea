@@ -113,7 +113,7 @@ export default function MachinesList() {
                   <th className="text-left p-3 font-medium text-muted-foreground">제조사</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">모델명</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">제조번호</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">종류</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">기종</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">구분</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">상태</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">입고일</th>
@@ -205,7 +205,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             </Select>
           </div>
           <div>
-            <Label>기계 종류 *</Label>
+            <Label>기종 * <span className="text-xs text-muted-foreground">(트랙터/콤바인/이앙기)</span></Label>
             <Select value={form.classification} onValueChange={v => setForm(f => ({...f, classification: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{CLASSIFICATIONS.map(c => <SelectItem key={c} value={c}>{c === "농업용트랙터" ? "트랙터" : c}</SelectItem>)}</SelectContent>
@@ -214,7 +214,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <div><Label>모델명 *</Label><Input value={form.model_name} onChange={e => setForm(f => ({...f, model_name: e.target.value}))} placeholder="예: YT5101" /></div>
           <div><Label>제조번호 *</Label><Input value={form.serial_number} onChange={e => setForm(f => ({...f, serial_number: e.target.value}))} placeholder="예: YT5101-2023001" /></div>
           <div>
-            <Label>구분 (신/중고) *</Label>
+            <Label>구분 * <span className="text-xs text-muted-foreground">(새기계/중고기계)</span></Label>
             <Select value={form.machine_type} onValueChange={v => setForm(f => ({...f, machine_type: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고기계</SelectItem><SelectItem value="타사구매">타사구매</SelectItem></SelectContent>
@@ -381,7 +381,7 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       <DialogContent className="sm:max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>기계 일괄 등록</DialogTitle>
-          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 종류, 구분, 입고일, 매입가, 특이사항, 고객명, 고객전화번호<br />
+          <p className="text-sm text-muted-foreground">엑셀 열 순서: 모델명, 제조번호, 기종(트랙터/콤바인/이앙기), 구분(새기계/중고기계), 입고일, 매입가, 특이사항, 고객명, 고객전화번호<br />
             · 매입가는 선택 항목입니다. · 고객 전화번호가 있으면 기존 고객과 자동 연결되며, 없으면 새 고객으로 등록됩니다.</p>
         </DialogHeader>
         <div>
@@ -397,7 +397,7 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                 {i === 0 && (
                   <>
                     <Label className="text-xs">모델명 *</Label><Label className="text-xs">제조번호 *</Label>
-                    <Label className="text-xs">종류 *</Label>
+                    <Label className="text-xs">기종 *</Label>
                     <Label className="text-xs">구분 *</Label><Label className="text-xs">입고일 *</Label>
                     <Label className="text-xs">매입가</Label>
                     <Label className="text-xs">고객명</Label>
