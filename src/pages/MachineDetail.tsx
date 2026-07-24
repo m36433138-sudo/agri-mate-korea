@@ -17,6 +17,7 @@ import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Tras
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
+import { validateMachineTypeClassification } from "@/lib/machineValidation";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
