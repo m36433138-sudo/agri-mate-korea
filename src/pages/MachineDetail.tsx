@@ -568,7 +568,7 @@ function EditMachineDialog({ open, onOpenChange, machine }: { open: boolean; onO
           <div><Label>제조번호</Label><Input value={form.serial_number} onChange={e => setForm(f => ({...f, serial_number: e.target.value}))} /></div>
           <div><Label>엔진번호</Label><Input value={form.engine_number} onChange={e => setForm(f => ({...f, engine_number: e.target.value}))} placeholder="엔진번호 (선택)" /></div>
           <div>
-            <Label>종류</Label>
+            <Label>기종 <span className="text-xs text-muted-foreground">(트랙터/콤바인/이앙기)</span></Label>
             <Select value={form.classification} onValueChange={v => setForm(f => ({...f, classification: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{CLASSIFICATIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
