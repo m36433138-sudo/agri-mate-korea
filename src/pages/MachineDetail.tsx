@@ -155,6 +155,13 @@ export default function MachineDetail() {
               </Button>
             </div>
           )}
+          {machine.status === "판매완료" && (
+            <div className="mt-6 pt-4 border-t print:hidden flex gap-2">
+              <Button variant="outline" onClick={() => setTradeInOpen(true)}>
+                <Undo2 className="h-4 w-4 mr-1.5" /> 중고 인수 (재고 편입)
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
