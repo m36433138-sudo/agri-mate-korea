@@ -31,6 +31,7 @@ export default function MachineDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [expandedRepair, setExpandedRepair] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [tradeInOpen, setTradeInOpen] = useState(false);
 
   const { data: machine, isLoading } = useQuery({
     queryKey: ["machine", id],
