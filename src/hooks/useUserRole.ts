@@ -42,7 +42,7 @@ export function useUserRole() {
     retry: false, // withRetry가 내부 재시도 담당
     queryFn: async () => {
       try {
-        const { data, error } = await withRetry(() =>
+        const { data, error } = await withRetry(async () =>
           supabase
             .from("user_roles")
             .select("role")
@@ -65,7 +65,7 @@ export function useUserRole() {
     retry: false,
     queryFn: async () => {
       try {
-        const { data, error } = await withRetry(() =>
+        const { data, error } = await withRetry(async () =>
           supabase
             .from("employee_permissions")
             .select("permission_key, is_allowed")
@@ -88,7 +88,7 @@ export function useUserRole() {
     retry: false,
     queryFn: async () => {
       try {
-        const { data, error } = await withRetry(() =>
+        const { data, error } = await withRetry(async () =>
           supabase
             .from("profiles")
             .select("*")
