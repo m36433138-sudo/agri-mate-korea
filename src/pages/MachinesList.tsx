@@ -230,7 +230,7 @@ function AddMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             <Label>구분 * <span className="text-xs text-muted-foreground">(새기계/중고기계)</span></Label>
             <Select value={form.machine_type} onValueChange={v => setForm(f => ({...f, machine_type: v}))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고기계</SelectItem><SelectItem value="타사구매">타사구매</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고기계</SelectItem><SelectItem value="타사기계">타사기계</SelectItem></SelectContent>
             </Select>
           </div>
           <div><Label>입고일 *</Label><Input type="date" value={form.entry_date} onChange={e => setForm(f => ({...f, entry_date: e.target.value}))} /></div>
@@ -426,7 +426,7 @@ function BulkMachineDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                 </Select>
                 <Select value={row.machine_type} onValueChange={(v) => updateRow(i, "machine_type", v)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고</SelectItem><SelectItem value="타사구매">타사구매</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="새기계">새기계</SelectItem><SelectItem value="중고기계">중고</SelectItem><SelectItem value="타사기계">타사기계</SelectItem></SelectContent>
                 </Select>
                 <Input type="date" value={row.entry_date} onChange={(e) => updateRow(i, "entry_date", e.target.value)} className="h-9 text-sm" />
                 <Input type="number" value={row.purchase_price} onChange={(e) => updateRow(i, "purchase_price", e.target.value)} placeholder="선택" className="h-9 text-sm" />

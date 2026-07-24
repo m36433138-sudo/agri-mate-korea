@@ -20,7 +20,7 @@ import type { Machine, Customer, Repair } from "@/types/database";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
-const MACHINE_TYPES = ["새기계", "중고기계", "타사구매"];
+const MACHINE_TYPES = ["새기계", "중고기계", "타사기계"];
 
 export default function MachineDetail() {
   const { id } = useParams<{ id: string }>();
@@ -151,7 +151,7 @@ export default function MachineDetail() {
           {machine.status === "재고중" && (
             <div className="mt-6 pt-4 border-t print:hidden">
               <Button onClick={() => setSaleOpen(true)}>
-                {machine.machine_type === "타사구매" ? "고객 연결" : "판매 처리"}
+                {machine.machine_type === "타사기계" ? "고객 연결" : "판매 처리"}
               </Button>
             </div>
           )}
@@ -298,7 +298,7 @@ export default function MachineDetail() {
         </CardContent>
       </Card>
 
-      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} entryDate={machine.entry_date} isSale={machine.machine_type !== "타사구매"} />
+      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} machineId={machine.id} entryDate={machine.entry_date} isSale={machine.machine_type !== "타사기계"} />
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} machineId={machine.id} machineName={`${machine.model_name} (${machine.serial_number})`} />
       <EditMachineDialog open={editOpen} onOpenChange={setEditOpen} machine={machine} />
       <AttachmentDialog open={attachOpen} onOpenChange={setAttachOpen} machineId={machine.id} />
@@ -429,7 +429,7 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }:
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader><DialogTitle>{isSale ? "판매 처리" : "고객 연결 (타사구매 기계)"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isSale ? "판매 처리" : "고객 연결 (타사기계 기계)"}</DialogTitle></DialogHeader>
         <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
           <span className="text-muted-foreground">재고 보유 기간:</span>
           <span className="font-semibold text-foreground">{daysInStock}일</span>
