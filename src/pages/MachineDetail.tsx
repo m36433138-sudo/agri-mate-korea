@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
-import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap, Undo2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
