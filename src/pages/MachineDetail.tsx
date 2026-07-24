@@ -190,7 +190,10 @@ export default function MachineDetail() {
                     <Tractor className="h-3.5 w-3.5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{a.name}</p>
+                    <p className="text-sm font-semibold">
+                      {a.brand && <span className="text-xs text-muted-foreground mr-1">[{a.brand}]</span>}
+                      {a.name}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {[a.model, a.serial_number ? `S/N: ${a.serial_number}` : null, a.notes].filter(Boolean).join(" · ")}
                     </p>
