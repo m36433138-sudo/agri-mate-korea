@@ -1024,9 +1024,15 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         </div>
 
         <DialogFooter className="pt-4 border-t">
-          <div className="flex items-center gap-2 mr-auto">
-            <span className="text-sm text-muted-foreground">총 비용:</span>
-            <span className="text-sm font-bold">{formatPrice(totalCost)}</span>
+          <div className="flex flex-col mr-auto text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>공임비 {formatPrice(laborCostNum)}</span>
+              <span>부품 {formatPrice(partsSubtotal)}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span>총 비용:</span>
+              <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
+            </div>
           </div>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => saveMutation.mutate()} disabled={!valid || saveMutation.isPending}>
