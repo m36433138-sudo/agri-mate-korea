@@ -192,6 +192,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         part_number: num,
         unit: "개",
         quantity: qty,
+        unit_price: 0,
       },
     ]);
     setCustomPartName("");
