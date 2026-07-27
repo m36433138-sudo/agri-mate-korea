@@ -261,7 +261,9 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           part_id: partId,
           quantity: row.quantity || 1,
           unit_price: Number(row.unit_price) || 0,
+          branch: row.branch || defaultBranch,
           notes: null,
+          _partNumber: row.part_number,
         });
       }
 
@@ -270,8 +272,35 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       if (delError) throw delError;
 
       if (resolved.length > 0) {
-        const { error: insError } = await supabase.from("repair_parts").insert(resolved);
+        const insertPayload = resolved.map(({ _partNumber, ...rest }: any) => rest);
+        const { error: insError } = await supabase.from("repair_parts").insert(insertPayload);
         if (insError) throw insError;
+
+        // 재고 마이너스 확인
+        const negatives: string[] = [];
+        const seen = new Set<string>();
+        for (const rp of resolved) {
+          if (!rp._partNumber) continue;
+          const key = `${rp._partNumber}::${rp.branch}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const { data: invRow } = await supabase
+            .from("inventory")
+            .select("part_code, part_name, quantity, branch")
+            .eq("part_code", rp._partNumber)
+            .eq("branch", rp.branch)
+            .maybeSingle();
+          if (invRow && Number(invRow.quantity) < 0) {
+            negatives.push(`[${invRow.branch}] ${invRow.part_code} ${invRow.part_name} (${invRow.quantity})`);
+          }
+        }
+        if (negatives.length > 0) {
+          toast({
+            title: "재고 수량을 확인해주세요",
+            description: `다음 부품의 재고가 마이너스입니다:\n${negatives.join("\n")}`,
+            variant: "destructive",
+          });
+        }
       }
     },
     onSuccess: () => {
