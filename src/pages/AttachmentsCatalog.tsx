@@ -219,7 +219,9 @@ function CatalogFormDialog({ open, onOpenChange, editing, brandOptions }: {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     brand: "", name: "", model: "", category: "", notes: "", is_active: true,
+    rotary_blade_options: [] as string[],
   });
+  const [bladeInput, setBladeInput] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -230,9 +232,13 @@ function CatalogFormDialog({ open, onOpenChange, editing, brandOptions }: {
         category: editing?.category || "",
         notes: editing?.notes || "",
         is_active: editing?.is_active ?? true,
+        rotary_blade_options: editing?.rotary_blade_options || [],
       });
+      setBladeInput("");
     }
   }, [open, editing]);
+
+  const isRotary = form.category === "로터리" || form.category === "로타리";
 
   const save = useMutation({
     mutationFn: async () => {
@@ -243,7 +249,9 @@ function CatalogFormDialog({ open, onOpenChange, editing, brandOptions }: {
         category: form.category || null,
         notes: form.notes.trim() || null,
         is_active: form.is_active,
+        rotary_blade_options: isRotary ? form.rotary_blade_options : [],
       };
+
       if (editing) {
         const { error } = await (supabase as any).from("attachment_catalog").update(payload).eq("id", editing.id);
         if (error) throw error;
