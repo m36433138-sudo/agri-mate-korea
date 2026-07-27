@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
-import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +9,6 @@ const corsHeaders = {
 
 const CHUNK_SIZE = 1200;
 const CHUNK_OVERLAP = 150;
-const PAGES_PER_SEGMENT = 8; // 각 세그먼트당 PDF 페이지 수
 
 function chunkText(text: string): string[] {
   const clean = text.replace(/\s+/g, " ").trim();
@@ -102,40 +100,6 @@ async function embedBatch(apiKey: string, inputs: string[]): Promise<number[][]>
   return (data.data as Array<{ embedding: number[]; index: number }>)
     .sort((a, b) => a.index - b.index)
     .map((d) => d.embedding);
-}
-
-type Segment = {
-  index: number;
-  pageStart: number | null;
-  pageEnd: number | null;
-  mime: string;
-  base64: string;
-};
-
-async function splitPdfIntoSegments(
-  pdfBytes: Uint8Array,
-  mime: string,
-): Promise<Segment[]> {
-  const src = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-  const total = src.getPageCount();
-  const segments: Segment[] = [];
-  let segIdx = 0;
-  for (let start = 0; start < total; start += PAGES_PER_SEGMENT) {
-    const end = Math.min(start + PAGES_PER_SEGMENT, total);
-    const out = await PDFDocument.create();
-    const indices = Array.from({ length: end - start }, (_, i) => start + i);
-    const copied = await out.copyPages(src, indices);
-    copied.forEach((p) => out.addPage(p));
-    const bytes = await out.save();
-    segments.push({
-      index: segIdx++,
-      pageStart: start + 1,
-      pageEnd: end,
-      mime,
-      base64: toBase64(bytes),
-    });
-  }
-  return segments;
 }
 
 serve(async (req) => {
