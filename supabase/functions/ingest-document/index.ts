@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
-import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +9,6 @@ const corsHeaders = {
 
 const CHUNK_SIZE = 1200;
 const CHUNK_OVERLAP = 150;
-const PAGES_PER_SEGMENT = 8; // 각 세그먼트당 PDF 페이지 수
 
 function chunkText(text: string): string[] {
   const clean = text.replace(/\s+/g, " ").trim();
@@ -104,40 +102,6 @@ async function embedBatch(apiKey: string, inputs: string[]): Promise<number[][]>
     .map((d) => d.embedding);
 }
 
-type Segment = {
-  index: number;
-  pageStart: number | null;
-  pageEnd: number | null;
-  mime: string;
-  base64: string;
-};
-
-async function splitPdfIntoSegments(
-  pdfBytes: Uint8Array,
-  mime: string,
-): Promise<Segment[]> {
-  const src = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-  const total = src.getPageCount();
-  const segments: Segment[] = [];
-  let segIdx = 0;
-  for (let start = 0; start < total; start += PAGES_PER_SEGMENT) {
-    const end = Math.min(start + PAGES_PER_SEGMENT, total);
-    const out = await PDFDocument.create();
-    const indices = Array.from({ length: end - start }, (_, i) => start + i);
-    const copied = await out.copyPages(src, indices);
-    copied.forEach((p) => out.addPage(p));
-    const bytes = await out.save();
-    segments.push({
-      index: segIdx++,
-      pageStart: start + 1,
-      pageEnd: end,
-      mime,
-      base64: toBase64(bytes),
-    });
-  }
-  return segments;
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -168,22 +132,13 @@ serve(async (req) => {
 
     const buf = new Uint8Array(await fileBlob.arrayBuffer());
     const mime = doc.mime_type || "application/pdf";
-
-    // Build segment list
-    let segments: Segment[];
-    if (mime === "application/pdf") {
-      segments = await splitPdfIntoSegments(buf, mime);
-    } else {
-      segments = [
-        { index: 0, pageStart: null, pageEnd: null, mime, base64: toBase64(buf) },
-      ];
-    }
+    const base64 = toBase64(buf);
 
     await admin
       .from("knowledge_documents")
       .update({
         status: "processing",
-        total_segments: segments.length,
+        total_segments: 1,
         processed_segments: 0,
         error_message: null,
       } as any)
@@ -192,58 +147,47 @@ serve(async (req) => {
     // Clear old chunks
     await admin.from("knowledge_chunks").delete().eq("document_id", document_id);
 
-    let chunkGlobalIdx = 0;
+    const text = await extractTextViaGemini(apiKey, mime, base64);
+    const chunks = chunkText(text);
     let totalChunks = 0;
 
-    for (const seg of segments) {
-      const text = await extractTextViaGemini(apiKey, seg.mime, seg.base64);
-      const chunks = chunkText(text);
-
-      if (chunks.length > 0) {
-        const rows: any[] = [];
-        for (let i = 0; i < chunks.length; i += 50) {
-          const batch = chunks.slice(i, i + 50);
-          const embeddings = await embedBatch(apiKey, batch);
-          batch.forEach((content, idx) => {
-            rows.push({
-              document_id,
-              chunk_index: chunkGlobalIdx++,
-              content,
-              embedding: embeddings[idx],
-              segment_index: seg.index,
-              page_start: seg.pageStart,
-              page_end: seg.pageEnd,
-            });
+    if (chunks.length > 0) {
+      const rows: any[] = [];
+      for (let i = 0; i < chunks.length; i += 50) {
+        const batch = chunks.slice(i, i + 50);
+        const embeddings = await embedBatch(apiKey, batch);
+        batch.forEach((content, idx) => {
+          rows.push({
+            document_id,
+            chunk_index: rows.length,
+            content,
+            embedding: embeddings[idx],
+            segment_index: 0,
+            page_start: null,
+            page_end: null,
           });
-        }
-        const { error: insErr } = await admin
-          .from("knowledge_chunks")
-          .insert(rows);
-        if (insErr) throw new Error(insErr.message);
-        totalChunks += rows.length;
+        });
       }
-
-      await admin
-        .from("knowledge_documents")
-        .update({
-          processed_segments: seg.index + 1,
-          chunk_count: totalChunks,
-        } as any)
-        .eq("id", document_id);
+      const { error: insErr } = await admin
+        .from("knowledge_chunks")
+        .insert(rows);
+      if (insErr) throw new Error(insErr.message);
+      totalChunks = rows.length;
     }
+
 
     await admin
       .from("knowledge_documents")
       .update({
         status: "ready",
         chunk_count: totalChunks,
-        processed_segments: segments.length,
+        processed_segments: 1,
         error_message: totalChunks === 0 ? "추출된 텍스트가 없습니다" : null,
       } as any)
       .eq("id", document_id);
 
     return new Response(
-      JSON.stringify({ ok: true, chunks: totalChunks, segments: segments.length }),
+      JSON.stringify({ ok: true, chunks: totalChunks, segments: 1 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
