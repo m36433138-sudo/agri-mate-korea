@@ -314,11 +314,31 @@ export default function KnowledgeBase() {
                     </>
                   )}
                 </div>
+                {d.status === "processing" && d.total_segments && d.total_segments > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>
+                        학습 진행 {d.processed_segments ?? 0} / {d.total_segments} 세그먼트
+                      </span>
+                      <span>
+                        {Math.round(((d.processed_segments ?? 0) / d.total_segments) * 100)}%
+                      </span>
+                    </div>
+                    <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-400 transition-all"
+                        style={{
+                          width: `${Math.round(((d.processed_segments ?? 0) / d.total_segments) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
                 {d.status === "error" && d.error_message && (
                   <p className="text-xs text-red-400 mt-1 truncate">{d.error_message}</p>
                 )}
               </div>
-              <StatusPill status={d.status} />
+              <StatusPill status={d.status} doc={d} />
               {d.status === "error" && (
                 <Button
                   size="icon"
