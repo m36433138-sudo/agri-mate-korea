@@ -539,7 +539,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       if (error) throw error;
 
       if (partRows.length > 0) {
-        const resolvedParts: { repair_id: string; part_id: string; quantity: number; notes: string | null }[] = [];
+        const resolvedParts: any[] = [];
 
         for (const row of partRows) {
           let partId = row.part_id;
