@@ -451,6 +451,24 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
             {/* Rows */}
             {partRows.length > 0 && (
               <div className="space-y-1">
+                <div className="flex items-center justify-end gap-2">
+                  <span className="text-[11px] text-muted-foreground">기본 지점</span>
+                  <div className="inline-flex rounded-md border overflow-hidden text-xs">
+                    {(["장흥", "강진"] as const).map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => {
+                          setDefaultBranch(b);
+                          setPartRows((prev) => prev.map((r) => ({ ...r, branch: b })));
+                        }}
+                        className={`px-2 py-1 ${defaultBranch === b ? "bg-primary text-primary-foreground" : "bg-transparent"}`}
+                      >
+                        {b}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {partRows.map((row) => (
                   <div key={row.key} className="flex items-center gap-2 rounded border bg-muted/20 px-2 py-1.5 text-sm">
                     <div className="flex-1 min-w-0">
@@ -459,6 +477,14 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
                         <div className="text-xs font-mono text-muted-foreground truncate">{row.part_number}</div>
                       )}
                     </div>
+                    <select
+                      value={row.branch}
+                      onChange={(e) => updateBranch(row.key, e.target.value as "장흥" | "강진")}
+                      className="h-8 rounded-md border bg-background px-1 text-xs"
+                    >
+                      <option value="장흥">장흥</option>
+                      <option value="강진">강진</option>
+                    </select>
                     <Input
                       type="number"
                       min={0}
