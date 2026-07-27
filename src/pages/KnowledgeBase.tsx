@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PDFDocument } from "pdf-lib";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,7 +45,9 @@ type KnowledgeDoc = {
 };
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/heic";
-const MAX_SIZE = 100 * 1024 * 1024; // 100MB (PDF는 서버에서 8p씩 분할 처리)
+const MAX_SIZE = 200 * 1024 * 1024; // 200MB (클라이언트에서 분할 후 업로드)
+const SERVER_SAFE_SIZE = 30 * 1024 * 1024; // 서버가 한번에 처리 가능한 크기
+const PAGES_PER_UPLOAD = 25; // 큰 PDF를 이 페이지 수로 분할
 
 type UploadProgress = {
   id: string;
@@ -125,64 +128,101 @@ export default function KnowledgeBase() {
     }
 
     for (const file of Array.from(files)) {
-      const uploadId = crypto.randomUUID();
-
       if (file.size > MAX_SIZE) {
         toast({
           title: `${file.name} 용량 초과`,
-          description: `현재 최대 100MB까지 지원합니다 (선택하신 파일: ${(file.size / 1024 / 1024).toFixed(0)}MB). 더 큰 매뉴얼은 분할해서 올려주세요.`,
+          description: `최대 200MB까지 지원합니다 (선택: ${(file.size / 1024 / 1024).toFixed(0)}MB).`,
           variant: "destructive",
         });
         continue;
       }
 
-      setUploads((prev) => [
-        ...prev,
-        { id: uploadId, name: file.name, size: file.size, progress: 0 },
-      ]);
+      // 큰 PDF는 클라이언트에서 분할 후 각각 업로드 (서버 메모리 보호)
+      let parts: { name: string; blob: Blob; type: string }[] = [];
+      if (file.type === "application/pdf" && file.size > SERVER_SAFE_SIZE) {
+        try {
+          const srcBytes = new Uint8Array(await file.arrayBuffer());
+          const src = await PDFDocument.load(srcBytes, { ignoreEncryption: true });
+          const total = src.getPageCount();
+          const baseName = file.name.replace(/\.pdf$/i, "");
+          for (let start = 0; start < total; start += PAGES_PER_UPLOAD) {
+            const end = Math.min(start + PAGES_PER_UPLOAD, total);
+            const out = await PDFDocument.create();
+            const indices = Array.from({ length: end - start }, (_, i) => start + i);
+            const copied = await out.copyPages(src, indices);
+            copied.forEach((p) => out.addPage(p));
+            const bytes = await out.save();
+            parts.push({
+              name: `${baseName} (p.${start + 1}-${end}).pdf`,
+              blob: new Blob([bytes as BlobPart], { type: "application/pdf" }),
+              type: "application/pdf",
+            });
+          }
+          toast({
+            title: `${file.name} 분할 중`,
+            description: `${total}페이지 → ${parts.length}개 파일로 나눠 업로드합니다`,
+          });
+        } catch (e: any) {
+          toast({
+            title: "PDF 분할 실패",
+            description: e.message,
+            variant: "destructive",
+          });
+          continue;
+        }
+      } else {
+        parts = [{ name: file.name, blob: file, type: file.type }];
+      }
 
-      try {
-        const ext = file.name.split(".").pop() ?? "bin";
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      for (const part of parts) {
+        const uploadId = crypto.randomUUID();
+        setUploads((prev) => [
+          ...prev,
+          { id: uploadId, name: part.name, size: part.blob.size, progress: 0 },
+        ]);
 
-        // 1. Create signed upload URL for progress tracking
-        const { data: signed, error: sErr } = await supabase.storage
-          .from("knowledge-docs")
-          .createSignedUploadUrl(path);
-        if (sErr || !signed) throw sErr ?? new Error("서명 URL 생성 실패");
+        try {
+          const ext = part.name.split(".").pop() ?? "bin";
+          const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
-        // 2. Upload with XHR progress
-        await uploadWithProgress(signed.signedUrl, file, uploadId);
+          const { data: signed, error: sErr } = await supabase.storage
+            .from("knowledge-docs")
+            .createSignedUploadUrl(path);
+          if (sErr || !signed) throw sErr ?? new Error("서명 URL 생성 실패");
 
-        // 3. Register in DB — triggers ingestion
-        const { data: docRow, error: insErr } = await supabase
-          .from("knowledge_documents" as any)
-          .insert({
-            title: file.name,
-            file_path: path,
-            mime_type: file.type,
-            file_size: file.size,
-            status: "processing",
-            uploaded_by: user.id,
-          } as any)
-          .select()
-          .single();
-        if (insErr) throw insErr;
+          await uploadWithProgress(
+            signed.signedUrl,
+            new File([part.blob], part.name, { type: part.type }),
+            uploadId,
+          );
 
-        // Remove from upload list, refresh doc list
-        setUploads((prev) => prev.filter((u) => u.id !== uploadId));
-        qc.invalidateQueries({ queryKey: ["knowledge-documents"] });
+          const { data: docRow, error: insErr } = await supabase
+            .from("knowledge_documents" as any)
+            .insert({
+              title: part.name,
+              file_path: path,
+              mime_type: part.type,
+              file_size: part.blob.size,
+              status: "processing",
+              uploaded_by: user.id,
+            } as any)
+            .select()
+            .single();
+          if (insErr) throw insErr;
 
-        // Fire-and-forget ingest
-        supabase.functions
-          .invoke("ingest-document", { body: { document_id: (docRow as any).id } })
-          .then(() => qc.invalidateQueries({ queryKey: ["knowledge-documents"] }))
-          .catch((e) => console.error(e));
-      } catch (e: any) {
-        setUploads((prev) =>
-          prev.map((u) => (u.id === uploadId ? { ...u, error: e.message } : u)),
-        );
-        toast({ title: "업로드 실패", description: e.message, variant: "destructive" });
+          setUploads((prev) => prev.filter((u) => u.id !== uploadId));
+          qc.invalidateQueries({ queryKey: ["knowledge-documents"] });
+
+          supabase.functions
+            .invoke("ingest-document", { body: { document_id: (docRow as any).id } })
+            .then(() => qc.invalidateQueries({ queryKey: ["knowledge-documents"] }))
+            .catch((e) => console.error(e));
+        } catch (e: any) {
+          setUploads((prev) =>
+            prev.map((u) => (u.id === uploadId ? { ...u, error: e.message } : u)),
+          );
+          toast({ title: "업로드 실패", description: e.message, variant: "destructive" });
+        }
       }
     }
 
@@ -222,7 +262,7 @@ export default function KnowledgeBase() {
           <div>
             <p className="font-semibold text-foreground">PDF 또는 이미지 업로드</p>
             <p className="text-xs text-muted-foreground mt-1">
-              PDF · JPG · PNG · WEBP · HEIC (파일당 최대 100MB)
+              PDF · JPG · PNG · WEBP · HEIC (파일당 최대 200MB, 큰 PDF는 자동 분할)
             </p>
             <p className="text-[11px] text-muted-foreground/70 mt-0.5">
               더 큰 매뉴얼은 챕터별로 분할해 올려주세요
