@@ -357,8 +357,11 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
 
   const reset = () => {
     setMode("catalog"); setCatalogId(""); setBrandFilter("전체"); setCatalogSearch("");
-    setForm({ name: "", model: "", serial_number: "", brand: "", notes: "" });
+    setForm({ name: "", model: "", serial_number: "", brand: "", notes: "", rotary_blade: "" });
   };
+
+  const selectedIsRotary = !!selected && (selected.category === "로터리" || selected.category === "로타리");
+  const bladeOptions = (selected?.rotary_blade_options ?? []) as string[];
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -386,6 +389,7 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
             model: selected.model,
             serial_number: sn || null,
             notes: form.notes || null,
+            rotary_blade: selectedIsRotary && form.rotary_blade ? form.rotary_blade : null,
           }
         : {
             machine_id: machineId,
@@ -395,7 +399,9 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
             model: form.model || null,
             serial_number: sn || null,
             notes: form.notes || null,
+            rotary_blade: null,
           };
+
       const { error } = await (supabase as any).from("machine_attachments").insert(payload);
       if (error) throw error;
     },
