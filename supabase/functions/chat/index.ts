@@ -60,12 +60,52 @@ ${repairs.map((r) => {
 }).join("\n")}
 `;
 
+    // ---------- RAG: 업로드한 자료(지식베이스)에서 관련 청크 검색 ----------
+    let knowledgeContext = "";
+    try {
+      const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content;
+      if (lastUserMsg && typeof lastUserMsg === "string") {
+        const embResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "openai/text-embedding-3-small",
+            input: lastUserMsg.slice(0, 4000),
+          }),
+        });
+        if (embResp.ok) {
+          const embData = await embResp.json();
+          const queryEmbedding = embData.data?.[0]?.embedding;
+          if (queryEmbedding) {
+            const { data: matches } = await supabase.rpc("match_knowledge_chunks", {
+              query_embedding: queryEmbedding,
+              match_count: 6,
+            });
+            if (matches && matches.length > 0) {
+              knowledgeContext = "\n\n## 참고 자료 (사용자가 업로드한 문서에서 검색됨)\n" +
+                matches
+                  .filter((m: any) => m.similarity > 0.3)
+                  .map((m: any, i: number) => `[자료 ${i + 1}: ${m.document_title}]\n${m.content}`)
+                  .join("\n\n---\n\n");
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("RAG search failed:", e);
+    }
+
     const systemPrompt = `당신은 농기계 관리 시스템 "AgriManager"의 AI 어시스턴트입니다.
 사용자가 재고 현황, 수리 이력, 고객 정보, 매출 분석 등에 대해 질문하면 아래 데이터를 기반으로 정확하고 친절하게 답변해 주세요.
 답변은 항상 한국어로 해주세요. 숫자는 천 단위 구분자를 사용하세요.
 분석이나 요약을 요청받으면 표나 목록 형태로 깔끔하게 정리해 주세요.
+"참고 자료" 섹션이 있으면 해당 내용을 우선 근거로 활용하고, 답변 끝에 "📎 참고: [자료명]" 형식으로 출처를 밝혀 주세요.
 
-${contextSummary}`;
+${contextSummary}
+${knowledgeContext}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
