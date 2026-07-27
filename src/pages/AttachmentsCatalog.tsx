@@ -170,7 +170,13 @@ export default function AttachmentsCatalog() {
                       </div>
                       <div className="font-medium truncate">{item.name}</div>
                       {item.model && <div className="text-xs text-muted-foreground">모델: {item.model}</div>}
+                      {item.rotary_blade_options && item.rotary_blade_options.length > 0 && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          로터리 발: <span className="text-foreground">{item.rotary_blade_options.join(", ")}</span>
+                        </div>
+                      )}
                       {item.notes && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.notes}</div>}
+
                     </div>
                     {canEdit && (
                       <div className="flex flex-col gap-1">
