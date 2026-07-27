@@ -514,7 +514,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     setDraggedPartIndex(null);
   };
 
-  const totalCost = parseInt(laborCost) || 0;
+  const laborCostNum = parseInt(laborCost) || 0;
+  const partsSubtotal = partRows.reduce((sum, r) => sum + (Number(r.unit_price) || 0) * (Number(r.quantity) || 0), 0);
+  const totalCost = laborCostNum + partsSubtotal;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
