@@ -137,7 +137,7 @@ export default function ChatBot() {
           AI 어시스턴트
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          농기계 재고, 수리 이력, 고객 정보 등에 대해 질문해 보세요.
+          농기계 재고, 수리 이력, 고객 정보 및 <span className="text-primary font-medium">업로드한 자료(매뉴얼·카탈로그)</span>에 대해 질문해 보세요.
         </p>
       </div>
 

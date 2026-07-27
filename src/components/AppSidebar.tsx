@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package,
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
   ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin, Landmark, FileText,
-
+  BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
@@ -81,6 +81,7 @@ export function AppSidebar() {
   // 시스템 그룹
   const systemItems: NavItem[] = [
     { title: "AI 어시스턴트", url: "/chat", icon: Sparkles },
+    ...(isAdmin || isEmployee ? [{ title: "지식베이스", url: "/knowledge", icon: BookOpen }] : []),
     ...(isAdmin ? [{ title: "위치 이력", url: "/location-history", icon: MapPin }] : []),
     ...(isAdmin ? [{ title: "사용자 관리", url: "/users", icon: UserCog }] : []),
   ];

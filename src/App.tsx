@@ -37,6 +37,7 @@ const QuoteEditor = lazy(() => import("@/pages/QuoteEditor"));
 const QuoteProducts = lazy(() => import("@/pages/QuoteProducts"));
 const QuoteCompanies = lazy(() => import("@/pages/QuoteCompanies"));
 const AttachmentsCatalog = lazy(() => import("@/pages/AttachmentsCatalog"));
+const KnowledgeBase = lazy(() => import("@/pages/KnowledgeBase"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
@@ -96,6 +97,7 @@ const App = () => (
                         <Route path="/parts" element={<PartsList />} />
                         <Route path="/repair-templates" element={<RepairTemplates />} />
                         <Route path="/chat" element={<ChatBot />} />
+                        <Route path="/knowledge" element={<KnowledgeBase />} />
                         <Route path="/users" element={
                           <ProtectedRoute allowedRoles={["admin"]}>
                             <UserManagement />
