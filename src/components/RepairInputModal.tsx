@@ -939,7 +939,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                       </Button>
                     </div>
                   </div>
+                </TabsContent>
               </Tabs>
+
 
               {partRows.length > 0 && (
                 <div className="space-y-2 mt-3">
