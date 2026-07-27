@@ -204,20 +204,37 @@ export default function CustomerDetail() {
           ) : (
             <div className="space-y-2">
               {machines?.map(m => (
-                <Link key={m.id} to={`/machines/${m.id}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div>
+                <div key={m.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group">
+                  <Link to={`/machines/${m.id}`} className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{m.model_name}</p>
                     <p className="text-xs text-muted-foreground font-mono">{m.serial_number}</p>
                     {(m as any).engine_number && <p className="text-xs text-muted-foreground">엔진: {(m as any).engine_number}</p>}
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-3 text-right">
                     <div className="flex flex-col items-end gap-1">
                       <TypeBadge type={m.machine_type} />
                       {(m as any).classification && <Badge variant="outline" className="text-xs">{(m as any).classification}</Badge>}
                     </div>
-                    {m.sale_date && <span className="text-xs text-muted-foreground">{formatDate(m.sale_date)}</span>}
+                    <div className="flex flex-col items-end text-xs text-muted-foreground">
+                      {m.entry_date && <span>입고 {formatDate(m.entry_date)}</span>}
+                      {m.sale_date && <span>판매 {formatDate(m.sale_date)}</span>}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (confirm(`"${m.model_name} (${m.serial_number})" 기계를 정말로 삭제하시겠습니까?\n연결된 수리 이력도 함께 사라질 수 있습니다.`)) {
+                          deleteMachineMutation.mutate(m.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}
