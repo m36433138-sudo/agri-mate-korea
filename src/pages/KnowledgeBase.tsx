@@ -55,7 +55,19 @@ type UploadProgress = {
   size: number;
   progress: number; // 0-100
   error?: string;
+  groupId?: string;
+  partIndex?: number;
+  totalParts?: number;
+  docId?: string; // set after DB insert
 };
+
+type UploadGroup = {
+  id: string;
+  name: string;
+  totalParts: number;
+  docIds: string[];
+};
+
 
 export default function KnowledgeBase() {
   const qc = useQueryClient();
