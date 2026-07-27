@@ -463,11 +463,28 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
                 ))
               )}
             </div>
+            {selectedIsRotary && (
+              <div>
+                <Label>로터리 발</Label>
+                {bladeOptions.length > 0 ? (
+                  <Select value={form.rotary_blade} onValueChange={v => setForm(f => ({ ...f, rotary_blade: v }))}>
+                    <SelectTrigger><SelectValue placeholder="발 선택 (선택)" /></SelectTrigger>
+                    <SelectContent>
+                      {bladeOptions.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.rotary_blade} onChange={e => setForm(f => ({ ...f, rotary_blade: e.target.value }))}
+                    placeholder="발 종류 직접 입력 (카탈로그에 옵션 미등록)" />
+                )}
+              </div>
+            )}
             <div>
               <Label>제조번호</Label>
               <Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))}
                 placeholder="S/N (선택)" disabled={!catalogId} />
             </div>
+
             <div>
               <Label>비고</Label>
               <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
