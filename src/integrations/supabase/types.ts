@@ -1486,6 +1486,7 @@ export type Database = {
       }
       repair_parts: {
         Row: {
+          branch: string
           id: string
           notes: string | null
           part_id: string
@@ -1496,6 +1497,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          branch?: string
           id?: string
           notes?: string | null
           part_id: string
@@ -1506,6 +1508,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          branch?: string
           id?: string
           notes?: string | null
           part_id?: string

@@ -20,6 +20,7 @@ type PartRow = {
   unit: string;
   quantity: number;
   unit_price: number;
+  branch: "장흥" | "강진";
   fromTemplate?: string;
 };
 
@@ -170,6 +171,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [machineResults, setMachineResults] = useState<any[]>([]);
 
   const [partRows, setPartRows] = useState<PartRow[]>([]);
+  const [defaultBranch, setDefaultBranch] = useState<"장흥" | "강진">("장흥");
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState<any[]>([]);
   const [draggedPartIndex, setDraggedPartIndex] = useState<number | null>(null);
@@ -194,6 +196,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         unit: "개",
         quantity: qty,
         unit_price: 0,
+        branch: defaultBranch,
       },
     ]);
     setCustomPartName("");
@@ -307,6 +310,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               unit: "개",
               quantity: p.quantity,
               unit_price: p.unit_price || 0,
+              branch: defaultBranch,
             }))
           : [],
       );
@@ -467,6 +471,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           unit: partRecord.unit,
           quantity: 1,
           unit_price: unitPrice,
+          branch: (inv.branch === "장흥" || inv.branch === "강진") ? inv.branch : defaultBranch,
         },
       ]);
     }
@@ -485,6 +490,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       unit: item.parts?.unit || "개",
       quantity: item.quantity,
       unit_price: 0,
+      branch: defaultBranch,
       fromTemplate: template.id,
     }));
 
@@ -593,12 +599,41 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
             part_id: partId,
             quantity: row.quantity,
             unit_price: Number(row.unit_price) || 0,
+            branch: row.branch || defaultBranch,
             notes: null,
+            _partNumber: row.part_number,
           } as any);
         }
 
-        const { error: partsError } = await supabase.from("repair_parts").insert(resolvedParts);
+        const insertPayload = resolvedParts.map(({ _partNumber, ...rest }: any) => rest);
+        const { error: partsError } = await supabase.from("repair_parts").insert(insertPayload);
         if (partsError) throw partsError;
+
+        // 재고 차감 후 마이너스 확인
+        const negatives: string[] = [];
+        const uniqueKeys = new Set<string>();
+        for (const rp of resolvedParts) {
+          if (!rp._partNumber) continue;
+          const key = `${rp._partNumber}::${rp.branch}`;
+          if (uniqueKeys.has(key)) continue;
+          uniqueKeys.add(key);
+          const { data: invRow } = await supabase
+            .from("inventory")
+            .select("part_code, part_name, quantity, branch")
+            .eq("part_code", rp._partNumber)
+            .eq("branch", rp.branch)
+            .maybeSingle();
+          if (invRow && Number(invRow.quantity) < 0) {
+            negatives.push(`[${invRow.branch}] ${invRow.part_code} ${invRow.part_name} (${invRow.quantity})`);
+          }
+        }
+        if (negatives.length > 0) {
+          toast({
+            title: "재고 수량을 확인해주세요",
+            description: `다음 부품의 재고가 마이너스입니다:\n${negatives.join("\n")}`,
+            variant: "destructive",
+          });
+        }
       }
     },
     onSuccess: () => {
@@ -972,9 +1007,26 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
               {partRows.length > 0 && (
                 <div className="space-y-2 mt-3">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <Label className="text-xs text-muted-foreground">사용 부품 목록 ({partRows.length}건)</Label>
-                    <span className="text-[11px] text-muted-foreground">드래그 또는 스크롤로 순서 변경</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground">기본 지점</span>
+                      <div className="inline-flex rounded-md border overflow-hidden text-xs">
+                        {(["장흥", "강진"] as const).map((b) => (
+                          <button
+                            key={b}
+                            type="button"
+                            onClick={() => {
+                              setDefaultBranch(b);
+                              setPartRows((prev) => prev.map((r) => ({ ...r, branch: b })));
+                            }}
+                            className={`px-2 py-1 ${defaultBranch === b ? "bg-primary text-primary-foreground" : "bg-transparent"}`}
+                          >
+                            {b}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1">
                     {partRows.map((row, index) => (
@@ -999,6 +1051,15 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                           <p className="text-sm font-medium truncate">{row.part_name}</p>
                           <p className="text-xs text-muted-foreground font-mono">{row.part_number}</p>
                         </div>
+                        <select
+                          value={row.branch}
+                          onChange={(e) => updatePartRow(index, "branch", e.target.value as "장흥" | "강진")}
+                          className="h-8 rounded-md border bg-background px-1 text-xs"
+                          title="지점"
+                        >
+                          <option value="장흥">장흥</option>
+                          <option value="강진">강진</option>
+                        </select>
                         <Input
                           type="number"
                           value={row.unit_price || ""}

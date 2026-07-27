@@ -28,6 +28,7 @@ type PartRow = {
   unit: string;
   quantity: number;
   unit_price: number;
+  branch: "장흥" | "강진";
 };
 
 type Props = {
@@ -49,6 +50,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
   const [accountingPosted, setAccountingPosted] = useState(false);
 
   const [partRows, setPartRows] = useState<PartRow[]>([]);
+  const [defaultBranch, setDefaultBranch] = useState<"장흥" | "강진">("장흥");
   const [partSearch, setPartSearch] = useState("");
   const [partOpen, setPartOpen] = useState(false);
   const [manualName, setManualName] = useState("");
@@ -71,7 +73,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("repair_parts")
-        .select("id, part_id, quantity, unit_price, parts(id, part_name, part_number, unit)")
+        .select("id, part_id, quantity, unit_price, branch, parts(id, part_name, part_number, unit)")
         .eq("repair_id", repair!.id);
       if (error) throw error;
       return data || [];
@@ -121,6 +123,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           unit: rp.parts?.unit || "개",
           quantity: rp.quantity ?? 1,
           unit_price: Number(rp.unit_price) || 0,
+          branch: (rp.branch === "강진" ? "강진" : "장흥") as "장흥" | "강진",
         }))
       );
     }
@@ -161,6 +164,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           unit: p.unit || "개",
           quantity: 1,
           unit_price: unitPrice,
+          branch: defaultBranch,
         },
       ];
     });
@@ -183,6 +187,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
         unit: "개",
         quantity: parseInt(manualQty) || 1,
         unit_price: 0,
+        branch: defaultBranch,
       },
     ]);
     setManualName("");
@@ -196,6 +201,10 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
 
   const updateUnitPrice = (key: string, price: number) => {
     setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, unit_price: price } : r)));
+  };
+
+  const updateBranch = (key: string, branch: "장흥" | "강진") => {
+    setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, branch } : r)));
   };
 
   const removeRow = (key: string) => {
@@ -256,7 +265,9 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           part_id: partId,
           quantity: row.quantity || 1,
           unit_price: Number(row.unit_price) || 0,
+          branch: row.branch || defaultBranch,
           notes: null,
+          _partNumber: row.part_number,
         });
       }
 
@@ -265,8 +276,35 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       if (delError) throw delError;
 
       if (resolved.length > 0) {
-        const { error: insError } = await supabase.from("repair_parts").insert(resolved);
+        const insertPayload = resolved.map(({ _partNumber, ...rest }: any) => rest);
+        const { error: insError } = await supabase.from("repair_parts").insert(insertPayload);
         if (insError) throw insError;
+
+        // 재고 마이너스 확인
+        const negatives: string[] = [];
+        const seen = new Set<string>();
+        for (const rp of resolved) {
+          if (!rp._partNumber) continue;
+          const key = `${rp._partNumber}::${rp.branch}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const { data: invRow } = await supabase
+            .from("inventory")
+            .select("part_code, part_name, quantity, branch")
+            .eq("part_code", rp._partNumber)
+            .eq("branch", rp.branch)
+            .maybeSingle();
+          if (invRow && Number(invRow.quantity) < 0) {
+            negatives.push(`[${invRow.branch}] ${invRow.part_code} ${invRow.part_name} (${invRow.quantity})`);
+          }
+        }
+        if (negatives.length > 0) {
+          toast({
+            title: "재고 수량을 확인해주세요",
+            description: `다음 부품의 재고가 마이너스입니다:\n${negatives.join("\n")}`,
+            variant: "destructive",
+          });
+        }
       }
     },
     onSuccess: () => {
@@ -413,6 +451,24 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
             {/* Rows */}
             {partRows.length > 0 && (
               <div className="space-y-1">
+                <div className="flex items-center justify-end gap-2">
+                  <span className="text-[11px] text-muted-foreground">기본 지점</span>
+                  <div className="inline-flex rounded-md border overflow-hidden text-xs">
+                    {(["장흥", "강진"] as const).map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => {
+                          setDefaultBranch(b);
+                          setPartRows((prev) => prev.map((r) => ({ ...r, branch: b })));
+                        }}
+                        className={`px-2 py-1 ${defaultBranch === b ? "bg-primary text-primary-foreground" : "bg-transparent"}`}
+                      >
+                        {b}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {partRows.map((row) => (
                   <div key={row.key} className="flex items-center gap-2 rounded border bg-muted/20 px-2 py-1.5 text-sm">
                     <div className="flex-1 min-w-0">
@@ -421,6 +477,14 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
                         <div className="text-xs font-mono text-muted-foreground truncate">{row.part_number}</div>
                       )}
                     </div>
+                    <select
+                      value={row.branch}
+                      onChange={(e) => updateBranch(row.key, e.target.value as "장흥" | "강진")}
+                      className="h-8 rounded-md border bg-background px-1 text-xs"
+                    >
+                      <option value="장흥">장흥</option>
+                      <option value="강진">강진</option>
+                    </select>
                     <Input
                       type="number"
                       min={0}
