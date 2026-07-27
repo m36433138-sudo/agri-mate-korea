@@ -574,8 +574,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
             repair_id: data.id,
             part_id: partId,
             quantity: row.quantity,
+            unit_price: Number(row.unit_price) || 0,
             notes: null,
-          });
+          } as any);
         }
 
         const { error: partsError } = await supabase.from("repair_parts").insert(resolvedParts);
