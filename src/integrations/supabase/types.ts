@@ -1491,6 +1491,7 @@ export type Database = {
           part_id: string
           quantity: number
           repair_id: string
+          unit_price: number
           updated_at: string
           updated_by: string | null
         }
@@ -1500,6 +1501,7 @@ export type Database = {
           part_id: string
           quantity?: number
           repair_id: string
+          unit_price?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -1509,6 +1511,7 @@ export type Database = {
           part_id?: string
           quantity?: number
           repair_id?: string
+          unit_price?: number
           updated_at?: string
           updated_by?: string | null
         }

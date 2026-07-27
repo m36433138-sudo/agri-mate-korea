@@ -19,6 +19,7 @@ type PartRow = {
   part_number: string;
   unit: string;
   quantity: number;
+  unit_price: number;
   fromTemplate?: string;
 };
 
@@ -35,6 +36,7 @@ export type DraftPrefill = {
   model?: string;
   parts?: { part_code?: string; part_name: string; quantity: number; unit_price: number }[];
 };
+
 
 type Props = {
   open: boolean;
@@ -191,6 +193,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         part_number: num,
         unit: "개",
         quantity: qty,
+        unit_price: 0,
       },
     ]);
     setCustomPartName("");
@@ -303,6 +306,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               part_number: p.part_code || "",
               unit: "개",
               quantity: p.quantity,
+              unit_price: p.unit_price || 0,
             }))
           : [],
       );
@@ -397,7 +401,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     const like = `%${q}%`;
     const { data } = await supabase
       .from("inventory")
-      .select("id, part_code, part_name, quantity, branch")
+      .select("id, part_code, part_name, quantity, branch, sales_price")
       .or(`part_code.ilike.${like},part_name.ilike.${like}`)
       .order("part_code")
       .limit(15);
@@ -444,6 +448,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           part_number: partRecord.part_number,
           unit: partRecord.unit,
           quantity: 1,
+          unit_price: Number(inv.sales_price) || 0,
         },
       ]);
     }
@@ -461,6 +466,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       part_number: item.parts?.part_number || "",
       unit: item.parts?.unit || "개",
       quantity: item.quantity,
+      unit_price: 0,
       fromTemplate: template.id,
     }));
 
@@ -508,7 +514,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     setDraggedPartIndex(null);
   };
 
-  const totalCost = parseInt(laborCost) || 0;
+  const laborCostNum = parseInt(laborCost) || 0;
+  const partsSubtotal = partRows.reduce((sum, r) => sum + (Number(r.unit_price) || 0) * (Number(r.quantity) || 0), 0);
+  const totalCost = laborCostNum + partsSubtotal;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -531,7 +539,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       if (error) throw error;
 
       if (partRows.length > 0) {
-        const resolvedParts: { repair_id: string; part_id: string; quantity: number; notes: string | null }[] = [];
+        const resolvedParts: any[] = [];
 
         for (const row of partRows) {
           let partId = row.part_id;
@@ -566,8 +574,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
             repair_id: data.id,
             part_id: partId,
             quantity: row.quantity,
+            unit_price: Number(row.unit_price) || 0,
             notes: null,
-          });
+          } as any);
         }
 
         const { error: partsError } = await supabase.from("repair_parts").insert(resolvedParts);
@@ -974,12 +983,23 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                         </div>
                         <Input
                           type="number"
+                          value={row.unit_price || ""}
+                          onChange={(e) => updatePartRow(index, "unit_price", Number(e.target.value) || 0)}
+                          className="w-24 h-8 text-sm text-right"
+                          placeholder="단가"
+                          min={0}
+                        />
+                        <Input
+                          type="number"
                           value={row.quantity}
                           onChange={(e) => updatePartRow(index, "quantity", Number(e.target.value) || 1)}
-                          className="w-20 h-8 text-sm text-center"
+                          className="w-16 h-8 text-sm text-center"
                           min={1}
                         />
-                        <span className="text-xs text-muted-foreground w-8">{row.unit}</span>
+                        <span className="text-xs text-muted-foreground w-6">{row.unit}</span>
+                        <span className="text-xs font-medium w-20 text-right tabular-nums">
+                          {formatPrice((Number(row.unit_price) || 0) * (Number(row.quantity) || 0))}
+                        </span>
                         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removePartRow(index)}>
                           <Trash2 className="h-4 w-4 text-muted-foreground" />
                         </Button>
@@ -1004,9 +1024,15 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         </div>
 
         <DialogFooter className="pt-4 border-t">
-          <div className="flex items-center gap-2 mr-auto">
-            <span className="text-sm text-muted-foreground">총 비용:</span>
-            <span className="text-sm font-bold">{formatPrice(totalCost)}</span>
+          <div className="flex flex-col mr-auto text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>공임비 {formatPrice(laborCostNum)}</span>
+              <span>부품 {formatPrice(partsSubtotal)}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span>총 비용:</span>
+              <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
+            </div>
           </div>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => saveMutation.mutate()} disabled={!valid || saveMutation.isPending}>

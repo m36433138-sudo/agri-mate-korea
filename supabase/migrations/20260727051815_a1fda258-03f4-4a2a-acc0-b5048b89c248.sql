@@ -1,0 +1,1 @@
+ALTER TABLE public.repair_parts ADD COLUMN IF NOT EXISTS unit_price numeric NOT NULL DEFAULT 0;

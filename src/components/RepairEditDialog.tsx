@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search } from "lucide-react";
 import LastModifiedInfo from "@/components/LastModifiedInfo";
+import { formatPrice } from "@/lib/formatters";
 import {
   Command,
   CommandEmpty,
@@ -26,6 +27,7 @@ type PartRow = {
   part_number: string;
   unit: string;
   quantity: number;
+  unit_price: number;
 };
 
 type Props = {
@@ -69,7 +71,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("repair_parts")
-        .select("id, part_id, quantity, parts(id, part_name, part_number, unit)")
+        .select("id, part_id, quantity, unit_price, parts(id, part_name, part_number, unit)")
         .eq("repair_id", repair!.id);
       if (error) throw error;
       return data || [];
@@ -118,6 +120,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           part_number: rp.parts?.part_number || "",
           unit: rp.parts?.unit || "개",
           quantity: rp.quantity ?? 1,
+          unit_price: Number(rp.unit_price) || 0,
         }))
       );
     }
@@ -140,6 +143,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           part_number: p.part_number || "",
           unit: p.unit || "개",
           quantity: 1,
+          unit_price: 0,
         },
       ];
     });
@@ -161,6 +165,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
         part_number: manualNumber.trim(),
         unit: "개",
         quantity: parseInt(manualQty) || 1,
+        unit_price: 0,
       },
     ]);
     setManualName("");
@@ -172,22 +177,29 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
     setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, quantity: qty } : r)));
   };
 
+  const updateUnitPrice = (key: string, price: number) => {
+    setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, unit_price: price } : r)));
+  };
+
   const removeRow = (key: string) => {
     setPartRows((prev) => prev.filter((r) => r.key !== key));
   };
 
+  const laborCostNum = parseInt(laborCost) || 0;
+  const partsSubtotal = partRows.reduce((sum, r) => sum + (Number(r.unit_price) || 0) * (Number(r.quantity) || 0), 0);
+  const totalCost = laborCostNum + partsSubtotal;
+
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!repair) return;
-      const labor = parseInt(laborCost) || 0;
       const { error } = await supabase
         .from("repairs")
         .update({
           repair_date: repairDate,
           repair_content: repairContent,
           technician: technician || null,
-          labor_cost: labor,
-          total_cost: labor,
+          labor_cost: laborCostNum,
+          total_cost: totalCost,
           operating_hours: parseInt(operatingHours) || null,
           notes: notes || null,
           accounting_posted: accountingPosted,
@@ -196,7 +208,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       if (error) throw error;
 
       // Resolve parts: create rows in `parts` for manual entries
-      const resolved: { repair_id: string; part_id: string; quantity: number; notes: string | null }[] = [];
+      const resolved: any[] = [];
       for (const row of partRows) {
         let partId = row.part_id;
         if (!partId) {
@@ -226,6 +238,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           repair_id: repair.id,
           part_id: partId,
           quantity: row.quantity || 1,
+          unit_price: Number(row.unit_price) || 0,
           notes: null,
         });
       }
@@ -393,12 +406,23 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
                     </div>
                     <Input
                       type="number"
+                      min={0}
+                      value={row.unit_price || ""}
+                      onChange={(e) => updateUnitPrice(row.key, parseInt(e.target.value) || 0)}
+                      className="w-24 h-8 text-right"
+                      placeholder="단가"
+                    />
+                    <Input
+                      type="number"
                       min={1}
                       value={row.quantity}
                       onChange={(e) => updateQty(row.key, parseInt(e.target.value) || 1)}
-                      className="w-20 h-8"
+                      className="w-16 h-8 text-center"
                     />
                     <span className="text-xs text-muted-foreground w-6">{row.unit}</span>
+                    <span className="text-xs font-medium w-20 text-right tabular-nums">
+                      {formatPrice((Number(row.unit_price) || 0) * (Number(row.quantity) || 0))}
+                    </span>
                     <Button
                       type="button"
                       variant="ghost"
@@ -416,6 +440,16 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
         </div>
 
         <DialogFooter>
+          <div className="flex flex-col mr-auto text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>공임비 {formatPrice(laborCostNum)}</span>
+              <span>부품 {formatPrice(partsSubtotal)}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span>총 비용:</span>
+              <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
+            </div>
+          </div>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => updateMutation.mutate()} disabled={!valid || updateMutation.isPending}>
             {updateMutation.isPending ? "저장 중..." : "저장"}
