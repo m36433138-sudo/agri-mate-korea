@@ -8,6 +8,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Plus, Trash2, Search } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+type PartRow = {
+  key: string;
+  part_id: string; // uuid if from parts table, else empty for manual
+  part_name: string;
+  part_number: string;
+  unit: string;
+  quantity: number;
+};
 
 type Props = {
   open: boolean;
@@ -27,6 +45,13 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
   const [notes, setNotes] = useState("");
   const [accountingPosted, setAccountingPosted] = useState(false);
 
+  const [partRows, setPartRows] = useState<PartRow[]>([]);
+  const [partSearch, setPartSearch] = useState("");
+  const [partOpen, setPartOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualNumber, setManualNumber] = useState("");
+  const [manualQty, setManualQty] = useState("1");
+
   const { data: employees } = useQuery({
     queryKey: ["employees-list"],
     enabled: open,
@@ -35,6 +60,35 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       if (error) throw error;
       return data || [];
     },
+  });
+
+  const { data: existingParts } = useQuery({
+    queryKey: ["repair-parts-edit", repair?.id],
+    enabled: open && !!repair?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("repair_parts")
+        .select("id, part_id, quantity, parts(id, part_name, part_number, unit)")
+        .eq("repair_id", repair!.id);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: partSearchResults = [] } = useQuery({
+    queryKey: ["parts-search-edit", partSearch],
+    enabled: open && partSearch.length >= 2,
+    queryFn: async () => {
+      const like = `%${partSearch}%`;
+      const { data, error } = await supabase
+        .from("parts")
+        .select("id, part_name, part_number, unit")
+        .or(`part_name.ilike.${like},part_number.ilike.${like}`)
+        .limit(15);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 30_000,
   });
 
   useEffect(() => {
@@ -46,8 +100,80 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       setOperatingHours(repair.operating_hours ? String(repair.operating_hours) : "");
       setNotes(repair.notes || "");
       setAccountingPosted(!!repair.accounting_posted);
+      setPartSearch("");
+      setManualName("");
+      setManualNumber("");
+      setManualQty("1");
     }
   }, [open, repair]);
+
+  useEffect(() => {
+    if (existingParts) {
+      setPartRows(
+        existingParts.map((rp: any) => ({
+          key: rp.id,
+          part_id: rp.part_id,
+          part_name: rp.parts?.part_name || "",
+          part_number: rp.parts?.part_number || "",
+          unit: rp.parts?.unit || "개",
+          quantity: rp.quantity ?? 1,
+        }))
+      );
+    }
+  }, [existingParts]);
+
+  const addFromSearch = (p: any) => {
+    setPartRows((prev) => {
+      const idx = prev.findIndex((r) => r.part_id === p.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
+        return next;
+      }
+      return [
+        ...prev,
+        {
+          key: `new-${crypto.randomUUID()}`,
+          part_id: p.id,
+          part_name: p.part_name,
+          part_number: p.part_number || "",
+          unit: p.unit || "개",
+          quantity: 1,
+        },
+      ];
+    });
+    setPartSearch("");
+    setPartOpen(false);
+  };
+
+  const addManual = () => {
+    if (!manualName.trim()) {
+      toast({ title: "부품명을 입력하세요", variant: "destructive" });
+      return;
+    }
+    setPartRows((prev) => [
+      ...prev,
+      {
+        key: `manual-${crypto.randomUUID()}`,
+        part_id: "",
+        part_name: manualName.trim(),
+        part_number: manualNumber.trim(),
+        unit: "개",
+        quantity: parseInt(manualQty) || 1,
+      },
+    ]);
+    setManualName("");
+    setManualNumber("");
+    setManualQty("1");
+  };
+
+  const updateQty = (key: string, qty: number) => {
+    setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, quantity: qty } : r)));
+  };
+
+  const removeRow = (key: string) => {
+    setPartRows((prev) => prev.filter((r) => r.key !== key));
+  };
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -67,11 +193,56 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
         })
         .eq("id", repair.id);
       if (error) throw error;
+
+      // Resolve parts: create rows in `parts` for manual entries
+      const resolved: { repair_id: string; part_id: string; quantity: number; notes: string | null }[] = [];
+      for (const row of partRows) {
+        let partId = row.part_id;
+        if (!partId) {
+          // find or create by part_number if provided, else by name
+          const query = supabase.from("parts").select("id").limit(1);
+          const { data: existing } = row.part_number
+            ? await query.eq("part_number", row.part_number).maybeSingle()
+            : await query.eq("part_name", row.part_name).maybeSingle();
+
+          if (existing) {
+            partId = existing.id;
+          } else {
+            const { data: created, error: createError } = await supabase
+              .from("parts")
+              .insert({
+                part_number: row.part_number || `MANUAL-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                part_name: row.part_name,
+                unit: row.unit || "개",
+              })
+              .select("id")
+              .single();
+            if (createError) throw createError;
+            partId = created.id;
+          }
+        }
+        resolved.push({
+          repair_id: repair.id,
+          part_id: partId,
+          quantity: row.quantity || 1,
+          notes: null,
+        });
+      }
+
+      // Replace existing repair_parts
+      const { error: delError } = await supabase.from("repair_parts").delete().eq("repair_id", repair.id);
+      if (delError) throw delError;
+
+      if (resolved.length > 0) {
+        const { error: insError } = await supabase.from("repair_parts").insert(resolved);
+        if (insError) throw insError;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-repairs"] });
       qc.invalidateQueries({ queryKey: ["repairs"] });
       qc.invalidateQueries({ queryKey: ["repairs-recent"] });
+      qc.invalidateQueries({ queryKey: ["repair-parts-edit", repair?.id] });
       toast({ title: "수정되었습니다." });
       onOpenChange(false);
     },
@@ -82,12 +253,12 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>수리 이력 수정</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4 -mx-6 px-6">
           {repair?.machines && (
             <div className="rounded-md border bg-muted/30 p-2 text-sm">
               <span className="font-medium">{repair.machines.model_name}</span>{" "}
@@ -143,6 +314,100 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
               onCheckedChange={(v) => setAccountingPosted(!!v)}
             />
             <Label htmlFor="edit-accounting" className="cursor-pointer text-sm">전산 기표 완료</Label>
+          </div>
+
+          {/* Parts editor */}
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">사용 부품</h3>
+              <span className="text-xs text-muted-foreground">{partRows.length}개</span>
+            </div>
+
+            {/* Search from parts */}
+            <Popover open={partOpen} onOpenChange={setPartOpen}>
+              <PopoverTrigger asChild>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="부품명/부품번호 검색 (2자 이상)..."
+                    value={partSearch}
+                    onChange={(e) => {
+                      setPartSearch(e.target.value);
+                      setPartOpen(e.target.value.length >= 2);
+                    }}
+                    className="pl-9"
+                  />
+                </div>
+              </PopoverTrigger>
+              {partSearch.length >= 2 && (
+                <PopoverContent
+                  className="p-0 w-[var(--radix-popover-trigger-width)]"
+                  align="start"
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <Command>
+                    <CommandList>
+                      <CommandEmpty>검색 결과 없음</CommandEmpty>
+                      <CommandGroup>
+                        {partSearchResults.map((p: any) => (
+                          <CommandItem key={p.id} value={p.part_name} onSelect={() => addFromSearch(p)}>
+                            <div className="flex-1">
+                              {p.part_number && (
+                                <span className="font-mono text-xs text-muted-foreground">[{p.part_number}]</span>
+                              )}{" "}
+                              <span className="font-medium">{p.part_name}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              )}
+            </Popover>
+
+            {/* Manual add */}
+            <div className="grid grid-cols-[1fr_1fr_80px_auto] gap-2">
+              <Input placeholder="부품명 (직접 입력)" value={manualName} onChange={(e) => setManualName(e.target.value)} />
+              <Input placeholder="부품번호 (선택)" value={manualNumber} onChange={(e) => setManualNumber(e.target.value)} />
+              <Input type="number" min={1} value={manualQty} onChange={(e) => setManualQty(e.target.value)} />
+              <Button type="button" variant="outline" size="sm" onClick={addManual}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Rows */}
+            {partRows.length > 0 && (
+              <div className="space-y-1">
+                {partRows.map((row) => (
+                  <div key={row.key} className="flex items-center gap-2 rounded border bg-muted/20 px-2 py-1.5 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate font-medium">{row.part_name}</div>
+                      {row.part_number && (
+                        <div className="text-xs font-mono text-muted-foreground truncate">{row.part_number}</div>
+                      )}
+                    </div>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={row.quantity}
+                      onChange={(e) => updateQty(row.key, parseInt(e.target.value) || 1)}
+                      className="w-20 h-8"
+                    />
+                    <span className="text-xs text-muted-foreground w-6">{row.unit}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeRow(row.key)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
