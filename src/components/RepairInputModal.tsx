@@ -899,11 +899,46 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                     )}
                     {partSearch.trim() && partResults.length === 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg z-50 p-3 text-sm text-muted-foreground">
-                        부품을 찾을 수 없습니다. <a href="/parts" className="text-primary hover:underline">부품 관리</a>에서 먼저 등록해주세요.
+                        검색 결과가 없습니다. 아래 "직접 입력"에서 부품을 바로 추가할 수 있습니다.
                       </div>
                     )}
                   </div>
-                </TabsContent>
+
+                  <div className="mt-3 rounded-md border bg-muted/30 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">직접 입력 (부품관리에 없어도 추가 가능)</Label>
+                    </div>
+                    <div className="grid grid-cols-12 gap-2">
+                      <Input
+                        placeholder="부품명 *"
+                        value={customPartName}
+                        onChange={(e) => setCustomPartName(e.target.value)}
+                        className="col-span-5 h-9"
+                      />
+                      <Input
+                        placeholder="부품번호 (선택)"
+                        value={customPartNumber}
+                        onChange={(e) => setCustomPartNumber(e.target.value)}
+                        className="col-span-4 h-9 font-mono text-xs"
+                      />
+                      <Input
+                        type="number"
+                        min={1}
+                        value={customPartQty}
+                        onChange={(e) => setCustomPartQty(e.target.value)}
+                        className="col-span-2 h-9 text-center"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        className="col-span-1 h-9 w-full"
+                        onClick={addCustomPart}
+                        title="추가"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
               </Tabs>
 
               {partRows.length > 0 && (
