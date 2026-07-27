@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search } from "lucide-react";
 import LastModifiedInfo from "@/components/LastModifiedInfo";
+import { formatPrice } from "@/lib/formatters";
 import {
   Command,
   CommandEmpty,
