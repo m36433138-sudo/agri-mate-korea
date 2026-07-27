@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,19 @@ export default function CustomerDetail() {
       const { data, error } = await supabase.from("machines").select("*").eq("customer_id", id!).order("sale_date", { ascending: false });
       if (error) throw error;
       return data as Machine[];
+    },
+  });
+
+  const { data: salesHistory } = useQuery({
+    queryKey: ["customer-machine-history", id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("machine_sales_history")
+        .select("*, machines(*)")
+        .or(`from_customer_id.eq.${id},to_customer_id.eq.${id}`)
+        .order("event_date", { ascending: false });
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -80,6 +93,94 @@ export default function CustomerDetail() {
     },
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
+
+  // 현재 보유 + 과거 거래 기계 통합 이력
+  const machineHistory = useMemo(() => {
+    if (!id) return [];
+    const map = new Map<string, any>();
+    const today = new Date().toISOString().slice(0, 10);
+
+    const diffDays = (from: string | null, to: string | null) => {
+      if (!from || !to) return 0;
+      const a = new Date(from).getTime();
+      const b = new Date(to).getTime();
+      if (isNaN(a) || isNaN(b)) return 0;
+      return Math.max(0, Math.floor((b - a) / (1000 * 60 * 60 * 24)));
+    };
+
+    // 현재 보유 기계 등록
+    machines?.forEach((m) => {
+      map.set(m.id, {
+        ...m,
+        _holding: true,
+        _acquiredDate: m.sale_date || m.entry_date,
+        _lastEventDate: m.sale_date || m.entry_date,
+        _lastEventType: "current",
+        _ownershipDays: diffDays(m.sale_date || m.entry_date, today),
+      });
+    });
+
+    // 거래 이력을 기계별로 그룹화하여 정확한 보유 기간 계산
+    const historyByMachine: Record<string, any[]> = {};
+    salesHistory?.forEach((h: any) => {
+      if (!historyByMachine[h.machine_id]) historyByMachine[h.machine_id] = [];
+      historyByMachine[h.machine_id].push(h);
+    });
+
+    Object.entries(historyByMachine).forEach(([machineId, events]) => {
+      const sorted = [...events].sort((a, b) => a.event_date.localeCompare(b.event_date));
+      const isHolding = !!machines?.find(m => m.id === machineId);
+      let days = 0;
+      let startDate: string | null = null;
+
+      sorted.forEach((e) => {
+        if (e.to_customer_id === id) {
+          startDate = e.event_date;
+        } else if (e.from_customer_id === id && startDate) {
+          days += diffDays(startDate, e.event_date);
+          startDate = null;
+        }
+      });
+
+      if (startDate && isHolding) {
+        days += diffDays(startDate, today);
+      }
+
+      const lastEvent = sorted[sorted.length - 1];
+      const lastEventDate = lastEvent?.event_date || (isHolding ? sorted[0]?.machines?.sale_date || sorted[0]?.machines?.entry_date : null);
+      const lastEventType = isHolding ? "current" : lastEvent?.event_type;
+      const machineData = lastEvent?.machines || machines?.find(m => m.id === machineId);
+
+      if (!machineData) return;
+
+      // history 기반 보유 기간이 계산되지 않았으면 (거래 이력만 있는 경우 등) 단순 기간 fallback
+      const fallbackDays = isHolding
+        ? diffDays(machineData.sale_date || machineData.entry_date, today)
+        : diffDays(machineData.sale_date || machineData.entry_date, lastEventDate);
+
+      const ownershipDays = days > 0 ? days : fallbackDays;
+
+      if (map.has(machineId)) {
+        const existing = map.get(machineId);
+        existing._lastEventDate = lastEventDate || existing._lastEventDate;
+        existing._lastEventType = lastEventType || existing._lastEventType;
+        existing._ownershipDays = ownershipDays;
+      } else {
+        map.set(machineId, {
+          ...machineData,
+          _holding: isHolding,
+          _acquiredDate: machineData.sale_date || machineData.entry_date,
+          _lastEventDate: lastEventDate,
+          _lastEventType: lastEventType,
+          _ownershipDays: ownershipDays,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) =>
+      (b._lastEventDate || "").localeCompare(a._lastEventDate || "")
+    );
+  }, [machines, salesHistory, id]);
 
   const machineIds = machines?.map(m => m.id) ?? [];
 
@@ -199,49 +300,69 @@ export default function CustomerDetail() {
 
       <Card className="shadow-card border-0 mb-6">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base font-semibold">보유/구매 기계 ({machines?.length ?? 0})</CardTitle>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            보유/구매/이전 기계 ({machineHistory.length})
+          </CardTitle>
           <Button size="sm" variant="outline" onClick={() => setMachineOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> 기계 추가
           </Button>
         </CardHeader>
         <CardContent>
-          {machines?.length === 0 ? (
-            <p className="text-sm text-muted-foreground">구매 기계가 없습니다.</p>
+          {machineHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">구매/보유/이전 기계 기록이 없습니다.</p>
           ) : (
             <div className="space-y-2">
-              {machines?.map(m => (
-                <div key={m.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group">
-                  <Link to={`/machines/${m.id}`} className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{m.model_name}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{m.serial_number}</p>
-                    {(m as any).engine_number && <p className="text-xs text-muted-foreground">엔진: {(m as any).engine_number}</p>}
-                  </Link>
-                  <div className="flex items-center gap-3 text-right">
-                    <div className="flex flex-col items-end gap-1">
-                      <TypeBadge type={m.machine_type} />
-                      {(m as any).classification && <Badge variant="outline" className="text-xs">{(m as any).classification}</Badge>}
+              {machineHistory.map((m) => {
+                const status = m._lastEventType;
+                const statusLabel =
+                  status === "current" ? "보유중" :
+                  status === "sale" ? "판매완료" :
+                  status === "trade_in" ? "중고 인수" :
+                  status === "customer_link" ? "고객 연결" :
+                  status === "transfer" ? "소유권 이전" : "-";
+                const statusColor =
+                  status === "current" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                  status === "sale" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                  status === "trade_in" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                  "bg-muted text-muted-foreground border-border";
+
+                return (
+                  <div key={m.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group">
+                    <Link to={`/machines/${m.id}`} className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{m.model_name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{m.serial_number}</p>
+                      {(m as any).engine_number && <p className="text-xs text-muted-foreground">엔진: {(m as any).engine_number}</p>}
+                    </Link>
+                    <div className="flex items-center gap-3 text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
+                        {(m as any).classification && <Badge variant="outline" className="text-xs">{(m as any).classification}</Badge>}
+                      </div>
+                      <div className="flex flex-col items-end text-xs text-muted-foreground">
+                        <span>보유 {m._ownershipDays.toLocaleString()}일</span>
+                        {m._lastEventDate && <span>마지막 거래 {formatDate(m._lastEventDate)}</span>}
+                      </div>
+                      {m._holding && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (confirm(`"${m.model_name} (${m.serial_number})" 기계를 정말로 삭제하시겠습니까?\n연결된 수리 이력도 함께 사라질 수 있습니다.`)) {
+                              deleteMachineMutation.mutate(m.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
-                    <div className="flex flex-col items-end text-xs text-muted-foreground">
-                      {m.entry_date && <span>입고 {formatDate(m.entry_date)}</span>}
-                      {m.sale_date && <span>판매 {formatDate(m.sale_date)}</span>}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (confirm(`"${m.model_name} (${m.serial_number})" 기계를 정말로 삭제하시겠습니까?\n연결된 수리 이력도 함께 사라질 수 있습니다.`)) {
-                          deleteMachineMutation.mutate(m.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

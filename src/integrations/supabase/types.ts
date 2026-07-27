@@ -763,6 +763,73 @@ export type Database = {
           },
         ]
       }
+      machine_sales_history: {
+        Row: {
+          created_at: string
+          event_date: string
+          event_type: string
+          from_customer_id: string | null
+          id: string
+          machine_id: string
+          mileage: number | null
+          notes: string | null
+          price: number | null
+          to_customer_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          event_type: string
+          from_customer_id?: string | null
+          id?: string
+          machine_id: string
+          mileage?: number | null
+          notes?: string | null
+          price?: number | null
+          to_customer_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          event_type?: string
+          from_customer_id?: string | null
+          id?: string
+          machine_id?: string
+          mileage?: number | null
+          notes?: string | null
+          price?: number | null
+          to_customer_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_sales_history_from_customer_id_fkey"
+            columns: ["from_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_sales_history_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_sales_history_to_customer_id_fkey"
+            columns: ["to_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machines: {
         Row: {
           classification: string | null
