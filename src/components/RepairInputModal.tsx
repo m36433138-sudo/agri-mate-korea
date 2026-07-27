@@ -410,6 +410,20 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   };
 
   const addPart = async (inv: any) => {
+    // 매출가는 부품코드 기준으로 최신 값을 조회 (지점 무관, 동일 코드는 트리거로 동기화됨)
+    let unitPrice = Number(inv.sales_price) || 0;
+    if (!unitPrice && inv.part_code) {
+      const { data: latest } = await supabase
+        .from("inventory")
+        .select("sales_price")
+        .eq("part_code", inv.part_code)
+        .not("sales_price", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      unitPrice = Number(latest?.sales_price) || 0;
+    }
+
     // Find or create a matching record in the parts table (needed for FK)
     const { data: existing } = await supabase
       .from("parts")
@@ -437,7 +451,11 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
     if (existingIndex >= 0) {
       setPartRows((prev) =>
-        prev.map((row, index) => (index === existingIndex ? { ...row, quantity: row.quantity + 1 } : row)),
+        prev.map((row, index) =>
+          index === existingIndex
+            ? { ...row, quantity: row.quantity + 1, unit_price: row.unit_price || unitPrice }
+            : row,
+        ),
       );
     } else {
       setPartRows((prev) => [
@@ -448,7 +466,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           part_number: partRecord.part_number,
           unit: partRecord.unit,
           quantity: 1,
-          unit_price: Number(inv.sales_price) || 0,
+          unit_price: unitPrice,
         },
       ]);
     }
