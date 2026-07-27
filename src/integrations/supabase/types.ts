@@ -619,6 +619,9 @@ export type Database = {
           document_id: string
           embedding: string | null
           id: string
+          page_end: number | null
+          page_start: number | null
+          segment_index: number | null
         }
         Insert: {
           chunk_index: number
@@ -627,6 +630,9 @@ export type Database = {
           document_id: string
           embedding?: string | null
           id?: string
+          page_end?: number | null
+          page_start?: number | null
+          segment_index?: number | null
         }
         Update: {
           chunk_index?: number
@@ -635,6 +641,9 @@ export type Database = {
           document_id?: string
           embedding?: string | null
           id?: string
+          page_end?: number | null
+          page_start?: number | null
+          segment_index?: number | null
         }
         Relationships: [
           {
@@ -655,8 +664,10 @@ export type Database = {
           file_size: number | null
           id: string
           mime_type: string | null
+          processed_segments: number | null
           status: string
           title: string
+          total_segments: number | null
           updated_at: string
           uploaded_by: string | null
         }
@@ -668,8 +679,10 @@ export type Database = {
           file_size?: number | null
           id?: string
           mime_type?: string | null
+          processed_segments?: number | null
           status?: string
           title: string
+          total_segments?: number | null
           updated_at?: string
           uploaded_by?: string | null
         }
@@ -681,8 +694,10 @@ export type Database = {
           file_size?: number | null
           id?: string
           mime_type?: string | null
+          processed_segments?: number | null
           status?: string
           title?: string
+          total_segments?: number | null
           updated_at?: string
           uploaded_by?: string | null
         }
