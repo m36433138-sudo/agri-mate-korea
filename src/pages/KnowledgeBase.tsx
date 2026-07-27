@@ -334,8 +334,12 @@ export default function KnowledgeBase() {
             const readyDocs = g.docIds.filter(
               (id) => docs.find((d) => d.id === id)?.status === "ready",
             ).length;
-            const errorDocs = g.docIds.filter(
-              (id) => docs.find((d) => d.id === id)?.status === "error",
+            const errorSegments = g.docIds
+              .map((id) => docs.find((d) => d.id === id))
+              .filter((d): d is KnowledgeDoc => !!d && d.status === "error");
+            const errorDocs = errorSegments.length;
+            const processingDocs = g.docIds.filter(
+              (id) => docs.find((d) => d.id === id)?.status === "processing",
             ).length;
             const learnPct = Math.round((readyDocs / g.totalParts) * 100);
             const allDone = readyDocs + errorDocs === g.totalParts && groupUploads.length === 0;
@@ -345,7 +349,7 @@ export default function KnowledgeBase() {
                   <span className="font-semibold text-foreground truncate flex-1">
                     {g.name}
                   </span>
-                  {allDone ? (
+                  {allDone && errorDocs === 0 ? (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -382,6 +386,9 @@ export default function KnowledgeBase() {
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>
                       학습 {readyDocs} / {g.totalParts} 조각 완료
+                      {processingDocs > 0 && (
+                        <span className="text-amber-400 ml-1">· 진행 {processingDocs}</span>
+                      )}
                       {errorDocs > 0 && (
                         <span className="text-red-400 ml-1">· 실패 {errorDocs}</span>
                       )}
@@ -395,8 +402,52 @@ export default function KnowledgeBase() {
                     />
                   </div>
                 </div>
+
+                {errorSegments.length > 0 && (
+                  <div className="space-y-2 rounded-md border border-red-400/30 bg-red-500/5 p-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-red-300">
+                        학습 실패한 조각 {errorSegments.length}개
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs border-red-400/40 text-red-300 hover:text-red-200"
+                        onClick={() => errorSegments.forEach((d) => reprocess(d))}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        전체 재시도
+                      </Button>
+                    </div>
+                    <ul className="space-y-1">
+                      {errorSegments.map((d) => (
+                        <li
+                          key={d.id}
+                          className="flex items-center gap-2 text-[11px] text-muted-foreground"
+                        >
+                          <AlertCircle className="h-3 w-3 text-red-400 shrink-0" />
+                          <span className="flex-1 truncate">
+                            {d.title}
+                            {d.error_message && (
+                              <span className="text-red-400 ml-1">· {d.error_message}</span>
+                            )}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => reprocess(d)}
+                          >
+                            재시도
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </Card>
             );
+
           })}
         </div>
       )}
