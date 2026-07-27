@@ -203,6 +203,10 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
     setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, unit_price: price } : r)));
   };
 
+  const updateBranch = (key: string, branch: "장흥" | "강진") => {
+    setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, branch } : r)));
+  };
+
   const removeRow = (key: string) => {
     setPartRows((prev) => prev.filter((r) => r.key !== key));
   };
