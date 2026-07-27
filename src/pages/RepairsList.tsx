@@ -31,6 +31,7 @@ import type { RepairWithMachine } from "@/types/database";
 
 export default function RepairsList() {
   const [repairOpen, setRepairOpen] = useState(false);
+  const [editRepair, setEditRepair] = useState<any | null>(null);
   const [technicianFilter, setTechnicianFilter] = useState("");
   const [accountingFilter, setAccountingFilter] = useState<"all" | "posted" | "unposted">("all");
   const [techOpen, setTechOpen] = useState(false);
