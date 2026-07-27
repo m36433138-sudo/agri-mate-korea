@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search } from "lucide-react";
+import LastModifiedInfo from "@/components/LastModifiedInfo";
 import {
   Command,
   CommandEmpty,
