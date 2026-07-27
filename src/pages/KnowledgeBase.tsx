@@ -42,12 +42,20 @@ type KnowledgeDoc = {
 };
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/heic";
-const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_SIZE = 50 * 1024 * 1024; // 50MB (Gemini 파일 처리 한계)
+
+type UploadProgress = {
+  id: string;
+  name: string;
+  size: number;
+  progress: number; // 0-100
+  error?: string;
+};
 
 export default function KnowledgeBase() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploads, setUploads] = useState<UploadProgress[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: docs = [], isLoading } = useQuery({
@@ -83,32 +91,68 @@ export default function KnowledgeBase() {
       toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
 
+  const uploadWithProgress = (signedUrl: string, file: File, uploadId: string) =>
+    new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", signedUrl);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        const pct = Math.round((e.loaded / e.total) * 100);
+        setUploads((prev) =>
+          prev.map((u) => (u.id === uploadId ? { ...u, progress: pct } : u)),
+        );
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`업로드 실패 (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error("네트워크 오류"));
+      xhr.send(file);
+    });
+
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    setUploading(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("로그인이 필요합니다");
 
-      for (const file of Array.from(files)) {
-        if (file.size > MAX_SIZE) {
-          toast({
-            title: "파일 초과",
-            description: `${file.name} 은(는) 20MB를 초과합니다`,
-            variant: "destructive",
-          });
-          continue;
-        }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast({ title: "로그인이 필요합니다", variant: "destructive" });
+      return;
+    }
+
+    for (const file of Array.from(files)) {
+      const uploadId = crypto.randomUUID();
+
+      if (file.size > MAX_SIZE) {
+        toast({
+          title: `${file.name} 용량 초과`,
+          description: `현재 최대 50MB까지 지원합니다 (선택하신 파일: ${(file.size / 1024 / 1024).toFixed(0)}MB). 큰 PDF는 분할해서 올려주세요.`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      setUploads((prev) => [
+        ...prev,
+        { id: uploadId, name: file.name, size: file.size, progress: 0 },
+      ]);
+
+      try {
         const ext = file.name.split(".").pop() ?? "bin";
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
-        const { error: upErr } = await supabase.storage
+        // 1. Create signed upload URL for progress tracking
+        const { data: signed, error: sErr } = await supabase.storage
           .from("knowledge-docs")
-          .upload(path, file, { contentType: file.type });
-        if (upErr) throw upErr;
+          .createSignedUploadUrl(path);
+        if (sErr || !signed) throw sErr ?? new Error("서명 URL 생성 실패");
 
+        // 2. Upload with XHR progress
+        await uploadWithProgress(signed.signedUrl, file, uploadId);
+
+        // 3. Register in DB — triggers ingestion
         const { data: docRow, error: insErr } = await supabase
           .from("knowledge_documents" as any)
           .insert({
@@ -123,21 +167,25 @@ export default function KnowledgeBase() {
           .single();
         if (insErr) throw insErr;
 
+        // Remove from upload list, refresh doc list
+        setUploads((prev) => prev.filter((u) => u.id !== uploadId));
+        qc.invalidateQueries({ queryKey: ["knowledge-documents"] });
+
         // Fire-and-forget ingest
         supabase.functions
           .invoke("ingest-document", { body: { document_id: (docRow as any).id } })
           .then(() => qc.invalidateQueries({ queryKey: ["knowledge-documents"] }))
           .catch((e) => console.error(e));
+      } catch (e: any) {
+        setUploads((prev) =>
+          prev.map((u) => (u.id === uploadId ? { ...u, error: e.message } : u)),
+        );
+        toast({ title: "업로드 실패", description: e.message, variant: "destructive" });
       }
-
-      qc.invalidateQueries({ queryKey: ["knowledge-documents"] });
-      toast({ title: "업로드 완료", description: "AI가 자료를 학습하고 있어요 (수 초~1분)" });
-    } catch (e: any) {
-      toast({ title: "업로드 실패", description: e.message, variant: "destructive" });
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
+
+    if (fileRef.current) fileRef.current.value = "";
+  };
   };
 
   const reprocess = async (doc: KnowledgeDoc) => {
