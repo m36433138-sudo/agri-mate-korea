@@ -327,7 +327,7 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
   const [catalogId, setCatalogId] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("전체");
   const [catalogSearch, setCatalogSearch] = useState("");
-  const [form, setForm] = useState({ name: "", model: "", serial_number: "", brand: "", notes: "" });
+  const [form, setForm] = useState({ name: "", model: "", serial_number: "", brand: "", notes: "", rotary_blade: "" });
 
   const { data: catalog = [] } = useQuery({
     queryKey: ["attachment-catalog-active"],
@@ -335,13 +335,14 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("attachment_catalog")
-        .select("id, brand, name, model, category")
+        .select("id, brand, name, model, category, rotary_blade_options")
         .eq("is_active", true)
         .order("brand").order("name");
       if (error) throw error;
-      return data as Array<{ id: string; brand: string; name: string; model: string | null; category: string | null }>;
+      return data as Array<{ id: string; brand: string; name: string; model: string | null; category: string | null; rotary_blade_options: string[] | null }>;
     },
   });
+
 
   const brands = ["전체", ...Array.from(new Set(catalog.map(c => c.brand))).sort()];
   const filteredCatalog = catalog.filter(c => {
