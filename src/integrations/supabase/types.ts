@@ -214,6 +214,7 @@ export type Database = {
           notes: string | null
           rotary_blade_options: string[]
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           brand: string
@@ -226,6 +227,7 @@ export type Database = {
           notes?: string | null
           rotary_blade_options?: string[]
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           brand?: string
@@ -238,6 +240,7 @@ export type Database = {
           notes?: string | null
           rotary_blade_options?: string[]
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -401,6 +404,8 @@ export type Database = {
           notes: string | null
           phone: string
           search_vec: unknown
+          updated_at: string
+          updated_by: string | null
           user_id: string | null
         }
         Insert: {
@@ -414,6 +419,8 @@ export type Database = {
           notes?: string | null
           phone: string
           search_vec?: unknown
+          updated_at?: string
+          updated_by?: string | null
           user_id?: string | null
         }
         Update: {
@@ -427,6 +434,8 @@ export type Database = {
           notes?: string | null
           phone?: string
           search_vec?: unknown
+          updated_at?: string
+          updated_by?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -468,6 +477,8 @@ export type Database = {
           resigned_at: string | null
           salary: number | null
           team: string | null
+          updated_at: string
+          updated_by: string | null
           user_id: string | null
         }
         Insert: {
@@ -485,6 +496,8 @@ export type Database = {
           resigned_at?: string | null
           salary?: number | null
           team?: string | null
+          updated_at?: string
+          updated_by?: string | null
           user_id?: string | null
         }
         Update: {
@@ -502,6 +515,8 @@ export type Database = {
           resigned_at?: string | null
           salary?: number | null
           team?: string | null
+          updated_at?: string
+          updated_by?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -520,6 +535,8 @@ export type Database = {
           purchase_price: number | null
           quantity: number | null
           sales_price: number | null
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           alt_part_code?: string | null
@@ -534,6 +551,8 @@ export type Database = {
           purchase_price?: number | null
           quantity?: number | null
           sales_price?: number | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           alt_part_code?: string | null
@@ -548,6 +567,8 @@ export type Database = {
           purchase_price?: number | null
           quantity?: number | null
           sales_price?: number | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -602,6 +623,8 @@ export type Database = {
           notes: string | null
           rotary_blade: string | null
           serial_number: string | null
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           brand?: string | null
@@ -614,6 +637,8 @@ export type Database = {
           notes?: string | null
           rotary_blade?: string | null
           serial_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           brand?: string | null
@@ -626,6 +651,8 @@ export type Database = {
           notes?: string | null
           rotary_blade?: string | null
           serial_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -665,6 +692,8 @@ export type Database = {
           search_vec: unknown
           serial_number: string
           status: string
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           classification?: string | null
@@ -686,6 +715,8 @@ export type Database = {
           search_vec?: unknown
           serial_number: string
           status?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           classification?: string | null
@@ -707,6 +738,8 @@ export type Database = {
           search_vec?: unknown
           serial_number?: string
           status?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -831,6 +864,7 @@ export type Database = {
           status_label: string | null
           technician: string | null
           updated_at: string
+          updated_by: string | null
           writer: string | null
         }
         Insert: {
@@ -859,6 +893,7 @@ export type Database = {
           status_label?: string | null
           technician?: string | null
           updated_at?: string
+          updated_by?: string | null
           writer?: string | null
         }
         Update: {
@@ -887,6 +922,7 @@ export type Database = {
           status_label?: string | null
           technician?: string | null
           updated_at?: string
+          updated_by?: string | null
           writer?: string | null
         }
         Relationships: []
@@ -949,6 +985,8 @@ export type Database = {
           part_name: string
           part_number: string
           unit: string | null
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           created_at?: string
@@ -957,6 +995,8 @@ export type Database = {
           part_name: string
           part_number: string
           unit?: string | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           created_at?: string
@@ -965,6 +1005,8 @@ export type Database = {
           part_name?: string
           part_number?: string
           unit?: string | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -1118,6 +1160,7 @@ export type Database = {
           total_amount: number
           trade_in_amount: number
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           branch?: string | null
@@ -1139,6 +1182,7 @@ export type Database = {
           total_amount?: number
           trade_in_amount?: number
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           branch?: string | null
@@ -1160,6 +1204,7 @@ export type Database = {
           total_amount?: number
           trade_in_amount?: number
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1354,6 +1399,8 @@ export type Database = {
           part_id: string
           quantity: number
           repair_id: string
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           id?: string
@@ -1361,6 +1408,8 @@ export type Database = {
           part_id: string
           quantity?: number
           repair_id: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           id?: string
@@ -1368,6 +1417,8 @@ export type Database = {
           part_id?: string
           quantity?: number
           repair_id?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1460,6 +1511,8 @@ export type Database = {
           search_vec: unknown
           technician: string | null
           total_cost: number | null
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           accounting_posted?: boolean
@@ -1474,6 +1527,8 @@ export type Database = {
           search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           accounting_posted?: boolean
@@ -1488,6 +1543,8 @@ export type Database = {
           search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1643,16 +1700,22 @@ export type Database = {
         Row: {
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          updated_by: string | null
           user_id: string
         }
         Insert: {
           id?: string
           role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
           user_id: string
         }
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1710,6 +1773,7 @@ export type Database = {
           status_label: string | null
           technician: string | null
           updated_at: string
+          updated_by: string | null
           visit_date: string | null
           writer: string | null
         }
@@ -1732,6 +1796,7 @@ export type Database = {
           status_label?: string | null
           technician?: string | null
           updated_at?: string
+          updated_by?: string | null
           visit_date?: string | null
           writer?: string | null
         }
@@ -1754,6 +1819,7 @@ export type Database = {
           status_label?: string | null
           technician?: string | null
           updated_at?: string
+          updated_by?: string | null
           visit_date?: string | null
           writer?: string | null
         }
