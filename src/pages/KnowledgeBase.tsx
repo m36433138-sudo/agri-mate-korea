@@ -188,11 +188,29 @@ export default function KnowledgeBase() {
         parts = [{ name: file.name, blob: file, type: file.type }];
       }
 
-      for (const part of parts) {
+      // 여러 조각으로 나뉜 경우에만 그룹으로 묶어서 표시
+      const groupId = parts.length > 1 ? crypto.randomUUID() : undefined;
+      if (groupId) {
+        setGroups((prev) => [
+          ...prev,
+          { id: groupId, name: file.name, totalParts: parts.length, docIds: [] },
+        ]);
+      }
+
+      for (let pi = 0; pi < parts.length; pi++) {
+        const part = parts[pi];
         const uploadId = crypto.randomUUID();
         setUploads((prev) => [
           ...prev,
-          { id: uploadId, name: part.name, size: part.blob.size, progress: 0 },
+          {
+            id: uploadId,
+            name: part.name,
+            size: part.blob.size,
+            progress: 0,
+            groupId,
+            partIndex: pi,
+            totalParts: parts.length,
+          },
         ]);
 
         try {
@@ -224,11 +242,20 @@ export default function KnowledgeBase() {
             .single();
           if (insErr) throw insErr;
 
+          const docId = (docRow as any).id as string;
+          if (groupId) {
+            setGroups((prev) =>
+              prev.map((g) =>
+                g.id === groupId ? { ...g, docIds: [...g.docIds, docId] } : g,
+              ),
+            );
+          }
+
           setUploads((prev) => prev.filter((u) => u.id !== uploadId));
           qc.invalidateQueries({ queryKey: ["knowledge-documents"] });
 
           supabase.functions
-            .invoke("ingest-document", { body: { document_id: (docRow as any).id } })
+            .invoke("ingest-document", { body: { document_id: docId } })
             .then(() => qc.invalidateQueries({ queryKey: ["knowledge-documents"] }))
             .catch((e) => console.error(e));
         } catch (e: any) {
@@ -239,6 +266,7 @@ export default function KnowledgeBase() {
         }
       }
     }
+
 
     if (fileRef.current) fileRef.current.value = "";
   };
