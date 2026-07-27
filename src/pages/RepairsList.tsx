@@ -20,10 +20,11 @@ import {
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw } from "lucide-react";
+import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import RepairInputModal from "@/components/RepairInputModal";
+import RepairEditDialog from "@/components/RepairEditDialog";
 import MechanicRepairForm from "@/components/MechanicRepairForm";
 import RepairLogHistory from "@/components/RepairLogHistory";
 import type { RepairWithMachine } from "@/types/database";
