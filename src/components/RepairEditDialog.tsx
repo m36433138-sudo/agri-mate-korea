@@ -176,9 +176,17 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
     setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, quantity: qty } : r)));
   };
 
+  const updateUnitPrice = (key: string, price: number) => {
+    setPartRows((prev) => prev.map((r) => (r.key === key ? { ...r, unit_price: price } : r)));
+  };
+
   const removeRow = (key: string) => {
     setPartRows((prev) => prev.filter((r) => r.key !== key));
   };
+
+  const laborCostNum = parseInt(laborCost) || 0;
+  const partsSubtotal = partRows.reduce((sum, r) => sum + (Number(r.unit_price) || 0) * (Number(r.quantity) || 0), 0);
+  const totalCost = laborCostNum + partsSubtotal;
 
   const updateMutation = useMutation({
     mutationFn: async () => {
