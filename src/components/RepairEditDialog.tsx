@@ -119,6 +119,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           part_number: rp.parts?.part_number || "",
           unit: rp.parts?.unit || "개",
           quantity: rp.quantity ?? 1,
+          unit_price: Number(rp.unit_price) || 0,
         }))
       );
     }
