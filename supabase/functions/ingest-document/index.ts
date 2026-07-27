@@ -181,13 +181,13 @@ serve(async (req) => {
       .update({
         status: "ready",
         chunk_count: totalChunks,
-        processed_segments: segments.length,
+        processed_segments: 1,
         error_message: totalChunks === 0 ? "추출된 텍스트가 없습니다" : null,
       } as any)
       .eq("id", document_id);
 
     return new Response(
-      JSON.stringify({ ok: true, chunks: totalChunks, segments: segments.length }),
+      JSON.stringify({ ok: true, chunks: totalChunks, segments: 1 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
