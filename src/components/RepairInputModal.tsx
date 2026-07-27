@@ -20,6 +20,7 @@ type PartRow = {
   unit: string;
   quantity: number;
   unit_price: number;
+  branch: "장흥" | "강진";
   fromTemplate?: string;
 };
 
