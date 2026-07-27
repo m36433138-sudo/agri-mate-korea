@@ -171,6 +171,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [machineResults, setMachineResults] = useState<any[]>([]);
 
   const [partRows, setPartRows] = useState<PartRow[]>([]);
+  const [defaultBranch, setDefaultBranch] = useState<"장흥" | "강진">("장흥");
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState<any[]>([]);
   const [draggedPartIndex, setDraggedPartIndex] = useState<number | null>(null);
