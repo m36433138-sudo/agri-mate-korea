@@ -123,6 +123,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           unit: rp.parts?.unit || "개",
           quantity: rp.quantity ?? 1,
           unit_price: Number(rp.unit_price) || 0,
+          branch: (rp.branch === "강진" ? "강진" : "장흥") as "장흥" | "강진",
         }))
       );
     }
