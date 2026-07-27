@@ -193,11 +193,17 @@ export default function MachineDetail() {
                     <p className="text-sm font-semibold">
                       {a.brand && <span className="text-xs text-muted-foreground mr-1">[{a.brand}]</span>}
                       {a.name}
+                      {a.rotary_blade && (
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-medium align-middle">
+                          발: {a.rotary_blade}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {[a.model, a.serial_number ? `S/N: ${a.serial_number}` : null, a.notes].filter(Boolean).join(" · ")}
                     </p>
                   </div>
+
                   <Button
                     variant="ghost" size="icon" className="h-7 w-7 print:hidden text-muted-foreground hover:text-destructive"
                     onClick={() => { if (confirm(`${a.name}을(를) 삭제하시겠습니까?`)) deleteAttachment.mutate(a.id); }}
