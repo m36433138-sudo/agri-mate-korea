@@ -20,16 +20,18 @@ import {
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw } from "lucide-react";
+import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import RepairInputModal from "@/components/RepairInputModal";
+import RepairEditDialog from "@/components/RepairEditDialog";
 import MechanicRepairForm from "@/components/MechanicRepairForm";
 import RepairLogHistory from "@/components/RepairLogHistory";
 import type { RepairWithMachine } from "@/types/database";
 
 export default function RepairsList() {
   const [repairOpen, setRepairOpen] = useState(false);
+  const [editRepair, setEditRepair] = useState<any | null>(null);
   const [technicianFilter, setTechnicianFilter] = useState("");
   const [accountingFilter, setAccountingFilter] = useState<"all" | "posted" | "unposted">("all");
   const [techOpen, setTechOpen] = useState(false);
@@ -260,16 +262,28 @@ export default function RepairsList() {
                         <td className="p-3 text-right tabular-nums">{r.labor_cost > 0 ? formatPrice(r.labor_cost) : "-"}</td>
                         <td className="p-3 text-right tabular-nums font-medium">{r.total_cost > 0 ? formatPrice(r.total_cost) : "-"}</td>
                         <td className="p-3">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              if (confirm("이 수리 이력을 삭제하시겠습니까?")) deleteMutation.mutate(r.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={() => setEditRepair(r)}
+                              title="수정"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                if (confirm("이 수리 이력을 삭제하시겠습니까?")) deleteMutation.mutate(r.id);
+                              }}
+                              title="삭제"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -290,6 +304,11 @@ export default function RepairsList() {
       </Tabs>
 
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} />
+      <RepairEditDialog
+        open={!!editRepair}
+        onOpenChange={(v) => !v && setEditRepair(null)}
+        repair={editRepair}
+      />
     </div>
   );
 }
