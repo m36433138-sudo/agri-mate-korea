@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
+import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,7 @@ const corsHeaders = {
 
 const CHUNK_SIZE = 1200;
 const CHUNK_OVERLAP = 150;
+const PAGES_PER_SEGMENT = 8; // 각 세그먼트당 PDF 페이지 수
 
 function chunkText(text: string): string[] {
   const clean = text.replace(/\s+/g, " ").trim();
@@ -22,6 +24,15 @@ function chunkText(text: string): string[] {
   return chunks;
 }
 
+function toBase64(buf: Uint8Array): string {
+  let binary = "";
+  const chunkBytes = 0x8000;
+  for (let i = 0; i < buf.length; i += chunkBytes) {
+    binary += String.fromCharCode(...buf.subarray(i, i + chunkBytes));
+  }
+  return btoa(binary);
+}
+
 async function extractTextViaGemini(
   apiKey: string,
   mime: string,
@@ -33,7 +44,7 @@ async function extractTextViaGemini(
     : {
         type: "file",
         file: {
-          filename: "document",
+          filename: "document.pdf",
           file_data: `data:${mime};base64,${base64}`,
         },
       };
@@ -93,6 +104,40 @@ async function embedBatch(apiKey: string, inputs: string[]): Promise<number[][]>
     .map((d) => d.embedding);
 }
 
+type Segment = {
+  index: number;
+  pageStart: number | null;
+  pageEnd: number | null;
+  mime: string;
+  base64: string;
+};
+
+async function splitPdfIntoSegments(
+  pdfBytes: Uint8Array,
+  mime: string,
+): Promise<Segment[]> {
+  const src = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+  const total = src.getPageCount();
+  const segments: Segment[] = [];
+  let segIdx = 0;
+  for (let start = 0; start < total; start += PAGES_PER_SEGMENT) {
+    const end = Math.min(start + PAGES_PER_SEGMENT, total);
+    const out = await PDFDocument.create();
+    const indices = Array.from({ length: end - start }, (_, i) => start + i);
+    const copied = await out.copyPages(src, indices);
+    copied.forEach((p) => out.addPage(p));
+    const bytes = await out.save();
+    segments.push({
+      index: segIdx++,
+      pageStart: start + 1,
+      pageEnd: end,
+      mime,
+      base64: toBase64(bytes),
+    });
+  }
+  return segments;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -116,63 +161,91 @@ serve(async (req) => {
       .single();
     if (docErr || !doc) throw new Error(docErr?.message || "Document not found");
 
-    // Download from storage
     const { data: fileBlob, error: dlErr } = await admin.storage
       .from("knowledge-docs")
       .download(doc.file_path);
     if (dlErr || !fileBlob) throw new Error(dlErr?.message || "Download failed");
 
     const buf = new Uint8Array(await fileBlob.arrayBuffer());
-    // base64 encode
-    let binary = "";
-    const chunkBytes = 0x8000;
-    for (let i = 0; i < buf.length; i += chunkBytes) {
-      binary += String.fromCharCode(...buf.subarray(i, i + chunkBytes));
-    }
-    const base64 = btoa(binary);
-
     const mime = doc.mime_type || "application/pdf";
-    const text = await extractTextViaGemini(apiKey, mime, base64);
 
-    const chunks = chunkText(text);
-    if (chunks.length === 0) {
-      await admin
-        .from("knowledge_documents")
-        .update({ status: "ready", chunk_count: 0, error_message: "추출된 텍스트가 없습니다" })
-        .eq("id", document_id);
-      return new Response(JSON.stringify({ ok: true, chunks: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Build segment list
+    let segments: Segment[];
+    if (mime === "application/pdf") {
+      segments = await splitPdfIntoSegments(buf, mime);
+    } else {
+      segments = [
+        { index: 0, pageStart: null, pageEnd: null, mime, base64: toBase64(buf) },
+      ];
     }
-
-    // Embed in batches of 50
-    const rows: any[] = [];
-    for (let i = 0; i < chunks.length; i += 50) {
-      const batch = chunks.slice(i, i + 50);
-      const embeddings = await embedBatch(apiKey, batch);
-      batch.forEach((content, idx) => {
-        rows.push({
-          document_id,
-          chunk_index: i + idx,
-          content,
-          embedding: embeddings[idx],
-        });
-      });
-    }
-
-    // Clear old chunks and insert
-    await admin.from("knowledge_chunks").delete().eq("document_id", document_id);
-    const { error: insErr } = await admin.from("knowledge_chunks").insert(rows);
-    if (insErr) throw new Error(insErr.message);
 
     await admin
       .from("knowledge_documents")
-      .update({ status: "ready", chunk_count: rows.length, error_message: null })
+      .update({
+        status: "processing",
+        total_segments: segments.length,
+        processed_segments: 0,
+        error_message: null,
+      } as any)
       .eq("id", document_id);
 
-    return new Response(JSON.stringify({ ok: true, chunks: rows.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Clear old chunks
+    await admin.from("knowledge_chunks").delete().eq("document_id", document_id);
+
+    let chunkGlobalIdx = 0;
+    let totalChunks = 0;
+
+    for (const seg of segments) {
+      const text = await extractTextViaGemini(apiKey, seg.mime, seg.base64);
+      const chunks = chunkText(text);
+
+      if (chunks.length > 0) {
+        const rows: any[] = [];
+        for (let i = 0; i < chunks.length; i += 50) {
+          const batch = chunks.slice(i, i + 50);
+          const embeddings = await embedBatch(apiKey, batch);
+          batch.forEach((content, idx) => {
+            rows.push({
+              document_id,
+              chunk_index: chunkGlobalIdx++,
+              content,
+              embedding: embeddings[idx],
+              segment_index: seg.index,
+              page_start: seg.pageStart,
+              page_end: seg.pageEnd,
+            });
+          });
+        }
+        const { error: insErr } = await admin
+          .from("knowledge_chunks")
+          .insert(rows);
+        if (insErr) throw new Error(insErr.message);
+        totalChunks += rows.length;
+      }
+
+      await admin
+        .from("knowledge_documents")
+        .update({
+          processed_segments: seg.index + 1,
+          chunk_count: totalChunks,
+        } as any)
+        .eq("id", document_id);
+    }
+
+    await admin
+      .from("knowledge_documents")
+      .update({
+        status: "ready",
+        chunk_count: totalChunks,
+        processed_segments: segments.length,
+        error_message: totalChunks === 0 ? "추출된 텍스트가 없습니다" : null,
+      } as any)
+      .eq("id", document_id);
+
+    return new Response(
+      JSON.stringify({ ok: true, chunks: totalChunks, segments: segments.length }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     console.error("ingest-document error:", e);
     const message = e instanceof Error ? e.message : "Unknown error";
