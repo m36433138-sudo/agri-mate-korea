@@ -164,6 +164,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
         part_number: manualNumber.trim(),
         unit: "개",
         quantity: parseInt(manualQty) || 1,
+        unit_price: 0,
       },
     ]);
     setManualName("");
