@@ -300,49 +300,69 @@ export default function CustomerDetail() {
 
       <Card className="shadow-card border-0 mb-6">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base font-semibold">보유/구매 기계 ({machines?.length ?? 0})</CardTitle>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            보유/구매/이전 기계 ({machineHistory.length})
+          </CardTitle>
           <Button size="sm" variant="outline" onClick={() => setMachineOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> 기계 추가
           </Button>
         </CardHeader>
         <CardContent>
-          {machines?.length === 0 ? (
-            <p className="text-sm text-muted-foreground">구매 기계가 없습니다.</p>
+          {machineHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">구매/보유/이전 기계 기록이 없습니다.</p>
           ) : (
             <div className="space-y-2">
-              {machines?.map(m => (
-                <div key={m.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group">
-                  <Link to={`/machines/${m.id}`} className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{m.model_name}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{m.serial_number}</p>
-                    {(m as any).engine_number && <p className="text-xs text-muted-foreground">엔진: {(m as any).engine_number}</p>}
-                  </Link>
-                  <div className="flex items-center gap-3 text-right">
-                    <div className="flex flex-col items-end gap-1">
-                      <TypeBadge type={m.machine_type} />
-                      {(m as any).classification && <Badge variant="outline" className="text-xs">{(m as any).classification}</Badge>}
+              {machineHistory.map((m) => {
+                const status = m._lastEventType;
+                const statusLabel =
+                  status === "current" ? "보유중" :
+                  status === "sale" ? "판매완료" :
+                  status === "trade_in" ? "중고 인수" :
+                  status === "customer_link" ? "고객 연결" :
+                  status === "transfer" ? "소유권 이전" : "-";
+                const statusColor =
+                  status === "current" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                  status === "sale" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                  status === "trade_in" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                  "bg-muted text-muted-foreground border-border";
+
+                return (
+                  <div key={m.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group">
+                    <Link to={`/machines/${m.id}`} className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{m.model_name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{m.serial_number}</p>
+                      {(m as any).engine_number && <p className="text-xs text-muted-foreground">엔진: {(m as any).engine_number}</p>}
+                    </Link>
+                    <div className="flex items-center gap-3 text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
+                        {(m as any).classification && <Badge variant="outline" className="text-xs">{(m as any).classification}</Badge>}
+                      </div>
+                      <div className="flex flex-col items-end text-xs text-muted-foreground">
+                        <span>보유 {m._ownershipDays.toLocaleString()}일</span>
+                        {m._lastEventDate && <span>마지막 거래 {formatDate(m._lastEventDate)}</span>}
+                      </div>
+                      {m._holding && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (confirm(`"${m.model_name} (${m.serial_number})" 기계를 정말로 삭제하시겠습니까?\n연결된 수리 이력도 함께 사라질 수 있습니다.`)) {
+                              deleteMachineMutation.mutate(m.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
-                    <div className="flex flex-col items-end text-xs text-muted-foreground">
-                      {m.entry_date && <span>입고 {formatDate(m.entry_date)}</span>}
-                      {m.sale_date && <span>판매 {formatDate(m.sale_date)}</span>}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (confirm(`"${m.model_name} (${m.serial_number})" 기계를 정말로 삭제하시겠습니까?\n연결된 수리 이력도 함께 사라질 수 있습니다.`)) {
-                          deleteMachineMutation.mutate(m.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
