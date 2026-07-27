@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
 import { validateMachineTypeClassification } from "@/lib/machineValidation";
+import LastModifiedInfo from "@/components/LastModifiedInfo";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
@@ -110,6 +111,11 @@ export default function MachineDetail() {
                 )}
               </div>
               <p className="text-sm text-muted-foreground font-mono mt-1">제조번호: {machine.serial_number}</p>
+              <LastModifiedInfo
+                updatedBy={(machine as any).updated_by}
+                updatedAt={(machine as any).updated_at}
+                className="mt-1 print:hidden"
+              />
             </div>
             <div className="flex gap-2 items-center">
               <TypeBadge type={machine.machine_type} />

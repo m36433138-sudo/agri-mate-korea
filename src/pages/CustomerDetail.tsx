@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import type { Customer, Machine, Repair } from "@/types/database";
 import { CustomerGradeBadge } from "@/pages/CustomersList";
+import LastModifiedInfo from "@/components/LastModifiedInfo";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 
@@ -131,6 +132,11 @@ export default function CustomerDetail() {
               <Pencil className="h-4 w-4" />
             </Button>
           </div>
+          <LastModifiedInfo
+            updatedBy={(customer as any).updated_by}
+            updatedAt={(customer as any).updated_at}
+            className="mt-2"
+          />
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t">
             <div><p className="text-xs text-muted-foreground">연락처</p><p className="font-medium">{customer.phone}</p></div>
             <div><p className="text-xs text-muted-foreground">주소</p><p className="font-medium">{customer.address || "-"}</p></div>
