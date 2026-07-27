@@ -325,12 +325,95 @@ export default function KnowledgeBase() {
         </div>
       </Card>
 
+      {groups.length > 0 && (
+        <div className="grid gap-2">
+          {groups.map((g) => {
+            const groupUploads = uploads.filter((u) => u.groupId === g.id);
+            const uploadedCount = g.totalParts - groupUploads.length;
+            const uploadPct = Math.round((uploadedCount / g.totalParts) * 100);
+            const readyDocs = g.docIds.filter(
+              (id) => docs.find((d) => d.id === id)?.status === "ready",
+            ).length;
+            const errorDocs = g.docIds.filter(
+              (id) => docs.find((d) => d.id === id)?.status === "error",
+            ).length;
+            const learnPct = Math.round((readyDocs / g.totalParts) * 100);
+            const allDone = readyDocs + errorDocs === g.totalParts && groupUploads.length === 0;
+            return (
+              <Card key={g.id} className="p-3 space-y-3 border-primary/30">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-semibold text-foreground truncate flex-1">
+                    {g.name}
+                  </span>
+                  {allDone ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs"
+                      onClick={() =>
+                        setGroups((prev) => prev.filter((x) => x.id !== g.id))
+                      }
+                    >
+                      닫기
+                    </Button>
+                  ) : (
+                    <Badge variant="outline" className="text-xs">
+                      {g.totalParts}조각
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>
+                      업로드 {uploadedCount} / {g.totalParts} 조각
+                    </span>
+                    <span>{uploadPct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${uploadPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>
+                      학습 {readyDocs} / {g.totalParts} 조각 완료
+                      {errorDocs > 0 && (
+                        <span className="text-red-400 ml-1">· 실패 {errorDocs}</span>
+                      )}
+                    </span>
+                    <span>{learnPct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-400 transition-all"
+                      style={{ width: `${learnPct}%` }}
+                    />
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       {uploads.length > 0 && (
         <div className="grid gap-2">
           {uploads.map((u) => (
             <Card key={u.id} className="p-3 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-foreground truncate flex-1">{u.name}</span>
+                <span className="font-medium text-foreground truncate flex-1">
+                  {u.name}
+                  {u.totalParts && u.totalParts > 1 && (
+                    <span className="ml-2 text-[11px] text-muted-foreground">
+                      조각 {(u.partIndex ?? 0) + 1}/{u.totalParts}
+                    </span>
+                  )}
+                </span>
                 <span className={u.error ? "text-red-400 text-xs" : "text-muted-foreground text-xs"}>
                   {u.error ? u.error : `${u.progress}%`}
                 </span>
@@ -348,6 +431,7 @@ export default function KnowledgeBase() {
           ))}
         </div>
       )}
+
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">
