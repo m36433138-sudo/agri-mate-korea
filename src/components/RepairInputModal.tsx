@@ -983,12 +983,23 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                         </div>
                         <Input
                           type="number"
+                          value={row.unit_price || ""}
+                          onChange={(e) => updatePartRow(index, "unit_price", Number(e.target.value) || 0)}
+                          className="w-24 h-8 text-sm text-right"
+                          placeholder="단가"
+                          min={0}
+                        />
+                        <Input
+                          type="number"
                           value={row.quantity}
                           onChange={(e) => updatePartRow(index, "quantity", Number(e.target.value) || 1)}
-                          className="w-20 h-8 text-sm text-center"
+                          className="w-16 h-8 text-sm text-center"
                           min={1}
                         />
-                        <span className="text-xs text-muted-foreground w-8">{row.unit}</span>
+                        <span className="text-xs text-muted-foreground w-6">{row.unit}</span>
+                        <span className="text-xs font-medium w-20 text-right tabular-nums">
+                          {formatPrice((Number(row.unit_price) || 0) * (Number(row.quantity) || 0))}
+                        </span>
                         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removePartRow(index)}>
                           <Trash2 className="h-4 w-4 text-muted-foreground" />
                         </Button>
