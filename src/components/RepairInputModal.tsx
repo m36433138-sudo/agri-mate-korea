@@ -171,6 +171,32 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState<any[]>([]);
   const [draggedPartIndex, setDraggedPartIndex] = useState<number | null>(null);
+  const [customPartName, setCustomPartName] = useState("");
+  const [customPartNumber, setCustomPartNumber] = useState("");
+  const [customPartQty, setCustomPartQty] = useState("1");
+
+  const addCustomPart = () => {
+    const name = customPartName.trim();
+    if (!name) {
+      toast({ title: "부품명을 입력해주세요.", variant: "destructive" });
+      return;
+    }
+    const qty = Math.max(1, parseInt(customPartQty) || 1);
+    const num = customPartNumber.trim();
+    setPartRows((prev) => [
+      ...prev,
+      {
+        part_id: `custom-${Date.now()}-${prev.length}`,
+        part_name: name,
+        part_number: num,
+        unit: "개",
+        quantity: qty,
+      },
+    ]);
+    setCustomPartName("");
+    setCustomPartNumber("");
+    setCustomPartQty("1");
+  };
 
   const [appliedTemplates, setAppliedTemplates] = useState<{ id: string; name: string }[]>([]);
 
