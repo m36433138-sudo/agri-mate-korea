@@ -310,6 +310,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               unit: "개",
               quantity: p.quantity,
               unit_price: p.unit_price || 0,
+              branch: defaultBranch,
             }))
           : [],
       );
