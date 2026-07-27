@@ -599,12 +599,41 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
             part_id: partId,
             quantity: row.quantity,
             unit_price: Number(row.unit_price) || 0,
+            branch: row.branch || defaultBranch,
             notes: null,
+            _partNumber: row.part_number,
           } as any);
         }
 
-        const { error: partsError } = await supabase.from("repair_parts").insert(resolvedParts);
+        const insertPayload = resolvedParts.map(({ _partNumber, ...rest }: any) => rest);
+        const { error: partsError } = await supabase.from("repair_parts").insert(insertPayload);
         if (partsError) throw partsError;
+
+        // 재고 차감 후 마이너스 확인
+        const negatives: string[] = [];
+        const uniqueKeys = new Set<string>();
+        for (const rp of resolvedParts) {
+          if (!rp._partNumber) continue;
+          const key = `${rp._partNumber}::${rp.branch}`;
+          if (uniqueKeys.has(key)) continue;
+          uniqueKeys.add(key);
+          const { data: invRow } = await supabase
+            .from("inventory")
+            .select("part_code, part_name, quantity, branch")
+            .eq("part_code", rp._partNumber)
+            .eq("branch", rp.branch)
+            .maybeSingle();
+          if (invRow && Number(invRow.quantity) < 0) {
+            negatives.push(`[${invRow.branch}] ${invRow.part_code} ${invRow.part_name} (${invRow.quantity})`);
+          }
+        }
+        if (negatives.length > 0) {
+          toast({
+            title: "재고 수량을 확인해주세요",
+            description: `다음 부품의 재고가 마이너스입니다:\n${negatives.join("\n")}`,
+            variant: "destructive",
+          });
+        }
       }
     },
     onSuccess: () => {
