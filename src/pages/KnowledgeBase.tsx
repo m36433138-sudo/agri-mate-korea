@@ -44,7 +44,7 @@ type KnowledgeDoc = {
 };
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/heic";
-const MAX_SIZE = 50 * 1024 * 1024; // 50MB (Gemini 파일 처리 한계)
+const MAX_SIZE = 100 * 1024 * 1024; // 100MB (PDF는 서버에서 8p씩 분할 처리)
 
 type UploadProgress = {
   id: string;
@@ -130,7 +130,7 @@ export default function KnowledgeBase() {
       if (file.size > MAX_SIZE) {
         toast({
           title: `${file.name} 용량 초과`,
-          description: `현재 최대 50MB까지 지원합니다 (선택하신 파일: ${(file.size / 1024 / 1024).toFixed(0)}MB). 큰 PDF는 분할해서 올려주세요.`,
+          description: `현재 최대 100MB까지 지원합니다 (선택하신 파일: ${(file.size / 1024 / 1024).toFixed(0)}MB). 더 큰 매뉴얼은 분할해서 올려주세요.`,
           variant: "destructive",
         });
         continue;
@@ -222,7 +222,7 @@ export default function KnowledgeBase() {
           <div>
             <p className="font-semibold text-foreground">PDF 또는 이미지 업로드</p>
             <p className="text-xs text-muted-foreground mt-1">
-              PDF · JPG · PNG · WEBP · HEIC (파일당 최대 50MB)
+              PDF · JPG · PNG · WEBP · HEIC (파일당 최대 100MB)
             </p>
             <p className="text-[11px] text-muted-foreground/70 mt-0.5">
               더 큰 매뉴얼은 챕터별로 분할해 올려주세요
