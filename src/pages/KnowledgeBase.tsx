@@ -44,7 +44,7 @@ type KnowledgeDoc = {
 };
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/heic";
-const MAX_SIZE = 50 * 1024 * 1024; // 50MB (Gemini 파일 처리 한계)
+const MAX_SIZE = 100 * 1024 * 1024; // 100MB (PDF는 서버에서 8p씩 분할 처리)
 
 type UploadProgress = {
   id: string;
