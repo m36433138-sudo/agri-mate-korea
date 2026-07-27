@@ -262,7 +262,7 @@ export default function KnowledgeBase() {
           <div>
             <p className="font-semibold text-foreground">PDF 또는 이미지 업로드</p>
             <p className="text-xs text-muted-foreground mt-1">
-              PDF · JPG · PNG · WEBP · HEIC (파일당 최대 100MB)
+              PDF · JPG · PNG · WEBP · HEIC (파일당 최대 200MB, 큰 PDF는 자동 분할)
             </p>
             <p className="text-[11px] text-muted-foreground/70 mt-0.5">
               더 큰 매뉴얼은 챕터별로 분할해 올려주세요
