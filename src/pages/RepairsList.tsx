@@ -304,6 +304,11 @@ export default function RepairsList() {
       </Tabs>
 
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} />
+      <RepairEditDialog
+        open={!!editRepair}
+        onOpenChange={(v) => !v && setEditRepair(null)}
+        repair={editRepair}
+      />
     </div>
   );
 }
