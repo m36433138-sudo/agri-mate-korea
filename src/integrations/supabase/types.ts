@@ -212,6 +212,7 @@ export type Database = {
           model: string | null
           name: string
           notes: string | null
+          rotary_blade_options: string[]
           updated_at: string
         }
         Insert: {
@@ -223,6 +224,7 @@ export type Database = {
           model?: string | null
           name: string
           notes?: string | null
+          rotary_blade_options?: string[]
           updated_at?: string
         }
         Update: {
@@ -234,6 +236,7 @@ export type Database = {
           model?: string | null
           name?: string
           notes?: string | null
+          rotary_blade_options?: string[]
           updated_at?: string
         }
         Relationships: []
@@ -597,6 +600,7 @@ export type Database = {
           model: string | null
           name: string
           notes: string | null
+          rotary_blade: string | null
           serial_number: string | null
         }
         Insert: {
@@ -608,6 +612,7 @@ export type Database = {
           model?: string | null
           name: string
           notes?: string | null
+          rotary_blade?: string | null
           serial_number?: string | null
         }
         Update: {
@@ -619,6 +624,7 @@ export type Database = {
           model?: string | null
           name?: string
           notes?: string | null
+          rotary_blade?: string | null
           serial_number?: string | null
         }
         Relationships: [

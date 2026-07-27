@@ -193,11 +193,17 @@ export default function MachineDetail() {
                     <p className="text-sm font-semibold">
                       {a.brand && <span className="text-xs text-muted-foreground mr-1">[{a.brand}]</span>}
                       {a.name}
+                      {a.rotary_blade && (
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-medium align-middle">
+                          발: {a.rotary_blade}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {[a.model, a.serial_number ? `S/N: ${a.serial_number}` : null, a.notes].filter(Boolean).join(" · ")}
                     </p>
                   </div>
+
                   <Button
                     variant="ghost" size="icon" className="h-7 w-7 print:hidden text-muted-foreground hover:text-destructive"
                     onClick={() => { if (confirm(`${a.name}을(를) 삭제하시겠습니까?`)) deleteAttachment.mutate(a.id); }}
@@ -327,7 +333,7 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
   const [catalogId, setCatalogId] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("전체");
   const [catalogSearch, setCatalogSearch] = useState("");
-  const [form, setForm] = useState({ name: "", model: "", serial_number: "", brand: "", notes: "" });
+  const [form, setForm] = useState({ name: "", model: "", serial_number: "", brand: "", notes: "", rotary_blade: "" });
 
   const { data: catalog = [] } = useQuery({
     queryKey: ["attachment-catalog-active"],
@@ -335,13 +341,14 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("attachment_catalog")
-        .select("id, brand, name, model, category")
+        .select("id, brand, name, model, category, rotary_blade_options")
         .eq("is_active", true)
         .order("brand").order("name");
       if (error) throw error;
-      return data as Array<{ id: string; brand: string; name: string; model: string | null; category: string | null }>;
+      return data as Array<{ id: string; brand: string; name: string; model: string | null; category: string | null; rotary_blade_options: string[] | null }>;
     },
   });
+
 
   const brands = ["전체", ...Array.from(new Set(catalog.map(c => c.brand))).sort()];
   const filteredCatalog = catalog.filter(c => {
@@ -356,8 +363,11 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
 
   const reset = () => {
     setMode("catalog"); setCatalogId(""); setBrandFilter("전체"); setCatalogSearch("");
-    setForm({ name: "", model: "", serial_number: "", brand: "", notes: "" });
+    setForm({ name: "", model: "", serial_number: "", brand: "", notes: "", rotary_blade: "" });
   };
+
+  const selectedIsRotary = !!selected && (selected.category === "로터리" || selected.category === "로타리");
+  const bladeOptions = (selected?.rotary_blade_options ?? []) as string[];
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -385,6 +395,7 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
             model: selected.model,
             serial_number: sn || null,
             notes: form.notes || null,
+            rotary_blade: selectedIsRotary && form.rotary_blade ? form.rotary_blade : null,
           }
         : {
             machine_id: machineId,
@@ -394,7 +405,9 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
             model: form.model || null,
             serial_number: sn || null,
             notes: form.notes || null,
+            rotary_blade: null,
           };
+
       const { error } = await (supabase as any).from("machine_attachments").insert(payload);
       if (error) throw error;
     },
@@ -456,11 +469,28 @@ function AttachmentDialog({ open, onOpenChange, machineId }: { open: boolean; on
                 ))
               )}
             </div>
+            {selectedIsRotary && (
+              <div>
+                <Label>로터리 발</Label>
+                {bladeOptions.length > 0 ? (
+                  <Select value={form.rotary_blade} onValueChange={v => setForm(f => ({ ...f, rotary_blade: v }))}>
+                    <SelectTrigger><SelectValue placeholder="발 선택 (선택)" /></SelectTrigger>
+                    <SelectContent>
+                      {bladeOptions.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.rotary_blade} onChange={e => setForm(f => ({ ...f, rotary_blade: e.target.value }))}
+                    placeholder="발 종류 직접 입력 (카탈로그에 옵션 미등록)" />
+                )}
+              </div>
+            )}
             <div>
               <Label>제조번호</Label>
               <Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))}
                 placeholder="S/N (선택)" disabled={!catalogId} />
             </div>
+
             <div>
               <Label>비고</Label>
               <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
