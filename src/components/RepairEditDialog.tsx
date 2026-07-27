@@ -406,12 +406,23 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
                     </div>
                     <Input
                       type="number"
+                      min={0}
+                      value={row.unit_price || ""}
+                      onChange={(e) => updateUnitPrice(row.key, parseInt(e.target.value) || 0)}
+                      className="w-24 h-8 text-right"
+                      placeholder="단가"
+                    />
+                    <Input
+                      type="number"
                       min={1}
                       value={row.quantity}
                       onChange={(e) => updateQty(row.key, parseInt(e.target.value) || 1)}
-                      className="w-20 h-8"
+                      className="w-16 h-8 text-center"
                     />
                     <span className="text-xs text-muted-foreground w-6">{row.unit}</span>
+                    <span className="text-xs font-medium w-20 text-right tabular-nums">
+                      {formatPrice((Number(row.unit_price) || 0) * (Number(row.quantity) || 0))}
+                    </span>
                     <Button
                       type="button"
                       variant="ghost"
@@ -429,6 +440,16 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
         </div>
 
         <DialogFooter>
+          <div className="flex flex-col mr-auto text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>공임비 {formatPrice(laborCostNum)}</span>
+              <span>부품 {formatPrice(partsSubtotal)}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span>총 비용:</span>
+              <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
+            </div>
+          </div>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button onClick={() => updateMutation.mutate()} disabled={!valid || updateMutation.isPending}>
             {updateMutation.isPending ? "저장 중..." : "저장"}
