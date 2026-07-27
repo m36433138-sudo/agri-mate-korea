@@ -130,7 +130,7 @@ export default function KnowledgeBase() {
       if (file.size > MAX_SIZE) {
         toast({
           title: `${file.name} 용량 초과`,
-          description: `현재 최대 50MB까지 지원합니다 (선택하신 파일: ${(file.size / 1024 / 1024).toFixed(0)}MB). 큰 PDF는 분할해서 올려주세요.`,
+          description: `현재 최대 100MB까지 지원합니다 (선택하신 파일: ${(file.size / 1024 / 1024).toFixed(0)}MB). 더 큰 매뉴얼은 분할해서 올려주세요.`,
           variant: "destructive",
         });
         continue;
