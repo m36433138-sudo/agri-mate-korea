@@ -38,6 +38,8 @@ type KnowledgeDoc = {
   status: string;
   error_message: string | null;
   chunk_count: number | null;
+  total_segments: number | null;
+  processed_segments: number | null;
   created_at: string;
 };
 
