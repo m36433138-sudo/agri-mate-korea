@@ -388,14 +388,19 @@ export default function KnowledgeBase() {
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  if (status === "processing")
+function StatusPill({ status, doc }: { status: string; doc?: KnowledgeDoc }) {
+  if (status === "processing") {
+    const label =
+      doc?.total_segments && doc.total_segments > 0
+        ? `학습 중 ${doc.processed_segments ?? 0}/${doc.total_segments}`
+        : "학습 중";
     return (
       <Badge variant="outline" className="gap-1 text-amber-400 border-amber-400/40">
         <Loader2 className="h-3 w-3 animate-spin" />
-        학습 중
+        {label}
       </Badge>
     );
+  }
   if (status === "ready")
     return (
       <Badge variant="outline" className="gap-1 text-emerald-400 border-emerald-400/40">
