@@ -316,11 +316,57 @@ function CatalogFormDialog({ open, onOpenChange, editing, brandOptions }: {
             <Label>비고</Label>
             <Textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
           </div>
+          {isRotary && (
+            <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
+              <Label className="text-sm">로터리 발 옵션</Label>
+              <p className="text-xs text-muted-foreground">이 로터리에 사용 가능한 발 종류를 등록하세요. (기계 등록 시 선택 가능)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {form.rotary_blade_options.map((blade, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs">
+                    {blade}
+                    <button type="button" className="hover:text-destructive"
+                      onClick={() => setForm(f => ({ ...f, rotary_blade_options: f.rotary_blade_options.filter((_, j) => j !== i) }))}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {form.rotary_blade_options.length === 0 && (
+                  <span className="text-xs text-muted-foreground">등록된 발 옵션이 없습니다.</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input value={bladeInput} onChange={e => setBladeInput(e.target.value)}
+                  placeholder="예: 왈로 발, 국내산 발, 타발"
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const v = bladeInput.trim();
+                      if (v && !form.rotary_blade_options.includes(v)) {
+                        setForm(f => ({ ...f, rotary_blade_options: [...f.rotary_blade_options, v] }));
+                      }
+                      setBladeInput("");
+                    }
+                  }} />
+                <Button type="button" size="sm" variant="outline" onClick={() => {
+                  const v = bladeInput.trim();
+                  if (v && !form.rotary_blade_options.includes(v)) {
+                    setForm(f => ({ ...f, rotary_blade_options: [...f.rotary_blade_options, v] }));
+                  }
+                  setBladeInput("");
+                }}>추가</Button>
+              </div>
+            </div>
+          )}
+          <div>
+            <Label>비고</Label>
+            <Textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+          </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.is_active}
               onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
             활성 (기계 등록 시 선택 가능)
           </label>
+
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
