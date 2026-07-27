@@ -132,22 +132,13 @@ serve(async (req) => {
 
     const buf = new Uint8Array(await fileBlob.arrayBuffer());
     const mime = doc.mime_type || "application/pdf";
-
-    // Build segment list
-    let segments: Segment[];
-    if (mime === "application/pdf") {
-      segments = await splitPdfIntoSegments(buf, mime);
-    } else {
-      segments = [
-        { index: 0, pageStart: null, pageEnd: null, mime, base64: toBase64(buf) },
-      ];
-    }
+    const base64 = toBase64(buf);
 
     await admin
       .from("knowledge_documents")
       .update({
         status: "processing",
-        total_segments: segments.length,
+        total_segments: 1,
         processed_segments: 0,
         error_message: null,
       } as any)
@@ -156,45 +147,34 @@ serve(async (req) => {
     // Clear old chunks
     await admin.from("knowledge_chunks").delete().eq("document_id", document_id);
 
-    let chunkGlobalIdx = 0;
+    const text = await extractTextViaGemini(apiKey, mime, base64);
+    const chunks = chunkText(text);
     let totalChunks = 0;
 
-    for (const seg of segments) {
-      const text = await extractTextViaGemini(apiKey, seg.mime, seg.base64);
-      const chunks = chunkText(text);
-
-      if (chunks.length > 0) {
-        const rows: any[] = [];
-        for (let i = 0; i < chunks.length; i += 50) {
-          const batch = chunks.slice(i, i + 50);
-          const embeddings = await embedBatch(apiKey, batch);
-          batch.forEach((content, idx) => {
-            rows.push({
-              document_id,
-              chunk_index: chunkGlobalIdx++,
-              content,
-              embedding: embeddings[idx],
-              segment_index: seg.index,
-              page_start: seg.pageStart,
-              page_end: seg.pageEnd,
-            });
+    if (chunks.length > 0) {
+      const rows: any[] = [];
+      for (let i = 0; i < chunks.length; i += 50) {
+        const batch = chunks.slice(i, i + 50);
+        const embeddings = await embedBatch(apiKey, batch);
+        batch.forEach((content, idx) => {
+          rows.push({
+            document_id,
+            chunk_index: rows.length,
+            content,
+            embedding: embeddings[idx],
+            segment_index: 0,
+            page_start: null,
+            page_end: null,
           });
-        }
-        const { error: insErr } = await admin
-          .from("knowledge_chunks")
-          .insert(rows);
-        if (insErr) throw new Error(insErr.message);
-        totalChunks += rows.length;
+        });
       }
-
-      await admin
-        .from("knowledge_documents")
-        .update({
-          processed_segments: seg.index + 1,
-          chunk_count: totalChunks,
-        } as any)
-        .eq("id", document_id);
+      const { error: insErr } = await admin
+        .from("knowledge_chunks")
+        .insert(rows);
+      if (insErr) throw new Error(insErr.message);
+      totalChunks = rows.length;
     }
+
 
     await admin
       .from("knowledge_documents")
