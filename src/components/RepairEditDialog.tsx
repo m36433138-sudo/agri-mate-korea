@@ -50,6 +50,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
   const [accountingPosted, setAccountingPosted] = useState(false);
 
   const [partRows, setPartRows] = useState<PartRow[]>([]);
+  const [defaultBranch, setDefaultBranch] = useState<"장흥" | "강진">("장흥");
   const [partSearch, setPartSearch] = useState("");
   const [partOpen, setPartOpen] = useState(false);
   const [manualName, setManualName] = useState("");
