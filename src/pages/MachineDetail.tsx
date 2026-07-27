@@ -111,6 +111,11 @@ export default function MachineDetail() {
                 )}
               </div>
               <p className="text-sm text-muted-foreground font-mono mt-1">제조번호: {machine.serial_number}</p>
+              <LastModifiedInfo
+                updatedBy={(machine as any).updated_by}
+                updatedAt={(machine as any).updated_at}
+                className="mt-1 print:hidden"
+              />
             </div>
             <div className="flex gap-2 items-center">
               <TypeBadge type={machine.machine_type} />
