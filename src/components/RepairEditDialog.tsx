@@ -191,15 +191,14 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!repair) return;
-      const labor = parseInt(laborCost) || 0;
       const { error } = await supabase
         .from("repairs")
         .update({
           repair_date: repairDate,
           repair_content: repairContent,
           technician: technician || null,
-          labor_cost: labor,
-          total_cost: labor,
+          labor_cost: laborCostNum,
+          total_cost: totalCost,
           operating_hours: parseInt(operatingHours) || null,
           notes: notes || null,
           accounting_posted: accountingPosted,
@@ -208,7 +207,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       if (error) throw error;
 
       // Resolve parts: create rows in `parts` for manual entries
-      const resolved: { repair_id: string; part_id: string; quantity: number; notes: string | null }[] = [];
+      const resolved: any[] = [];
       for (const row of partRows) {
         let partId = row.part_id;
         if (!partId) {
