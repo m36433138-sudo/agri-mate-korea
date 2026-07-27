@@ -611,6 +611,83 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_documents: {
+        Row: {
+          chunk_count: number | null
+          created_at: string
+          error_message: string | null
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          status: string
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          chunk_count?: number | null
+          created_at?: string
+          error_message?: string | null
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          chunk_count?: number | null
+          created_at?: string
+          error_message?: string | null
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       machine_attachments: {
         Row: {
           brand: string | null
@@ -1845,6 +1922,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_knowledge_chunks: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_id: string
+          document_title: string
+          similarity: number
+        }[]
       }
       next_quote_number: { Args: never; Returns: string }
     }
