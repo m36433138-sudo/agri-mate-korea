@@ -94,6 +94,94 @@ export default function CustomerDetail() {
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
   });
 
+  // 현재 보유 + 과거 거래 기계 통합 이력
+  const machineHistory = useMemo(() => {
+    if (!id) return [];
+    const map = new Map<string, any>();
+    const today = new Date().toISOString().slice(0, 10);
+
+    const diffDays = (from: string | null, to: string | null) => {
+      if (!from || !to) return 0;
+      const a = new Date(from).getTime();
+      const b = new Date(to).getTime();
+      if (isNaN(a) || isNaN(b)) return 0;
+      return Math.max(0, Math.floor((b - a) / (1000 * 60 * 60 * 24)));
+    };
+
+    // 현재 보유 기계 등록
+    machines?.forEach((m) => {
+      map.set(m.id, {
+        ...m,
+        _holding: true,
+        _acquiredDate: m.sale_date || m.entry_date,
+        _lastEventDate: m.sale_date || m.entry_date,
+        _lastEventType: "current",
+        _ownershipDays: diffDays(m.sale_date || m.entry_date, today),
+      });
+    });
+
+    // 거래 이력을 기계별로 그룹화하여 정확한 보유 기간 계산
+    const historyByMachine: Record<string, any[]> = {};
+    salesHistory?.forEach((h: any) => {
+      if (!historyByMachine[h.machine_id]) historyByMachine[h.machine_id] = [];
+      historyByMachine[h.machine_id].push(h);
+    });
+
+    Object.entries(historyByMachine).forEach(([machineId, events]) => {
+      const sorted = [...events].sort((a, b) => a.event_date.localeCompare(b.event_date));
+      const isHolding = !!machines?.find(m => m.id === machineId);
+      let days = 0;
+      let startDate: string | null = null;
+
+      sorted.forEach((e) => {
+        if (e.to_customer_id === id) {
+          startDate = e.event_date;
+        } else if (e.from_customer_id === id && startDate) {
+          days += diffDays(startDate, e.event_date);
+          startDate = null;
+        }
+      });
+
+      if (startDate && isHolding) {
+        days += diffDays(startDate, today);
+      }
+
+      const lastEvent = sorted[sorted.length - 1];
+      const lastEventDate = lastEvent?.event_date || (isHolding ? sorted[0]?.machines?.sale_date || sorted[0]?.machines?.entry_date : null);
+      const lastEventType = isHolding ? "current" : lastEvent?.event_type;
+      const machineData = lastEvent?.machines || machines?.find(m => m.id === machineId);
+
+      if (!machineData) return;
+
+      // history 기반 보유 기간이 계산되지 않았으면 (거래 이력만 있는 경우 등) 단순 기간 fallback
+      const fallbackDays = isHolding
+        ? diffDays(machineData.sale_date || machineData.entry_date, today)
+        : diffDays(machineData.sale_date || machineData.entry_date, lastEventDate);
+
+      const ownershipDays = days > 0 ? days : fallbackDays;
+
+      if (map.has(machineId)) {
+        const existing = map.get(machineId);
+        existing._lastEventDate = lastEventDate || existing._lastEventDate;
+        existing._lastEventType = lastEventType || existing._lastEventType;
+        existing._ownershipDays = ownershipDays;
+      } else {
+        map.set(machineId, {
+          ...machineData,
+          _holding: isHolding,
+          _acquiredDate: machineData.sale_date || machineData.entry_date,
+          _lastEventDate: lastEventDate,
+          _lastEventType: lastEventType,
+          _ownershipDays: ownershipDays,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) =>
+      (b._lastEventDate || "").localeCompare(a._lastEventDate || "")
+    );
+  }, [machines, salesHistory, id]);
+
   const machineIds = machines?.map(m => m.id) ?? [];
 
   const { data: repairs } = useQuery({
