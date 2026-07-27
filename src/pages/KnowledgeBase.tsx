@@ -73,7 +73,9 @@ export default function KnowledgeBase() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
+  const [groups, setGroups] = useState<UploadGroup[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
 
   const { data: docs = [], isLoading } = useQuery({
     queryKey: ["knowledge-documents"],
