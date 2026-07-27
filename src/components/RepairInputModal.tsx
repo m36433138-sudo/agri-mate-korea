@@ -398,7 +398,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     const like = `%${q}%`;
     const { data } = await supabase
       .from("inventory")
-      .select("id, part_code, part_name, quantity, branch")
+      .select("id, part_code, part_name, quantity, branch, sales_price")
       .or(`part_code.ilike.${like},part_name.ilike.${like}`)
       .order("part_code")
       .limit(15);
