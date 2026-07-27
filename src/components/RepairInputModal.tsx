@@ -19,6 +19,7 @@ type PartRow = {
   part_number: string;
   unit: string;
   quantity: number;
+  unit_price: number;
   fromTemplate?: string;
 };
 
