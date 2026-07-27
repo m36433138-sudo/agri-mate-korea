@@ -164,6 +164,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           unit: p.unit || "개",
           quantity: 1,
           unit_price: unitPrice,
+          branch: defaultBranch,
         },
       ];
     });
