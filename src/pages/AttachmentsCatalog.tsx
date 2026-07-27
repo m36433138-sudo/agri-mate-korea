@@ -312,10 +312,6 @@ function CatalogFormDialog({ open, onOpenChange, editing, brandOptions }: {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>비고</Label>
-            <Textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-          </div>
           {isRotary && (
             <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
               <Label className="text-sm">로터리 발 옵션</Label>
