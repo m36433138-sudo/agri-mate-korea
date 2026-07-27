@@ -23,7 +23,9 @@ type CatalogItem = {
   notes: string | null;
   is_active: boolean;
   created_at: string;
+  rotary_blade_options: string[] | null;
 };
+
 
 type Brand = {
   id: string;
