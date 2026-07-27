@@ -1007,9 +1007,26 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
               {partRows.length > 0 && (
                 <div className="space-y-2 mt-3">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <Label className="text-xs text-muted-foreground">사용 부품 목록 ({partRows.length}건)</Label>
-                    <span className="text-[11px] text-muted-foreground">드래그 또는 스크롤로 순서 변경</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground">기본 지점</span>
+                      <div className="inline-flex rounded-md border overflow-hidden text-xs">
+                        {(["장흥", "강진"] as const).map((b) => (
+                          <button
+                            key={b}
+                            type="button"
+                            onClick={() => {
+                              setDefaultBranch(b);
+                              setPartRows((prev) => prev.map((r) => ({ ...r, branch: b })));
+                            }}
+                            className={`px-2 py-1 ${defaultBranch === b ? "bg-primary text-primary-foreground" : "bg-transparent"}`}
+                          >
+                            {b}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1">
                     {partRows.map((row, index) => (
@@ -1034,6 +1051,15 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                           <p className="text-sm font-medium truncate">{row.part_name}</p>
                           <p className="text-xs text-muted-foreground font-mono">{row.part_number}</p>
                         </div>
+                        <select
+                          value={row.branch}
+                          onChange={(e) => updatePartRow(index, "branch", e.target.value as "장흥" | "강진")}
+                          className="h-8 rounded-md border bg-background px-1 text-xs"
+                          title="지점"
+                        >
+                          <option value="장흥">장흥</option>
+                          <option value="강진">강진</option>
+                        </select>
                         <Input
                           type="number"
                           value={row.unit_price || ""}
