@@ -257,6 +257,9 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>수리 이력 수정</DialogTitle>
+          {repair && (
+            <LastModifiedInfo updatedBy={repair.updated_by} updatedAt={repair.updated_at} className="pt-1" />
+          )}
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 -mx-6 px-6">
