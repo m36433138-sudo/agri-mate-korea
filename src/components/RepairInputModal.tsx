@@ -490,6 +490,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       unit: item.parts?.unit || "개",
       quantity: item.quantity,
       unit_price: 0,
+      branch: defaultBranch,
       fromTemplate: template.id,
     }));
 
