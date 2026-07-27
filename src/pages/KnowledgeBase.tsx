@@ -186,7 +186,6 @@ export default function KnowledgeBase() {
 
     if (fileRef.current) fileRef.current.value = "";
   };
-  };
 
   const reprocess = async (doc: KnowledgeDoc) => {
     await supabase
@@ -221,7 +220,10 @@ export default function KnowledgeBase() {
           <div>
             <p className="font-semibold text-foreground">PDF 또는 이미지 업로드</p>
             <p className="text-xs text-muted-foreground mt-1">
-              PDF · JPG · PNG · WEBP · HEIC (파일당 최대 20MB, 여러 개 선택 가능)
+              PDF · JPG · PNG · WEBP · HEIC (파일당 최대 50MB)
+            </p>
+            <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+              더 큰 매뉴얼은 챕터별로 분할해 올려주세요
             </p>
           </div>
           <input
@@ -232,21 +234,36 @@ export default function KnowledgeBase() {
             className="hidden"
             onChange={(e) => handleUpload(e.target.files)}
           />
-          <Button onClick={() => fileRef.current?.click()} disabled={uploading}>
-            {uploading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                업로드 중...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-2" />
-                파일 선택
-              </>
-            )}
+          <Button onClick={() => fileRef.current?.click()} disabled={uploads.length > 0}>
+            <Upload className="h-4 w-4 mr-2" />
+            파일 선택
           </Button>
         </div>
       </Card>
+
+      {uploads.length > 0 && (
+        <div className="grid gap-2">
+          {uploads.map((u) => (
+            <Card key={u.id} className="p-3 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-foreground truncate flex-1">{u.name}</span>
+                <span className={u.error ? "text-red-400 text-xs" : "text-muted-foreground text-xs"}>
+                  {u.error ? u.error : `${u.progress}%`}
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full transition-all ${u.error ? "bg-red-400" : "bg-primary"}`}
+                  style={{ width: `${u.progress}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {(u.size / 1024 / 1024).toFixed(1)}MB · {u.progress === 100 ? "서버 등록 중..." : "업로드 중"}
+              </p>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">
