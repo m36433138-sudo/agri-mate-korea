@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import type { Customer, Machine, Repair } from "@/types/database";
 import { CustomerGradeBadge } from "@/pages/CustomersList";
+import LastModifiedInfo from "@/components/LastModifiedInfo";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 
