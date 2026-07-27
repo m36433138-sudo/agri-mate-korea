@@ -126,12 +126,29 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
     }
   }, [existingParts]);
 
-  const addFromSearch = (p: any) => {
+  const addFromSearch = async (p: any) => {
+    // 매출가는 inventory(부품관리)에서 최신 값을 조회
+    let unitPrice = 0;
+    if (p.part_number) {
+      const { data: inv } = await supabase
+        .from("inventory")
+        .select("sales_price")
+        .eq("part_code", p.part_number)
+        .not("sales_price", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      unitPrice = Number(inv?.sales_price) || 0;
+    }
     setPartRows((prev) => {
       const idx = prev.findIndex((r) => r.part_id === p.id);
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
+        next[idx] = {
+          ...next[idx],
+          quantity: next[idx].quantity + 1,
+          unit_price: next[idx].unit_price || unitPrice,
+        };
         return next;
       }
       return [
@@ -143,7 +160,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           part_number: p.part_number || "",
           unit: p.unit || "개",
           quantity: 1,
-          unit_price: 0,
+          unit_price: unitPrice,
         },
       ];
     });
