@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.sync_inventory_sales_price() FROM PUBLIC, anon, authenticated;
