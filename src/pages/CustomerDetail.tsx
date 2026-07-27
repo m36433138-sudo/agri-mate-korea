@@ -46,6 +46,19 @@ export default function CustomerDetail() {
     },
   });
 
+  const { data: salesHistory } = useQuery({
+    queryKey: ["customer-machine-history", id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("machine_sales_history")
+        .select("*, machines(*)")
+        .or(`from_customer_id.eq.${id},to_customer_id.eq.${id}`)
+        .order("event_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: driveLinks } = useQuery({
     queryKey: ["customer-drive-links", id],
     queryFn: async () => {
