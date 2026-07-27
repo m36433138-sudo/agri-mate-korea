@@ -471,6 +471,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           unit: partRecord.unit,
           quantity: 1,
           unit_price: unitPrice,
+          branch: (inv.branch === "장흥" || inv.branch === "강진") ? inv.branch : defaultBranch,
         },
       ]);
     }
