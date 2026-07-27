@@ -237,6 +237,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           repair_id: repair.id,
           part_id: partId,
           quantity: row.quantity || 1,
+          unit_price: Number(row.unit_price) || 0,
           notes: null,
         });
       }
