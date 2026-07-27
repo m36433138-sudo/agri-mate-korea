@@ -45,7 +45,9 @@ type KnowledgeDoc = {
 };
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/heic";
-const MAX_SIZE = 100 * 1024 * 1024; // 100MB (PDF는 서버에서 8p씩 분할 처리)
+const MAX_SIZE = 200 * 1024 * 1024; // 200MB (클라이언트에서 분할 후 업로드)
+const SERVER_SAFE_SIZE = 30 * 1024 * 1024; // 서버가 한번에 처리 가능한 크기
+const PAGES_PER_UPLOAD = 25; // 큰 PDF를 이 페이지 수로 분할
 
 type UploadProgress = {
   id: string;
