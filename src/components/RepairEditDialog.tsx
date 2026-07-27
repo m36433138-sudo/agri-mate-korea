@@ -73,7 +73,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("repair_parts")
-        .select("id, part_id, quantity, unit_price, parts(id, part_name, part_number, unit)")
+        .select("id, part_id, quantity, unit_price, branch, parts(id, part_name, part_number, unit)")
         .eq("repair_id", repair!.id);
       if (error) throw error;
       return data || [];
