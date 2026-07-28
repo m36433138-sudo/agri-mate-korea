@@ -78,6 +78,19 @@ export default function MachineDetail() {
     },
   });
 
+  const { data: salesHistory, isLoading: historyLoading } = useQuery({
+    queryKey: ["machine-sales-history", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("machine_sales_history")
+        .select("*, from_customer:customers!machine_sales_history_from_customer_id_fkey(id, name), to_customer:customers!machine_sales_history_to_customer_id_fkey(id, name)")
+        .eq("machine_id", id!)
+        .order("event_date", { ascending: false });
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
   if (isLoading) return <div className="space-y-4"><Skeleton className="h-48 w-full" /><Skeleton className="h-64 w-full" /></div>;
   if (!machine) return <p className="text-muted-foreground">기계를 찾을 수 없습니다.</p>;
 
