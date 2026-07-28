@@ -902,10 +902,8 @@ function TradeInDialog({ open, onOpenChange, machine }: { open: boolean; onOpenC
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const historyNote = `[중고 인수 ${form.trade_in_date}]${prevOwnerName ? ` 이전 소유자: ${prevOwnerName}` : ""}${
-        machine.sale_price ? ` / 판매가: ${machine.sale_price.toLocaleString()}원` : ""
-      }${form.notes ? ` / ${form.notes}` : ""}`;
-      const mergedNotes = machine.notes ? `${machine.notes}\n${historyNote}` : historyNote;
+      const prevCustomerId = machine.customer_id ?? null;
+      const tradePrice = form.trade_in_price ? parseInt(form.trade_in_price) : null;
 
       const { error } = await supabase
         .from("machines")
@@ -916,11 +914,23 @@ function TradeInDialog({ open, onOpenChange, machine }: { open: boolean; onOpenC
           sale_price: null,
           sale_date: null,
           entry_date: form.trade_in_date,
-          purchase_price: form.trade_in_price ? parseInt(form.trade_in_price) : null,
-          notes: mergedNotes,
+          purchase_price: tradePrice,
+          notes: machine.notes || null,
         } as any)
         .eq("id", machine.id);
       if (error) throw error;
+
+      // 이력 기록: 이전 소유자 -> 재고
+      const { error: histErr } = await supabase.from("machine_sales_history").insert({
+        machine_id: machine.id,
+        event_type: "trade_in",
+        event_date: form.trade_in_date,
+        from_customer_id: prevCustomerId,
+        to_customer_id: null,
+        price: tradePrice,
+        notes: form.notes || null,
+      } as any);
+      if (histErr) console.error("이력 저장 실패:", histErr);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machine", machine.id] });
