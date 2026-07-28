@@ -906,6 +906,7 @@ function TradeInDialog({ open, onOpenChange, machine }: { open: boolean; onOpenC
       qc.invalidateQueries({ queryKey: ["machine", machine.id] });
       qc.invalidateQueries({ queryKey: ["machines"] });
       qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["machine-sales-history", machine.id] });
       toast({ title: "중고 인수 완료", description: "재고(중고기계)로 편입되었습니다. 수리 이력은 그대로 유지됩니다." });
       onOpenChange(false);
     },
