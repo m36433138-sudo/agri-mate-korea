@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
-import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap, Undo2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap, Undo2, History, ArrowRight } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
@@ -75,6 +75,19 @@ export default function MachineDetail() {
         .order("repair_date", { ascending: false });
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: salesHistory, isLoading: historyLoading } = useQuery({
+    queryKey: ["machine-sales-history", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("machine_sales_history")
+        .select("*, from_customer:customers!machine_sales_history_from_customer_id_fkey(id, name), to_customer:customers!machine_sales_history_to_customer_id_fkey(id, name)")
+        .eq("machine_id", id!)
+        .order("event_date", { ascending: false });
+      if (error) throw error;
+      return data as any[];
     },
   });
 
@@ -167,6 +180,66 @@ export default function MachineDetail() {
               <Button variant="outline" onClick={() => setTradeInOpen(true)}>
                 <Undo2 className="h-4 w-4 mr-1.5" /> 중고 인수 (재고 편입)
               </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 소유 · 판매 이력 */}
+      <Card className="shadow-card border-0 mb-4 print:shadow-none print:border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" /> 소유 · 판매 이력
+            <span className="text-sm font-normal text-muted-foreground">({salesHistory?.length ?? 0})</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {historyLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : !salesHistory || salesHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">기록된 이력이 없습니다.</p>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+              <div className="space-y-4 pl-8">
+                {salesHistory.map((h: any) => {
+                  const eventLabel =
+                    h.event_type === "sale" ? "판매" :
+                    h.event_type === "trade_in" ? "중고 인수" :
+                    h.event_type === "transfer" ? "이전" :
+                    h.event_type === "customer_link" ? "고객 연결" : h.event_type;
+                  return (
+                    <div key={h.id} className="relative">
+                      <div className="absolute -left-[22px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-card" />
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="font-semibold">{formatDate(h.event_date)}</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                          {eventLabel}
+                        </span>
+                        {h.price ? <span className="text-muted-foreground">· {formatPrice(h.price)}</span> : null}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-sm">
+                        {h.from_customer ? (
+                          <Link to={`/customers/${h.from_customer.id}`} className="text-primary hover:underline">
+                            {h.from_customer.name}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">재고/광문농기</span>
+                        )}
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        {h.to_customer ? (
+                          <Link to={`/customers/${h.to_customer.id}`} className="text-primary hover:underline">
+                            {h.to_customer.name}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">재고/광문농기</span>
+                        )}
+                      </div>
+                      {h.notes && <p className="text-xs text-muted-foreground mt-1">{h.notes}</p>}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>
@@ -573,6 +646,7 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }:
       qc.invalidateQueries({ queryKey: ["machine", machineId] });
       qc.invalidateQueries({ queryKey: ["machines"] });
       qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["machine-sales-history", machineId] });
       toast({ title: isSale ? "판매 처리가 완료되었습니다." : "고객 연결이 완료되었습니다." });
       handleClose();
     },
@@ -832,6 +906,7 @@ function TradeInDialog({ open, onOpenChange, machine }: { open: boolean; onOpenC
       qc.invalidateQueries({ queryKey: ["machine", machine.id] });
       qc.invalidateQueries({ queryKey: ["machines"] });
       qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["machine-sales-history", machine.id] });
       toast({ title: "중고 인수 완료", description: "재고(중고기계)로 편입되었습니다. 수리 이력은 그대로 유지됩니다." });
       onOpenChange(false);
     },
