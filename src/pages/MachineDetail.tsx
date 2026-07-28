@@ -185,6 +185,66 @@ export default function MachineDetail() {
         </CardContent>
       </Card>
 
+      {/* 소유 · 판매 이력 */}
+      <Card className="shadow-card border-0 mb-4 print:shadow-none print:border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" /> 소유 · 판매 이력
+            <span className="text-sm font-normal text-muted-foreground">({salesHistory?.length ?? 0})</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {historyLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : !salesHistory || salesHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">기록된 이력이 없습니다.</p>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+              <div className="space-y-4 pl-8">
+                {salesHistory.map((h: any) => {
+                  const eventLabel =
+                    h.event_type === "sale" ? "판매" :
+                    h.event_type === "trade_in" ? "중고 인수" :
+                    h.event_type === "transfer" ? "이전" :
+                    h.event_type === "customer_link" ? "고객 연결" : h.event_type;
+                  return (
+                    <div key={h.id} className="relative">
+                      <div className="absolute -left-[22px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-card" />
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="font-semibold">{formatDate(h.event_date)}</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                          {eventLabel}
+                        </span>
+                        {h.price ? <span className="text-muted-foreground">· {formatPrice(h.price)}</span> : null}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-sm">
+                        {h.from_customer ? (
+                          <Link to={`/customers/${h.from_customer.id}`} className="text-primary hover:underline">
+                            {h.from_customer.name}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">재고/광문농기</span>
+                        )}
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        {h.to_customer ? (
+                          <Link to={`/customers/${h.to_customer.id}`} className="text-primary hover:underline">
+                            {h.to_customer.name}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">재고/광문농기</span>
+                        )}
+                      </div>
+                      {h.notes && <p className="text-xs text-muted-foreground mt-1">{h.notes}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* 작업기 섹션 */}
       <Card className="shadow-card border-0 mb-4 print:shadow-none print:border">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
