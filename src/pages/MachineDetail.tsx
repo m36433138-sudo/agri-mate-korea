@@ -635,12 +635,32 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }:
         if (error) throw error;
         customerId = data.id;
       }
+
+      // 판매/연결 이전 소유자(있으면 from_customer로 기록)
+      const { data: prev } = await supabase.from("machines").select("customer_id").eq("id", machineId).single();
+      const fromCustomerId = prev?.customer_id ?? null;
+
+      const salePrice = isSale && form.sale_price ? parseInt(form.sale_price) : null;
+      const saleDate = isSale && form.sale_date ? form.sale_date : new Date().toISOString().slice(0, 10);
+
       const { error } = await supabase.from("machines").update({
         status: "판매완료", customer_id: customerId,
-        sale_price: isSale && form.sale_price ? parseInt(form.sale_price) : null,
+        sale_price: salePrice,
         sale_date: isSale && form.sale_date ? form.sale_date : null,
       }).eq("id", machineId);
       if (error) throw error;
+
+      // 이력 기록
+      const { error: histErr } = await supabase.from("machine_sales_history").insert({
+        machine_id: machineId,
+        event_type: isSale ? "sale" : "customer_link",
+        event_date: saleDate,
+        from_customer_id: fromCustomerId,
+        to_customer_id: customerId,
+        price: salePrice,
+        notes: null,
+      } as any);
+      if (histErr) console.error("이력 저장 실패:", histErr);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machine", machineId] });
