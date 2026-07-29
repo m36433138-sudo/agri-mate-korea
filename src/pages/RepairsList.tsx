@@ -45,7 +45,7 @@ export default function RepairsList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("repairs")
-        .select("*, machines(id, model_name, serial_number)")
+        .select("*, machines(id, model_name, serial_number, customer_id, customers(name))")
         .order("repair_date", { ascending: false });
       if (error) throw error;
       return data as RepairWithMachine[];
@@ -63,7 +63,7 @@ export default function RepairsList() {
 
   const { search, setSearch, filtered: searchFiltered } = useListFilter<RepairWithMachine>({
     data: repairs,
-    searchFields: ["repair_content", "technician", "machines.serial_number", "machines.model_name"],
+    searchFields: ["repair_content", "technician", "machines.serial_number", "machines.model_name", "machines.customers.name"],
   });
 
   const filtered = useMemo(() => {
