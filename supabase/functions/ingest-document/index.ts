@@ -102,26 +102,16 @@ async function embedBatch(apiKey: string, inputs: string[]): Promise<number[][]>
     .map((d) => d.embedding);
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  const admin = createClient(supabaseUrl, serviceKey);
-
-  let documentId: string | null = null;
-
+async function processDocument(
+  admin: any,
+  apiKey: string,
+  documentId: string,
+): Promise<void> {
   try {
-    if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
-    const { document_id } = await req.json();
-    if (!document_id) throw new Error("document_id required");
-    documentId = document_id;
-
     const { data: doc, error: docErr } = await admin
       .from("knowledge_documents")
       .select("id, file_path, mime_type")
-      .eq("id", document_id)
+      .eq("id", documentId)
       .single();
     if (docErr || !doc) throw new Error(docErr?.message || "Document not found");
 
@@ -134,18 +124,8 @@ serve(async (req) => {
     const mime = doc.mime_type || "application/pdf";
     const base64 = toBase64(buf);
 
-    await admin
-      .from("knowledge_documents")
-      .update({
-        status: "processing",
-        total_segments: 1,
-        processed_segments: 0,
-        error_message: null,
-      } as any)
-      .eq("id", document_id);
-
     // Clear old chunks
-    await admin.from("knowledge_chunks").delete().eq("document_id", document_id);
+    await admin.from("knowledge_chunks").delete().eq("document_id", documentId);
 
     const text = await extractTextViaGemini(apiKey, mime, base64);
     const chunks = chunkText(text);
@@ -158,7 +138,7 @@ serve(async (req) => {
         const embeddings = await embedBatch(apiKey, batch);
         batch.forEach((content, idx) => {
           rows.push({
-            document_id,
+            document_id: documentId,
             chunk_index: rows.length,
             content,
             embedding: embeddings[idx],
@@ -175,7 +155,6 @@ serve(async (req) => {
       totalChunks = rows.length;
     }
 
-
     await admin
       .from("knowledge_documents")
       .update({
@@ -184,24 +163,54 @@ serve(async (req) => {
         processed_segments: 1,
         error_message: totalChunks === 0 ? "추출된 텍스트가 없습니다" : null,
       } as any)
-      .eq("id", document_id);
-
-    return new Response(
-      JSON.stringify({ ok: true, chunks: totalChunks, segments: 1 }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+      .eq("id", documentId);
   } catch (e) {
     console.error("ingest-document error:", e);
     const message = e instanceof Error ? e.message : "Unknown error";
-    if (documentId) {
-      await admin
-        .from("knowledge_documents")
-        .update({ status: "error", error_message: message })
-        .eq("id", documentId);
-    }
+    await admin
+      .from("knowledge_documents")
+      .update({ status: "error", error_message: message })
+      .eq("id", documentId);
+  }
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  const admin = createClient(supabaseUrl, serviceKey);
+
+  try {
+    if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
+    const { document_id } = await req.json();
+    if (!document_id) throw new Error("document_id required");
+
+    await admin
+      .from("knowledge_documents")
+      .update({
+        status: "processing",
+        total_segments: 1,
+        processed_segments: 0,
+        error_message: null,
+      } as any)
+      .eq("id", document_id);
+
+    // Run the heavy work in the background so the request never idles out (150s cap)
+    // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime
+    EdgeRuntime.waitUntil(processDocument(admin, apiKey, document_id));
+
+    return new Response(
+      JSON.stringify({ ok: true, status: "processing" }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error";
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+
