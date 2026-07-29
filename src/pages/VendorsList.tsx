@@ -181,8 +181,8 @@ export default function VendorsList() {
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0 mt-0.5">
                 <Building2 className="h-4 w-4" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{v.name}</p>
+              <Link to={`/vendors/${v.id}`} className="flex-1 min-w-0 cursor-pointer">
+                <p className="font-semibold text-sm hover:underline">{v.name}</p>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                   {v.representative && <span className="text-xs text-muted-foreground">대표: {v.representative}</span>}
                   {v.phone && <span className="text-xs text-muted-foreground">{v.phone}</span>}
@@ -190,7 +190,7 @@ export default function VendorsList() {
                 </div>
                 {v.items && <p className="text-xs text-muted-foreground mt-1">거래품목: {v.items}</p>}
                 {v.notes && <p className="text-xs text-muted-foreground/70 mt-0.5">{v.notes}</p>}
-              </div>
+              </Link>
               <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(v)}>
                   <Pencil className="h-3.5 w-3.5" />
