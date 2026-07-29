@@ -30,6 +30,7 @@ const OnsiteRepairs = lazy(() => import("@/pages/OnsiteRepairs"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const WorkspacePage = lazy(() => import("@/components/workspace/WorkspacePage"));
 const VendorsList = lazy(() => import("@/pages/VendorsList"));
+const VendorDetail = lazy(() => import("@/pages/VendorDetail"));
 const AssetsPage = lazy(() => import("@/pages/AssetsPage"));
 const LocationHistory = lazy(() => import("@/pages/LocationHistory"));
 const QuotesList = lazy(() => import("@/pages/QuotesList"));
