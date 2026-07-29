@@ -36,5 +36,5 @@ export type MachineWithCustomer = Machine & {
 };
 
 export type RepairWithMachine = Repair & {
-  machines: { id: string; model_name: string; serial_number: string } | null;
+  machines: { id: string; model_name: string; serial_number: string; customer_id: string | null; customers: { name: string } | null } | null;
 };
