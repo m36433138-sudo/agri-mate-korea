@@ -1885,6 +1885,112 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_items: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          part_code: string | null
+          part_name: string
+          purchase_price: number
+          sales_price: number | null
+          unit: string | null
+          updated_at: string
+          updated_by: string | null
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          part_code?: string | null
+          part_name: string
+          purchase_price?: number
+          sales_price?: number | null
+          unit?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          part_code?: string | null
+          part_name?: string
+          purchase_price?: number
+          sales_price?: number | null
+          unit?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_purchases: {
+        Row: {
+          branch: string
+          created_at: string
+          id: string
+          notes: string | null
+          part_code: string | null
+          part_name: string
+          purchase_date: string
+          purchase_price: number
+          quantity: number
+          sales_price: number | null
+          updated_at: string
+          updated_by: string | null
+          vendor_id: string
+        }
+        Insert: {
+          branch?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          part_code?: string | null
+          part_name: string
+          purchase_date?: string
+          purchase_price?: number
+          quantity?: number
+          sales_price?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id: string
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          part_code?: string | null
+          part_name?: string
+          purchase_date?: string
+          purchase_price?: number
+          quantity?: number
+          sales_price?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_purchases_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           business_number: string | null
