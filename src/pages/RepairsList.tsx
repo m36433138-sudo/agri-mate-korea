@@ -229,6 +229,7 @@ export default function RepairsList() {
                     <tr className="border-b bg-muted/30">
                       <th className="text-left p-3 font-medium text-muted-foreground">수리일</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">기계</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">기계 주인</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">수리내용</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">담당</th>
                       <th className="text-center p-3 font-medium text-muted-foreground w-[80px]">기표</th>
@@ -246,6 +247,15 @@ export default function RepairsList() {
                             <span className="font-medium">{r.machines?.model_name}</span>
                             <span className="block text-xs text-muted-foreground font-mono">{r.machines?.serial_number}</span>
                           </Link>
+                        </td>
+                        <td className="p-3 text-muted-foreground">
+                          {r.machines?.customers?.name ? (
+                            <Link to={`/customers/${r.machines.customer_id}`} className="hover:text-primary">
+                              {r.machines.customers.name}
+                            </Link>
+                          ) : (
+                            "-"
+                          )}
                         </td>
                         <td className="p-3">{r.repair_content}</td>
                         <td className="p-3 text-muted-foreground">{r.technician || "-"}</td>
