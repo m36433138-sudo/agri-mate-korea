@@ -106,6 +106,7 @@ const App = () => (
                         } />
                         <Route path="/workspace" element={<WorkspacePage />} />
                         <Route path="/vendors" element={<VendorsList />} />
+                        <Route path="/vendors/:id" element={<VendorDetail />} />
                         <Route path="/assets" element={<AssetsPage />} />
                         <Route path="/location-history" element={
                           <ProtectedRoute allowedRoles={["admin"]}>
