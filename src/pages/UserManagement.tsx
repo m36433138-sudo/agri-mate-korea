@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { AppRole } from "@/hooks/useUserRole";
 import type { Customer } from "@/types/database";
+import { PERMISSION_GROUPS, PERMISSION_LABELS, PERMISSION_PRESETS, ALL_PERMISSIONS } from "@/lib/permissions";
 
 type TeamType = "영업팀" | "기사팀" | "사무팀";
 
