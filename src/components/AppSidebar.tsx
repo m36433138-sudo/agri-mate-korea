@@ -59,32 +59,33 @@ export function AppSidebar() {
   const workItems: NavItem[] = [
     { title: "대시보드", url: "/", icon: LayoutDashboard },
     { title: "내 업무", url: "/workspace", icon: Briefcase },
-    { title: "작업현황판", url: "/dashboard/operations", icon: ClipboardList },
-    { title: "방문수리", url: "/onsite-repairs", icon: Truck },
-    ...(isAdmin || isEmployee ? [{ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 }] : []),
-    ...(isAdmin || isEmployee ? [{ title: "초과근무 현황", url: "/dashboard/overtime", icon: Clock }] : []),
+    ...(hasPermission("view_operations") ? [{ title: "작업현황판", url: "/dashboard/operations", icon: ClipboardList }] : []),
+    ...(hasPermission("view_onsite") ? [{ title: "방문수리", url: "/onsite-repairs", icon: Truck }] : []),
+    ...(hasPermission("view_stats") ? [{ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 }] : []),
+    ...(hasPermission("view_overtime") ? [{ title: "초과근무 현황", url: "/dashboard/overtime", icon: Clock }] : []),
   ];
 
   // 데이터관리 그룹
   const dataItems: NavItem[] = [
-    ...(isAdmin || hasPermission("view_machines") ? [{ title: "기계관리", url: "/machines", icon: Tractor }] : []),
-    ...(isAdmin || isEmployee ? [{ title: "작업기 관리", url: "/attachments", icon: Tractor }] : []),
-    ...(isAdmin || hasPermission("view_customers") ? [{ title: "고객관리", url: "/customers", icon: Users }] : []),
-    ...(isAdmin || hasPermission("manage_repairs") ? [{ title: "수리이력", url: "/repairs", icon: Wrench }] : []),
-    ...(isAdmin || isEmployee ? [{ title: "부품관리", url: "/parts", icon: Package }] : []),
-    ...(isAdmin || isEmployee ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
-    ...(isAdmin || isEmployee ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),
-    ...(isAdmin || isEmployee ? [{ title: "자산관리", url: "/assets", icon: Landmark }] : []),
-    ...(isAdmin || isEmployee ? [{ title: "견적서 관리", url: "/quotes", icon: FileText }] : []),
+    ...(hasPermission("view_machines") ? [{ title: "기계관리", url: "/machines", icon: Tractor }] : []),
+    ...(hasPermission("view_attachments") ? [{ title: "작업기 관리", url: "/attachments", icon: Tractor }] : []),
+    ...(hasPermission("view_customers") ? [{ title: "고객관리", url: "/customers", icon: Users }] : []),
+    ...(hasPermission("view_repairs") || hasPermission("manage_repairs") ? [{ title: "수리이력", url: "/repairs", icon: Wrench }] : []),
+    ...(hasPermission("view_parts") ? [{ title: "부품관리", url: "/parts", icon: Package }] : []),
+    ...(hasPermission("view_repair_templates") ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
+    ...(hasPermission("view_vendors") ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),
+    ...(hasPermission("view_assets") ? [{ title: "자산관리", url: "/assets", icon: Landmark }] : []),
+    ...(hasPermission("view_quotes") ? [{ title: "견적서 관리", url: "/quotes", icon: FileText }] : []),
   ];
 
   // 시스템 그룹
   const systemItems: NavItem[] = [
     { title: "AI 어시스턴트", url: "/chat", icon: Sparkles },
-    ...(isAdmin || isEmployee ? [{ title: "지식베이스", url: "/knowledge", icon: BookOpen }] : []),
+    ...(hasPermission("view_knowledge") ? [{ title: "지식베이스", url: "/knowledge", icon: BookOpen }] : []),
     ...(isAdmin ? [{ title: "위치 이력", url: "/location-history", icon: MapPin }] : []),
     ...(isAdmin ? [{ title: "사용자 관리", url: "/users", icon: UserCog }] : []),
   ];
+
 
   return (
     <Sidebar collapsible="icon">
