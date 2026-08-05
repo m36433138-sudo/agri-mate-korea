@@ -85,29 +85,30 @@ const App = () => (
                     <Suspense fallback={<PageLoader />}>
                       <Routes>
                         <Route path="/" element={<HomePage />} />
-                        <Route path="/dashboard/operations" element={<OperationsDashboard />} />
-                        <Route path="/dashboard/stats" element={<RepairStats />} />
-                        <Route path="/dashboard/overtime" element={<OvertimeDashboard />} />
-                        <Route path="/onsite-repairs" element={<OnsiteRepairs />} />
-                        <Route path="/machines" element={<MachinesList />} />
-                        <Route path="/machines/:id" element={<MachineDetail />} />
-                        <Route path="/attachments" element={<AttachmentsCatalog />} />
-                        <Route path="/customers" element={<CustomersList />} />
-                        <Route path="/customers/:id" element={<CustomerDetail />} />
-                        <Route path="/repairs" element={<RepairsList />} />
-                        <Route path="/parts" element={<PartsList />} />
-                        <Route path="/repair-templates" element={<RepairTemplates />} />
+                        <Route path="/dashboard/operations" element={<ProtectedRoute requiredPermission="view_operations"><OperationsDashboard /></ProtectedRoute>} />
+                        <Route path="/dashboard/stats" element={<ProtectedRoute requiredPermission="view_stats"><RepairStats /></ProtectedRoute>} />
+                        <Route path="/dashboard/overtime" element={<ProtectedRoute requiredPermission="view_overtime"><OvertimeDashboard /></ProtectedRoute>} />
+                        <Route path="/onsite-repairs" element={<ProtectedRoute requiredPermission="view_onsite"><OnsiteRepairs /></ProtectedRoute>} />
+                        <Route path="/machines" element={<ProtectedRoute requiredPermission="view_machines"><MachinesList /></ProtectedRoute>} />
+                        <Route path="/machines/:id" element={<ProtectedRoute requiredPermission="view_machines"><MachineDetail /></ProtectedRoute>} />
+                        <Route path="/attachments" element={<ProtectedRoute requiredPermission="view_attachments"><AttachmentsCatalog /></ProtectedRoute>} />
+                        <Route path="/customers" element={<ProtectedRoute requiredPermission="view_customers"><CustomersList /></ProtectedRoute>} />
+                        <Route path="/customers/:id" element={<ProtectedRoute requiredPermission="view_customers"><CustomerDetail /></ProtectedRoute>} />
+                        <Route path="/repairs" element={<ProtectedRoute requiredPermission="view_repairs"><RepairsList /></ProtectedRoute>} />
+                        <Route path="/parts" element={<ProtectedRoute requiredPermission="view_parts"><PartsList /></ProtectedRoute>} />
+                        <Route path="/repair-templates" element={<ProtectedRoute requiredPermission="view_repair_templates"><RepairTemplates /></ProtectedRoute>} />
                         <Route path="/chat" element={<ChatBot />} />
-                        <Route path="/knowledge" element={<KnowledgeBase />} />
+                        <Route path="/knowledge" element={<ProtectedRoute requiredPermission="view_knowledge"><KnowledgeBase /></ProtectedRoute>} />
                         <Route path="/users" element={
                           <ProtectedRoute allowedRoles={["admin"]}>
                             <UserManagement />
                           </ProtectedRoute>
                         } />
                         <Route path="/workspace" element={<WorkspacePage />} />
-                        <Route path="/vendors" element={<VendorsList />} />
-                        <Route path="/vendors/:id" element={<VendorDetail />} />
-                        <Route path="/assets" element={<AssetsPage />} />
+                        <Route path="/vendors" element={<ProtectedRoute requiredPermission="view_vendors"><VendorsList /></ProtectedRoute>} />
+                        <Route path="/vendors/:id" element={<ProtectedRoute requiredPermission="view_vendors"><VendorDetail /></ProtectedRoute>} />
+                        <Route path="/assets" element={<ProtectedRoute requiredPermission="view_assets"><AssetsPage /></ProtectedRoute>} />
+
                         <Route path="/location-history" element={
                           <ProtectedRoute allowedRoles={["admin"]}>
                             <LocationHistory />
