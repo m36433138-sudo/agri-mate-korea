@@ -115,13 +115,14 @@ const App = () => (
                           </ProtectedRoute>
                         } />
                         <Route path="/my-page" element={<MyPage />} />
-                        <Route path="/quotes" element={<QuotesList />} />
-                        <Route path="/quotes/new" element={<QuoteEditor />} />
-                        <Route path="/quotes/products" element={<QuoteProducts />} />
+                        <Route path="/quotes" element={<ProtectedRoute requiredPermission="view_quotes"><QuotesList /></ProtectedRoute>} />
+                        <Route path="/quotes/new" element={<ProtectedRoute requiredPermission="manage_quotes"><QuoteEditor /></ProtectedRoute>} />
+                        <Route path="/quotes/products" element={<ProtectedRoute requiredPermission="manage_quotes"><QuoteProducts /></ProtectedRoute>} />
                         <Route path="/quotes/companies" element={
                           <ProtectedRoute allowedRoles={["admin"]}><QuoteCompanies /></ProtectedRoute>
                         } />
-                        <Route path="/quotes/:id" element={<QuoteEditor />} />
+                        <Route path="/quotes/:id" element={<ProtectedRoute requiredPermission="view_quotes"><QuoteEditor /></ProtectedRoute>} />
+
                         <Route path="/accounting" element={<Navigate to="/" replace />} />
                         <Route path="/banking" element={<Navigate to="/" replace />} />
                         <Route path="*" element={<NotFound />} />
