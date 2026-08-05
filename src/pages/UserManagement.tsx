@@ -35,13 +35,6 @@ const TEAM_CONFIG: Record<TeamType, { color: string; bg: string; icon: typeof Br
   사무팀: { color: "text-purple-700", bg: "bg-purple-50", icon: ClipboardList },
 };
 
-const PERMISSION_LABELS: Record<string, string> = {
-  view_customers: "고객 목록 조회",
-  edit_customers: "고객 정보 수정",
-  manage_repairs: "수리 이력 관리",
-  view_machines: "기계 목록 조회",
-  add_machines: "기계 등록",
-};
 
 // ─── 직원 타입 ───────────────────────────────────────────────
 type Employee = {
