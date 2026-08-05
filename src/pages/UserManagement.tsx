@@ -1053,18 +1053,19 @@ function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClos
     },
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: async ({ permKey, allowed }: { permKey: string; allowed: boolean }) => {
-      const existing = perms?.find((p: any) => p.permission_key === permKey);
-      if (existing) {
-        const { error } = await supabase.from("employee_permissions").update({ is_allowed: allowed }).eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("employee_permissions").insert({ employee_id: employeeId, permission_key: permKey, is_allowed: allowed });
-        if (error) throw error;
-      }
+  const bulkMutation = useMutation({
+    mutationFn: async (changes: { permission_key: string; is_allowed: boolean }[]) => {
+      const rows = changes.map((c) => ({ employee_id: employeeId, permission_key: c.permission_key, is_allowed: c.is_allowed }));
+      const { error } = await supabase
+        .from("employee_permissions")
+        .upsert(rows, { onConflict: "employee_id,permission_key" });
+      if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["employee-perms", employeeId] }); toast({ title: "권한이 변경되었습니다." }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employee-perms", employeeId] });
+      qc.invalidateQueries({ queryKey: ["user-permissions", employeeId] });
+      toast({ title: "권한이 변경되었습니다." });
+    },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
 
@@ -1073,15 +1074,45 @@ function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClos
 
   const teamCfg = profile?.team ? TEAM_CONFIG[profile.team as TeamType] : null;
 
+  // 단일 토글 (조회 권한 끄면 하위 권한도 함께 끄고, 하위 권한 켜면 조회 권한도 함께 켬)
+  const toggle = (key: string, allowed: boolean) => {
+    const changes = [{ permission_key: key, is_allowed: allowed }];
+    const def = ALL_PERMISSIONS.find((p) => p.key === key);
+    if (allowed && def?.requires && !permMap[def.requires]) {
+      changes.push({ permission_key: def.requires, is_allowed: true });
+    }
+    if (!allowed) {
+      ALL_PERMISSIONS.filter((p) => p.requires === key && permMap[p.key])
+        .forEach((p) => changes.push({ permission_key: p.key, is_allowed: false }));
+    }
+    bulkMutation.mutate(changes);
+  };
+
+  const applyPreset = (presetKey: string) => {
+    const preset = PERMISSION_PRESETS[presetKey];
+    if (!preset) return;
+    bulkMutation.mutate(
+      ALL_PERMISSIONS.map((p) => ({ permission_key: p.key, is_allowed: preset.keys.includes(p.key) })),
+    );
+  };
+
+  const setAll = (allowed: boolean) =>
+    bulkMutation.mutate(ALL_PERMISSIONS.map((p) => ({ permission_key: p.key, is_allowed: allowed })));
+
+  const allowedCount = ALL_PERMISSIONS.filter((p) => permMap[p.key]).length;
+
   return (
     <Dialog open onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {profile?.display_name || "직원"} 권한 설정
             {teamCfg && (
               <span className={`text-xs px-2 py-0.5 rounded-full ${teamCfg.bg} ${teamCfg.color}`}>{profile?.team}</span>
             )}
+            <span className="text-xs text-muted-foreground font-normal">
+              허용 {allowedCount} / {ALL_PERMISSIONS.length}
+            </span>
           </DialogTitle>
           {linkedEmployee && (
             <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
@@ -1089,18 +1120,64 @@ function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClos
             </p>
           )}
         </DialogHeader>
-        {isLoading ? <Skeleton className="h-32 w-full" /> : (
-          <div className="space-y-4">
-            {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
-              <div key={key} className="flex items-center justify-between">
-                <Label className="text-sm">{label}</Label>
-                <Switch checked={permMap[key] ?? false} onCheckedChange={checked => toggleMutation.mutate({ permKey: key, allowed: checked })} />
-              </div>
-            ))}
+
+        <div className="flex flex-wrap items-center gap-2 pb-2 border-b">
+          <span className="text-xs text-muted-foreground">프리셋</span>
+          {Object.entries(PERMISSION_PRESETS).map(([key, preset]) => (
+            <Button key={key} size="sm" variant="outline" className="h-7 text-xs"
+              disabled={bulkMutation.isPending}
+              onClick={() => applyPreset(key)}>
+              {preset.label}
+            </Button>
+          ))}
+          <div className="ml-auto flex gap-2">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={bulkMutation.isPending} onClick={() => setAll(true)}>전체 허용</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={bulkMutation.isPending} onClick={() => setAll(false)}>전체 해제</Button>
           </div>
+        </div>
+
+        {isLoading ? <Skeleton className="h-64 w-full" /> : (
+          <ScrollArea className="h-[55vh] pr-3">
+            <div className="space-y-5">
+              {PERMISSION_GROUPS.map((group) => {
+                const on = group.items.filter((i) => permMap[i.key]).length;
+                return (
+                  <div key={group.group} className="rounded-xl border bg-card/50 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold">{group.group}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground">{on}/{group.items.length}</span>
+                        <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2"
+                          disabled={bulkMutation.isPending}
+                          onClick={() => bulkMutation.mutate(group.items.map((i) => ({ permission_key: i.key, is_allowed: on !== group.items.length })))}>
+                          {on === group.items.length ? "그룹 해제" : "그룹 허용"}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2.5">
+                      {group.items.map((item) => (
+                        <div key={item.key} className={`flex items-center justify-between ${item.requires ? "pl-4" : ""}`}>
+                          <Label className="text-sm font-normal flex items-center gap-2">
+                            {item.requires && <span className="text-muted-foreground text-xs">↳</span>}
+                            {item.label}
+                          </Label>
+                          <Switch
+                            checked={permMap[item.key] ?? false}
+                            disabled={bulkMutation.isPending}
+                            onCheckedChange={(checked) => toggle(item.key, checked)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
         )}
         <DialogFooter><Button onClick={onClose}>닫기</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
