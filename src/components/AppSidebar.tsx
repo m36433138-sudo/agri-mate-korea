@@ -75,6 +75,7 @@ export function AppSidebar() {
     ...(hasPermission("view_repair_templates") ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
     ...(hasPermission("view_vendors") ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),
     ...(hasPermission("view_assets") ? [{ title: "자산관리", url: "/assets", icon: Landmark }] : []),
+    ...(hasPermission("view_insurance") ? [{ title: "보험수리 관리", url: "/insurance-repairs", icon: ShieldCheck }] : []),
     ...(hasPermission("view_quotes") ? [{ title: "견적서 관리", url: "/quotes", icon: FileText }] : []),
   ];
 
