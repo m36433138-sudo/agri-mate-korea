@@ -256,13 +256,15 @@ export function useUploadInsurancePhoto() {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `${repairId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-        contentType: file.type || "image/jpeg",
+        contentType: file.type || "application/octet-stream",
       });
       if (upErr) throw upErr;
       const { error } = await db.from("insurance_repair_photos").insert({
         repair_id: repairId,
         file_path: path,
         kind,
+        file_name: file.name,
+        mime_type: file.type || null,
       });
       if (error) throw error;
     },
