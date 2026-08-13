@@ -570,27 +570,33 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          file_name: string | null
           file_path: string
           id: string
           kind: string
+          mime_type: string | null
           repair_id: string
           uploaded_by: string | null
         }
         Insert: {
           caption?: string | null
           created_at?: string
+          file_name?: string | null
           file_path: string
           id?: string
           kind?: string
+          mime_type?: string | null
           repair_id: string
           uploaded_by?: string | null
         }
         Update: {
           caption?: string | null
           created_at?: string
+          file_name?: string | null
           file_path?: string
           id?: string
           kind?: string
+          mime_type?: string | null
           repair_id?: string
           uploaded_by?: string | null
         }
