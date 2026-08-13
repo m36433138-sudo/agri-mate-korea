@@ -150,6 +150,7 @@ export default function InsuranceRepairModal({
   };
 
   const selectedQuote = quotes.find((q) => q.id === quoteId);
+  const selectedCompany = companies.find((c) => c.id === companyId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -192,9 +193,22 @@ export default function InsuranceRepairModal({
               <select className={selectCls} value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
                 <option value="">선택하세요</option>
                 {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.name}{c.contact_person ? ` · ${c.contact_person}` : ""}{c.phone ? ` · ${c.phone}` : ""}
+                  </option>
                 ))}
               </select>
+              {selectedCompany && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  담당: {selectedCompany.contact_person || "-"}
+                  {selectedCompany.phone && (
+                    <>
+                      {" · "}
+                      <a href={`tel:${selectedCompany.phone}`} className="hover:underline">{selectedCompany.phone}</a>
+                    </>
+                  )}
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-xs">접수번호</Label>
@@ -296,7 +310,7 @@ export default function InsuranceRepairModal({
 
           {/* 수리사진 */}
           <div className="rounded-xl border p-3 space-y-2">
-            <Label className="text-xs">수리사진</Label>
+            <Label className="text-xs">수리사진 · 견적서 파일</Label>
             {savedId ? (
               <InsurancePhotoManager repairId={savedId} />
             ) : (

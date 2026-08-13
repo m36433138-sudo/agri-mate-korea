@@ -55,7 +55,12 @@ export type InsuranceRepair = {
   updated_at: string;
   customers?: { id: string; name: string; phone: string | null } | null;
   machines?: { id: string; model_name: string; serial_number: string } | null;
-  insurance_companies?: { id: string; name: string } | null;
+  insurance_companies?: {
+    id: string;
+    name: string;
+    contact_person: string | null;
+    phone: string | null;
+  } | null;
   quotes?: { id: string; quote_number: string; total_amount: number } | null;
 };
 
@@ -63,7 +68,7 @@ const REPAIR_SELECT = `
   *,
   customers ( id, name, phone ),
   machines ( id, model_name, serial_number ),
-  insurance_companies ( id, name ),
+  insurance_companies ( id, name, contact_person, phone ),
   quotes ( id, quote_number, total_amount )
 `;
 
@@ -194,12 +199,16 @@ export function useDeleteInsuranceRepair() {
 }
 
 // ── 수리 사진 ──
+export type InsuranceAttachmentKind = "수리전" | "수리후" | "기타" | "견적서";
+
 export type InsurancePhoto = {
   id: string;
   repair_id: string;
   file_path: string;
-  kind: "수리전" | "수리후" | "기타";
+  kind: InsuranceAttachmentKind;
   caption: string | null;
+  file_name: string | null;
+  mime_type: string | null;
   created_at: string;
   url?: string;
 };
@@ -247,13 +256,15 @@ export function useUploadInsurancePhoto() {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `${repairId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-        contentType: file.type || "image/jpeg",
+        contentType: file.type || "application/octet-stream",
       });
       if (upErr) throw upErr;
       const { error } = await db.from("insurance_repair_photos").insert({
         repair_id: repairId,
         file_path: path,
         kind,
+        file_name: file.name,
+        mime_type: file.type || null,
       });
       if (error) throw error;
     },
@@ -271,4 +282,19 @@ export function useDeleteInsurancePhoto() {
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["insurance-photos", v.repair_id] }),
   });
+}
+
+/** 첨부 파일을 원본 이름으로 다운로드 */
+export async function downloadInsuranceAttachment(photo: InsurancePhoto) {
+  const { data, error } = await supabase.storage.from(BUCKET).download(photo.file_path);
+  if (error) throw error;
+  const name = photo.file_name || photo.file_path.split("/").pop() || "attachment";
+  const url = URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
