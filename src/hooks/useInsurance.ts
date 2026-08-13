@@ -283,3 +283,18 @@ export function useDeleteInsurancePhoto() {
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["insurance-photos", v.repair_id] }),
   });
 }
+
+/** 첨부 파일을 원본 이름으로 다운로드 */
+export async function downloadInsuranceAttachment(photo: InsurancePhoto) {
+  const { data, error } = await supabase.storage.from(BUCKET).download(photo.file_path);
+  if (error) throw error;
+  const name = photo.file_name || photo.file_path.split("/").pop() || "attachment";
+  const url = URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
