@@ -225,7 +225,7 @@ export default function InsuranceRepairs() {
                 </thead>
                 <tbody>
                   {done.length === 0 ? (
-                    <tr><td colSpan={8} className="p-8 text-center text-muted-foreground text-sm">완료된 항목이 없습니다.</td></tr>
+                    <tr><td colSpan={9} className="p-8 text-center text-muted-foreground text-sm">완료된 항목이 없습니다.</td></tr>
                   ) : (
                     done.map((r) => (
                       <tr key={r.id} className="border-t border-border/60">
