@@ -161,7 +161,20 @@ export default function InsuranceRepairs() {
                                 </Button>
                               </div>
                               {r.insurance_companies?.name && (
-                                <Badge variant="outline" className="text-[10px]">{r.insurance_companies.name}</Badge>
+                                <div className="space-y-0.5">
+                                  <Badge variant="outline" className="text-[10px]">{r.insurance_companies.name}</Badge>
+                                  {(r.insurance_companies.contact_person || r.insurance_companies.phone) && (
+                                    <p className="text-[11px] text-muted-foreground truncate">
+                                      {r.insurance_companies.contact_person && `담당 ${r.insurance_companies.contact_person}`}
+                                      {r.insurance_companies.contact_person && r.insurance_companies.phone && " · "}
+                                      {r.insurance_companies.phone && (
+                                        <a href={`tel:${r.insurance_companies.phone}`} className="hover:underline">
+                                          {r.insurance_companies.phone}
+                                        </a>
+                                      )}
+                                    </p>
+                                  )}
+                                </div>
                               )}
                               {r.claim_number && (
                                 <p className="text-[11px] text-muted-foreground font-mono truncate">{r.claim_number}</p>
@@ -202,6 +215,7 @@ export default function InsuranceRepairs() {
                     <th className="text-left p-3">고객</th>
                     <th className="text-left p-3">기계</th>
                     <th className="text-left p-3">보험사</th>
+                    <th className="text-left p-3">담당자 · 연락처</th>
                     <th className="text-left p-3">접수번호</th>
                     <th className="text-right p-3">청구금액</th>
                     <th className="text-right p-3">입금액</th>
@@ -228,6 +242,21 @@ export default function InsuranceRepairs() {
                           ) : "-"}
                         </td>
                         <td className="p-3">{r.insurance_companies?.name || "-"}</td>
+                        <td className="p-3 text-xs">
+                          {r.insurance_companies?.contact_person || r.insurance_companies?.phone ? (
+                            <span>
+                              {r.insurance_companies?.contact_person || "-"}
+                              {r.insurance_companies?.phone && (
+                                <>
+                                  {" · "}
+                                  <a href={`tel:${r.insurance_companies.phone}`} className="hover:underline">
+                                    {r.insurance_companies.phone}
+                                  </a>
+                                </>
+                              )}
+                            </span>
+                          ) : "-"}
+                        </td>
                         <td className="p-3 font-mono text-xs">{r.claim_number || "-"}</td>
                         <td className="p-3 text-right">{won(r.claim_amount)}</td>
                         <td className="p-3 text-right">{won(r.paid_amount)}</td>
