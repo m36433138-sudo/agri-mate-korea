@@ -521,6 +521,199 @@ export type Database = {
         }
         Relationships: []
       }
+      insurance_companies: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          fax: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          fax?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          fax?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      insurance_repair_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          file_path: string
+          id: string
+          kind: string
+          repair_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          file_path: string
+          id?: string
+          kind?: string
+          repair_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          file_path?: string
+          id?: string
+          kind?: string
+          repair_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_repair_photos_repair_id_fkey"
+            columns: ["repair_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_repairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insurance_repairs: {
+        Row: {
+          accident_date: string | null
+          branch: string | null
+          claim_amount: number | null
+          claim_number: string | null
+          claimed_at: string | null
+          completed_at: string | null
+          created_at: string
+          customer_id: string | null
+          deductible: number | null
+          description: string | null
+          estimate_amount: number | null
+          id: string
+          insurance_company_id: string | null
+          machine_id: string | null
+          notes: string | null
+          paid_amount: number | null
+          paid_at: string | null
+          quote_id: string | null
+          repair_done_at: string | null
+          repair_started_at: string | null
+          status: string
+          technician: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          accident_date?: string | null
+          branch?: string | null
+          claim_amount?: number | null
+          claim_number?: string | null
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          deductible?: number | null
+          description?: string | null
+          estimate_amount?: number | null
+          id?: string
+          insurance_company_id?: string | null
+          machine_id?: string | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          quote_id?: string | null
+          repair_done_at?: string | null
+          repair_started_at?: string | null
+          status?: string
+          technician?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          accident_date?: string | null
+          branch?: string | null
+          claim_amount?: number | null
+          claim_number?: string | null
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          deductible?: number | null
+          description?: string | null
+          estimate_amount?: number | null
+          id?: string
+          insurance_company_id?: string | null
+          machine_id?: string | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          quote_id?: string | null
+          repair_done_at?: string | null
+          repair_started_at?: string | null
+          status?: string
+          technician?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_repairs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_repairs_insurance_company_id_fkey"
+            columns: ["insurance_company_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_repairs_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_repairs_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           alt_part_code: string | null
