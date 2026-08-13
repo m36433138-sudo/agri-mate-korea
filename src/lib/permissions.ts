@@ -73,6 +73,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    group: "보험수리",
+    items: [
+      { key: "view_insurance", label: "보험수리 조회" },
+      { key: "manage_insurance", label: "보험수리 등록·수정", requires: "view_insurance" },
+    ],
+  },
+  {
     group: "견적 · 자산",
     items: [
       { key: "view_quotes", label: "견적서 조회" },
@@ -113,6 +120,7 @@ export const PERMISSION_PRESETS: Record<string, { label: string; keys: Permissio
       "view_repairs", "manage_repairs", "edit_repairs",
       "view_parts", "adjust_inventory",
       "view_repair_templates", "view_attachments",
+      "view_insurance", "manage_insurance",
       "view_stats", "view_overtime", "view_knowledge",
     ],
   },
@@ -123,6 +131,7 @@ export const PERMISSION_PRESETS: Record<string, { label: string; keys: Permissio
       "view_machines", "add_machines", "edit_machines",
       "view_repairs", "view_parts",
       "view_quotes", "manage_quotes",
+      "view_insurance",
       "view_attachments", "view_stats", "view_knowledge",
     ],
   },
@@ -134,6 +143,7 @@ export const PERMISSION_PRESETS: Record<string, { label: string; keys: Permissio
       "view_machines", "view_repairs", "edit_repairs",
       "view_parts", "edit_parts", "adjust_inventory",
       "view_vendors", "manage_vendors",
+      "view_insurance", "manage_insurance",
       "view_quotes", "manage_quotes",
       "view_assets", "manage_assets",
       "view_stats", "view_overtime",

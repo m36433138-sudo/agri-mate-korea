@@ -39,6 +39,7 @@ const QuoteProducts = lazy(() => import("@/pages/QuoteProducts"));
 const QuoteCompanies = lazy(() => import("@/pages/QuoteCompanies"));
 const AttachmentsCatalog = lazy(() => import("@/pages/AttachmentsCatalog"));
 const KnowledgeBase = lazy(() => import("@/pages/KnowledgeBase"));
+const InsuranceRepairs = lazy(() => import("@/pages/InsuranceRepairs"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
@@ -115,6 +116,7 @@ const App = () => (
                           </ProtectedRoute>
                         } />
                         <Route path="/my-page" element={<MyPage />} />
+                        <Route path="/insurance-repairs" element={<ProtectedRoute requiredPermission="view_insurance"><InsuranceRepairs /></ProtectedRoute>} />
                         <Route path="/quotes" element={<ProtectedRoute requiredPermission="view_quotes"><QuotesList /></ProtectedRoute>} />
                         <Route path="/quotes/new" element={<ProtectedRoute requiredPermission="manage_quotes"><QuoteEditor /></ProtectedRoute>} />
                         <Route path="/quotes/products" element={<ProtectedRoute requiredPermission="manage_quotes"><QuoteProducts /></ProtectedRoute>} />
