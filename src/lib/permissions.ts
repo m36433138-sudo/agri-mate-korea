@@ -73,6 +73,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    group: "보험수리",
+    items: [
+      { key: "view_insurance", label: "보험수리 조회" },
+      { key: "manage_insurance", label: "보험수리 등록·수정", requires: "view_insurance" },
+    ],
+  },
+  {
     group: "견적 · 자산",
     items: [
       { key: "view_quotes", label: "견적서 조회" },
