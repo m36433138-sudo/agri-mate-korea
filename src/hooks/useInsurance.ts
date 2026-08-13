@@ -55,7 +55,12 @@ export type InsuranceRepair = {
   updated_at: string;
   customers?: { id: string; name: string; phone: string | null } | null;
   machines?: { id: string; model_name: string; serial_number: string } | null;
-  insurance_companies?: { id: string; name: string } | null;
+  insurance_companies?: {
+    id: string;
+    name: string;
+    contact_person: string | null;
+    phone: string | null;
+  } | null;
   quotes?: { id: string; quote_number: string; total_amount: number } | null;
 };
 
@@ -63,7 +68,7 @@ const REPAIR_SELECT = `
   *,
   customers ( id, name, phone ),
   machines ( id, model_name, serial_number ),
-  insurance_companies ( id, name ),
+  insurance_companies ( id, name, contact_person, phone ),
   quotes ( id, quote_number, total_amount )
 `;
 
