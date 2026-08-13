@@ -199,12 +199,16 @@ export function useDeleteInsuranceRepair() {
 }
 
 // ── 수리 사진 ──
+export type InsuranceAttachmentKind = "수리전" | "수리후" | "기타" | "견적서";
+
 export type InsurancePhoto = {
   id: string;
   repair_id: string;
   file_path: string;
-  kind: "수리전" | "수리후" | "기타";
+  kind: InsuranceAttachmentKind;
   caption: string | null;
+  file_name: string | null;
+  mime_type: string | null;
   created_at: string;
   url?: string;
 };
