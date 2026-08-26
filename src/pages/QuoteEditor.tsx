@@ -36,6 +36,7 @@ export default function QuoteEditor() {
   const [tradeIn, setTradeIn] = useState(0);
   const [memo, setMemo] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
+  const [editingSig, setEditingSig] = useState(false);
 
   const [pickCustOpen, setPickCustOpen] = useState(false);
   const [pickProdOpen, setPickProdOpen] = useState(false);
