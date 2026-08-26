@@ -78,6 +78,7 @@ export default function QuoteEditor() {
       setTradeIn(Number(q.trade_in_amount) || 0);
       setMemo(q.memo || "");
       setSignature(q.signature_data || null);
+      setEditingSig(false);
       const { data: its } = await (supabase as any).from("quote_items").select("*").eq("quote_id", id).order("sort_order");
       setItems((its || []).map((it: any) => ({
         ...it, quantity: Number(it.quantity), unit_price: Number(it.unit_price),
