@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Search, Save, Share2, Eraser } from "lucide-react";
+import { Plus, Trash2, Search, Save, Share2, Eraser, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import SignatureCanvas from "react-signature-canvas";
 import { CustomerPickerDialog, ProductPickerDialog } from "@/components/quotes/PickerDialogs";
@@ -36,6 +36,7 @@ export default function QuoteEditor() {
   const [tradeIn, setTradeIn] = useState(0);
   const [memo, setMemo] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
+  const [editingSig, setEditingSig] = useState(false);
 
   const [pickCustOpen, setPickCustOpen] = useState(false);
   const [pickProdOpen, setPickProdOpen] = useState(false);
@@ -77,6 +78,7 @@ export default function QuoteEditor() {
       setTradeIn(Number(q.trade_in_amount) || 0);
       setMemo(q.memo || "");
       setSignature(q.signature_data || null);
+      setEditingSig(false);
       const { data: its } = await (supabase as any).from("quote_items").select("*").eq("quote_id", id).order("sort_order");
       setItems((its || []).map((it: any) => ({
         ...it, quantity: Number(it.quantity), unit_price: Number(it.unit_price),
@@ -291,13 +293,26 @@ export default function QuoteEditor() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <Label>터치 필기</Label>
-              <Button size="sm" variant="ghost" onClick={clearSignature}><Eraser className="w-4 h-4 mr-1" />지우기</Button>
+              <div className="flex gap-1">
+                {signature && !editingSig && (
+                  <Button size="sm" variant="ghost" onClick={() => { sigRef.current?.clear(); setEditingSig(true); }}>
+                    <PenLine className="w-4 h-4 mr-1" />다시 서명
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={clearSignature}><Eraser className="w-4 h-4 mr-1" />지우기</Button>
+              </div>
             </div>
-            <div className="border border-border rounded-lg bg-white">
-              <SignatureCanvas ref={sigRef} penColor="#111" canvasProps={{ width: 500, height: 160, className: "w-full h-[160px] rounded-lg" }} />
-            </div>
-            {signature && !sigRef.current?.isEmpty() === false && (
-              <p className="text-xs text-muted-foreground mt-1">기존 서명이 저장되어 있습니다. 지우기 후 다시 작성 가능</p>
+            {signature && !editingSig ? (
+              <div className="border border-border rounded-lg bg-white">
+                <img src={signature} alt="저장된 서명" className="w-full h-[160px] object-contain rounded-lg" />
+              </div>
+            ) : (
+              <div className="border border-border rounded-lg bg-white">
+                <SignatureCanvas ref={sigRef} penColor="#111" canvasProps={{ width: 500, height: 160, className: "w-full h-[160px] rounded-lg" }} />
+              </div>
+            )}
+            {signature && !editingSig && (
+              <p className="text-xs text-muted-foreground mt-1">저장된 서명입니다. '다시 서명'을 누르면 새로 작성할 수 있습니다.</p>
             )}
           </div>
         </div>
