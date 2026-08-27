@@ -70,6 +70,9 @@ export default function QuotesList() {
                 <span className="font-mono text-sm text-primary">{r.quote_number}</span>
                 <span className="text-sm text-muted-foreground">{r.quote_date}</span>
                 {r.companies?.company_name && <span className="text-xs bg-secondary px-2 py-0.5 rounded">{r.companies.company_name}</span>}
+                {r.created_by && authors[r.created_by] && (
+                  <span className="text-xs text-muted-foreground">작성: {authors[r.created_by]}</span>
+                )}
               </div>
               <div className="mt-1 flex items-center gap-3">
                 <span className="font-medium">{r.customer_name || "-"}</span>
