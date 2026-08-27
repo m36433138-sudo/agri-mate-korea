@@ -126,15 +126,16 @@ export default function QuoteEditor() {
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
-      const payload = {
+      const basePayload = {
         quote_number: quoteNumber, quote_date: quoteDate,
         company_id: companyId, customer_id: customerId,
         customer_name: customerName, customer_phone: customerPhone,
         customer_address: customerAddress, customer_ssn: customerSsn || null,
         trade_in_amount: tradeIn, memo, signature_data: sig,
         subtotal: totals.subtotal, discount_total: totals.discount, total_amount: totals.total,
-        created_by: u.user?.id,
       };
+      // created_by is set only on insert — never overwrite the original author on update
+      const payload = savedId ? basePayload : { ...basePayload, created_by: u.user?.id };
       let quoteId = savedId;
       if (savedId) {
         const { error } = await (supabase as any).from("quotes").update(payload).eq("id", savedId);
