@@ -13,13 +13,22 @@ export default function QuotesList() {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
 
+  const [authors, setAuthors] = useState<Record<string, string>>({});
+
   const load = async () => {
     const { data } = await (supabase as any)
       .from("quotes")
-      .select("id,quote_number,quote_date,customer_name,customer_phone,total_amount,companies(company_name)")
+      .select("id,quote_number,quote_date,customer_name,customer_phone,total_amount,created_by,companies(company_name)")
       .order("quote_date", { ascending: false })
       .limit(200);
     setRows(data || []);
+    const ids = [...new Set((data || []).map((r: any) => r.created_by).filter(Boolean))];
+    if (ids.length) {
+      const { data: profs } = await (supabase as any).from("profiles").select("id,display_name").in("id", ids);
+      const map: Record<string, string> = {};
+      (profs || []).forEach((p: any) => { map[p.id] = p.display_name || "알 수 없음"; });
+      setAuthors(map);
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -61,6 +70,9 @@ export default function QuotesList() {
                 <span className="font-mono text-sm text-primary">{r.quote_number}</span>
                 <span className="text-sm text-muted-foreground">{r.quote_date}</span>
                 {r.companies?.company_name && <span className="text-xs bg-secondary px-2 py-0.5 rounded">{r.companies.company_name}</span>}
+                {r.created_by && authors[r.created_by] && (
+                  <span className="text-xs text-muted-foreground">작성: {authors[r.created_by]}</span>
+                )}
               </div>
               <div className="mt-1 flex items-center gap-3">
                 <span className="font-medium">{r.customer_name || "-"}</span>
