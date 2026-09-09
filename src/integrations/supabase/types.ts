@@ -1887,6 +1887,7 @@ export type Database = {
         Row: {
           branch: string
           id: string
+          is_imported: boolean
           notes: string | null
           part_id: string
           quantity: number
@@ -1898,6 +1899,7 @@ export type Database = {
         Insert: {
           branch?: string
           id?: string
+          is_imported?: boolean
           notes?: string | null
           part_id: string
           quantity?: number
@@ -1909,6 +1911,7 @@ export type Database = {
         Update: {
           branch?: string
           id?: string
+          is_imported?: boolean
           notes?: string | null
           part_id?: string
           quantity?: number
