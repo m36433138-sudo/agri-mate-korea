@@ -106,9 +106,15 @@ export default function RepairsList() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">수리이력</h1>
-        <Button onClick={() => setRepairOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> 수리 등록
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <FileUp className="h-4 w-4 mr-1" /> 청구서 PDF 가져오기
+          </Button>
+          <Button onClick={() => setRepairOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> 수리 등록
+          </Button>
+        </div>
+
       </div>
 
       <Tabs defaultValue="history" className="space-y-4">
