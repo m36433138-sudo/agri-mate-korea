@@ -8,6 +8,7 @@ import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUnreadCount } from "@/hooks/useMessenger";
 import {
   Sidebar,
   SidebarContent,
@@ -22,13 +23,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type NavItem = { title: string; url: string; icon: any };
+type NavItem = { title: string; url: string; icon: any; badge?: number };
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
   const { role, isAdmin, isEmployee, isCustomer, hasPermission, profile } = useUserRole();
+  const unreadMessages = useUnreadCount();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -59,6 +61,7 @@ export function AppSidebar() {
   const workItems: NavItem[] = [
     { title: "대시보드", url: "/", icon: LayoutDashboard },
     { title: "내 업무", url: "/workspace", icon: Briefcase },
+    { title: "사내 메신저", url: "/messenger", icon: MessageSquare, badge: unreadMessages },
     ...(hasPermission("view_operations") ? [{ title: "작업현황판", url: "/dashboard/operations", icon: ClipboardList }] : []),
     ...(hasPermission("view_onsite") ? [{ title: "방문수리", url: "/onsite-repairs", icon: Truck }] : []),
     ...(hasPermission("view_stats") ? [{ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 }] : []),
@@ -162,7 +165,12 @@ function NavGroup({ label, items, collapsed }: { label: string; items: NavItem[]
                   activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                 >
                   <item.icon className="h-[17px] w-[17px] shrink-0" style={{ strokeWidth: 1.8 }} />
-                  {!collapsed && <span className="text-sm leading-none">{item.title}</span>}
+                  {!collapsed && <span className="text-sm leading-none flex-1">{item.title}</span>}
+                  {!!item.badge && item.badge > 0 && (
+                    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                      {item.badge > 99 ? "99+" : item.badge}
+                    </span>
+                  )}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
