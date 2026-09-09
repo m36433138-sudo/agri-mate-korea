@@ -322,6 +322,8 @@ export default function RepairsList() {
       </Tabs>
 
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} />
+      <BillingPdfImportDialog open={importOpen} onOpenChange={setImportOpen} />
+
       <RepairEditDialog
         open={!!editRepair}
         onOpenChange={(v) => !v && setEditRepair(null)}
