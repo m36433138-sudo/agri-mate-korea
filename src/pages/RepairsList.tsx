@@ -20,17 +20,21 @@ import {
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil } from "lucide-react";
+import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import RepairInputModal from "@/components/RepairInputModal";
 import RepairEditDialog from "@/components/RepairEditDialog";
+import BillingPdfImportDialog from "@/components/BillingPdfImportDialog";
+
 import MechanicRepairForm from "@/components/MechanicRepairForm";
 import RepairLogHistory from "@/components/RepairLogHistory";
 import type { RepairWithMachine } from "@/types/database";
 
 export default function RepairsList() {
   const [repairOpen, setRepairOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
   const [editRepair, setEditRepair] = useState<any | null>(null);
   const [technicianFilter, setTechnicianFilter] = useState("");
   const [accountingFilter, setAccountingFilter] = useState<"all" | "posted" | "unposted">("all");
@@ -106,9 +110,15 @@ export default function RepairsList() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">수리이력</h1>
-        <Button onClick={() => setRepairOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> 수리 등록
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <FileUp className="h-4 w-4 mr-1" /> 청구서 PDF 가져오기
+          </Button>
+          <Button onClick={() => setRepairOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> 수리 등록
+          </Button>
+        </div>
+
       </div>
 
       <Tabs defaultValue="history" className="space-y-4">
@@ -314,6 +324,8 @@ export default function RepairsList() {
       </Tabs>
 
       <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} />
+      <BillingPdfImportDialog open={importOpen} onOpenChange={setImportOpen} />
+
       <RepairEditDialog
         open={!!editRepair}
         onOpenChange={(v) => !v && setEditRepair(null)}
