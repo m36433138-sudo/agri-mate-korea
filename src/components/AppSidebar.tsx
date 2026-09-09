@@ -165,7 +165,12 @@ function NavGroup({ label, items, collapsed }: { label: string; items: NavItem[]
                   activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                 >
                   <item.icon className="h-[17px] w-[17px] shrink-0" style={{ strokeWidth: 1.8 }} />
-                  {!collapsed && <span className="text-sm leading-none">{item.title}</span>}
+                  {!collapsed && <span className="text-sm leading-none flex-1">{item.title}</span>}
+                  {!!item.badge && item.badge > 0 && (
+                    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                      {item.badge > 99 ? "99+" : item.badge}
+                    </span>
+                  )}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
