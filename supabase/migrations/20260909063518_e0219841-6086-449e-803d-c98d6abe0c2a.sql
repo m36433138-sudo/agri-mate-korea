@@ -1,0 +1,1 @@
+DELETE FROM public.chat_rooms WHERE last_message_preview = '테스트 메시지입니다';
