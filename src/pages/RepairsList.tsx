@@ -25,6 +25,8 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import RepairInputModal from "@/components/RepairInputModal";
 import RepairEditDialog from "@/components/RepairEditDialog";
+import BillingPdfImportDialog from "@/components/BillingPdfImportDialog";
+
 import MechanicRepairForm from "@/components/MechanicRepairForm";
 import RepairLogHistory from "@/components/RepairLogHistory";
 import type { RepairWithMachine } from "@/types/database";
