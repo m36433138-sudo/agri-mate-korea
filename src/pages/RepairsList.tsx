@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import RepairInputModal from "@/components/RepairInputModal";
 import RepairEditDialog from "@/components/RepairEditDialog";
+import RepairErrorCodeDialog from "@/components/RepairErrorCodeDialog";
 import BillingPdfImportDialog from "@/components/BillingPdfImportDialog";
 
 import MechanicRepairForm from "@/components/MechanicRepairForm";
@@ -36,6 +37,7 @@ export default function RepairsList() {
   const [importOpen, setImportOpen] = useState(false);
 
   const [editRepair, setEditRepair] = useState<any | null>(null);
+  const [errorCodeRepair, setErrorCodeRepair] = useState<any | null>(null);
   const [technicianFilter, setTechnicianFilter] = useState("");
   const [accountingFilter, setAccountingFilter] = useState<"all" | "posted" | "unposted">("all");
   const [techOpen, setTechOpen] = useState(false);
