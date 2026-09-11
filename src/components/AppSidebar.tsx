@@ -3,6 +3,7 @@ import {
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
   ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin, Landmark, FileText,
   BookOpen, ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp } from "lucide-react";
+import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import RepairInputModal from "@/components/RepairInputModal";
