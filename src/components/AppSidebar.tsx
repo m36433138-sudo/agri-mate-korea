@@ -74,6 +74,7 @@ export function AppSidebar() {
     ...(hasPermission("view_attachments") ? [{ title: "작업기 관리", url: "/attachments", icon: Tractor }] : []),
     ...(hasPermission("view_customers") ? [{ title: "고객관리", url: "/customers", icon: Users }] : []),
     ...(hasPermission("view_repairs") || hasPermission("manage_repairs") ? [{ title: "수리이력", url: "/repairs", icon: Wrench }] : []),
+    ...(hasPermission("view_repairs") ? [{ title: "에러코드 기록", url: "/error-codes", icon: AlertTriangle }] : []),
     ...(hasPermission("view_parts") ? [{ title: "부품관리", url: "/parts", icon: Package }] : []),
     ...(hasPermission("view_repair_templates") ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
     ...(hasPermission("view_vendors") ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),
