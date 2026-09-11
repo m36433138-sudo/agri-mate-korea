@@ -42,6 +42,7 @@ const AttachmentsCatalog = lazy(() => import("@/pages/AttachmentsCatalog"));
 const KnowledgeBase = lazy(() => import("@/pages/KnowledgeBase"));
 const InsuranceRepairs = lazy(() => import("@/pages/InsuranceRepairs"));
 const Messenger = lazy(() => import("@/pages/Messenger"));
+const ErrorCodeLog = lazy(() => import("@/pages/ErrorCodeLog"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
