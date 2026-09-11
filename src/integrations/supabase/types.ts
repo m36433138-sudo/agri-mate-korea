@@ -1714,6 +1714,56 @@ export type Database = {
           },
         ]
       }
+      repair_error_codes: {
+        Row: {
+          action_taken: string | null
+          created_at: string
+          error_code: string
+          id: string
+          is_resolved: boolean
+          notes: string | null
+          repair_id: string
+          resolved_at: string | null
+          symptom: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          created_at?: string
+          error_code: string
+          id?: string
+          is_resolved?: boolean
+          notes?: string | null
+          repair_id: string
+          resolved_at?: string | null
+          symptom?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          created_at?: string
+          error_code?: string
+          id?: string
+          is_resolved?: boolean
+          notes?: string | null
+          repair_id?: string
+          resolved_at?: string | null
+          symptom?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_error_codes_repair_id_fkey"
+            columns: ["repair_id"]
+            isOneToOne: false
+            referencedRelation: "repairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       repair_history: {
         Row: {
           cost: number | null
