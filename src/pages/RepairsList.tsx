@@ -284,7 +284,16 @@ export default function RepairsList() {
                         <td className="p-3 text-right tabular-nums">{r.labor_cost > 0 ? formatPrice(r.labor_cost) : "-"}</td>
                         <td className="p-3 text-right tabular-nums font-medium">{r.total_cost > 0 ? formatPrice(r.total_cost) : "-"}</td>
                         <td className="p-3">
-                          <div className="flex items-center gap-1">
+                           <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-amber-400"
+                              onClick={() => setErrorCodeRepair(r)}
+                              title="에러코드 기록"
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -332,6 +341,12 @@ export default function RepairsList() {
         open={!!editRepair}
         onOpenChange={(v) => !v && setEditRepair(null)}
         repair={editRepair}
+      />
+
+      <RepairErrorCodeDialog
+        open={!!errorCodeRepair}
+        onOpenChange={(v) => !v && setErrorCodeRepair(null)}
+        repair={errorCodeRepair}
       />
     </div>
   );
