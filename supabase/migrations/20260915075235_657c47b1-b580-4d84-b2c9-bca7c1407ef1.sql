@@ -1,0 +1,1 @@
+ALTER TABLE public.machine_photos DROP CONSTRAINT machine_photos_uploaded_by_fkey;
