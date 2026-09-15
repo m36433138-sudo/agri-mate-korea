@@ -72,6 +72,34 @@ function formatBytes(bytes: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
+function dateKey(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatDateLabel(key: string) {
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const label = date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+  if (dateKey(today.toISOString()) === key) return `${label} (오늘)`;
+  if (dateKey(yesterday.toISOString()) === key) return `${label} (어제)`;
+  return label;
+}
+
+function groupByDate(photos: MachinePhoto[]) {
+  const groups: { key: string; photos: MachinePhoto[] }[] = [];
+  for (const photo of photos) {
+    const key = dateKey(photo.created_at);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.photos.push(photo);
+    else groups.push({ key, photos: [photo] });
+  }
+  return groups;
+}
+
 export default function MachinePhotoManager({ machineId }: { machineId: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -181,27 +209,38 @@ export default function MachinePhotoManager({ machineId }: { machineId: string }
       ) : photos.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-lg">등록된 기계 사진이 없습니다.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {photos.map((photo) => (
-            <div key={photo.id} className="relative group overflow-hidden rounded-lg border bg-muted/30 aspect-[4/3]">
-              <button type="button" className="block h-full w-full" onClick={() => setPreview(photo)} aria-label={`${photo.file_name} 크게 보기`}>
-                <img src={photo.url} alt={`${photo.file_name} 기계 사진`} loading="lazy" className="h-full w-full object-cover" />
-              </button>
-              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-background/80 px-2 py-1.5">
-                <span className="min-w-0 truncate text-[11px] text-muted-foreground">{formatBytes(photo.compressed_size)}</span>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 shrink-0 text-destructive print:hidden"
-                  disabled={deletePhoto.isPending}
-                  onClick={() => {
-                    if (confirm("이 사진을 삭제할까요?")) deletePhoto.mutate(photo);
-                  }}
-                  title="사진 삭제"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+        <div className="space-y-4">
+          {groupByDate(photos).map((group) => (
+            <div key={group.key}>
+              <div className="mb-2 flex items-center gap-2">
+                <p className="text-xs font-semibold text-foreground">{formatDateLabel(group.key)}</p>
+                <span className="text-[11px] text-muted-foreground">{group.photos.length}장</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {group.photos.map((photo) => (
+                  <div key={photo.id} className="relative group overflow-hidden rounded-lg border bg-muted/30 aspect-[4/3]">
+                    <button type="button" className="block h-full w-full" onClick={() => setPreview(photo)} aria-label={`${photo.file_name} 크게 보기`}>
+                      <img src={photo.url} alt={`${photo.file_name} 기계 사진`} loading="lazy" className="h-full w-full object-cover" />
+                    </button>
+                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-background/80 px-2 py-1.5">
+                      <span className="min-w-0 truncate text-[11px] text-muted-foreground">{formatBytes(photo.compressed_size)}</span>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-destructive print:hidden"
+                        disabled={deletePhoto.isPending}
+                        onClick={() => {
+                          if (confirm("이 사진을 삭제할까요?")) deletePhoto.mutate(photo);
+                        }}
+                        title="사진 삭제"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
