@@ -13,12 +13,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
-import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap, Undo2, History, ArrowRight } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Printer, ChevronDown, ChevronUp, Tractor, Trash2, Zap, Undo2, History, ArrowRight, Images } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import RepairInputModal from "@/components/RepairInputModal";
 import type { Machine, Customer, Repair } from "@/types/database";
 import { validateMachineTypeClassification } from "@/lib/machineValidation";
 import LastModifiedInfo from "@/components/LastModifiedInfo";
+import MachinePhotoManager from "@/components/machines/MachinePhotoManager";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
@@ -182,6 +183,17 @@ export default function MachineDetail() {
               </Button>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card border-0 mb-4 print:shadow-none print:border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Images className="h-4 w-4 text-muted-foreground" /> 기계 사진
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MachinePhotoManager machineId={machine.id} />
         </CardContent>
       </Card>
 
