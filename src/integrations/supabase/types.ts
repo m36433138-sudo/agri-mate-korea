@@ -1095,6 +1095,53 @@ export type Database = {
           },
         ]
       }
+      machine_photos: {
+        Row: {
+          compressed_size: number | null
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          machine_id: string
+          mime_type: string
+          original_size: number | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          compressed_size?: number | null
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          machine_id: string
+          mime_type?: string
+          original_size?: number | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          compressed_size?: number | null
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          machine_id?: string
+          mime_type?: string
+          original_size?: number | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_photos_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machine_sales_history: {
         Row: {
           created_at: string
