@@ -72,6 +72,34 @@ function formatBytes(bytes: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
+function dateKey(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatDateLabel(key: string) {
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const label = date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+  if (dateKey(today.toISOString()) === key) return `${label} (오늘)`;
+  if (dateKey(yesterday.toISOString()) === key) return `${label} (어제)`;
+  return label;
+}
+
+function groupByDate(photos: MachinePhoto[]) {
+  const groups: { key: string; photos: MachinePhoto[] }[] = [];
+  for (const photo of photos) {
+    const key = dateKey(photo.created_at);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.photos.push(photo);
+    else groups.push({ key, photos: [photo] });
+  }
+  return groups;
+}
+
 export default function MachinePhotoManager({ machineId }: { machineId: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
