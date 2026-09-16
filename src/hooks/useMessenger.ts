@@ -298,6 +298,7 @@ export function useMessengerActions() {
 
   const markRead = useMutation({
     mutationFn: async (roomId: string) => {
+      if (!userId) return;
       await db
         .from("chat_room_members")
         .update({ last_read_at: new Date().toISOString() })
