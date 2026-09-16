@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import CursorGlow from "@/components/CursorGlow";
 import { useLocation, Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
+import { useMessengerNotifications } from "@/hooks/useMessengerNotifications";
 
 // 경로 → 페이지 이름 매핑
 const PAGE_LABELS: Record<string, string> = {
