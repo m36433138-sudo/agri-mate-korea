@@ -64,6 +64,7 @@ function Breadcrumb() {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  useMessengerNotifications();
   return (
     <SidebarProvider>
       <CursorGlow />
