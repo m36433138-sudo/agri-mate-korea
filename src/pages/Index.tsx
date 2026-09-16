@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkline } from "@/components/dashboard/Sparkline";
+import MessengerFeedCard from "@/components/dashboard/MessengerFeedCard";
 import {
   Tractor, Wrench, Users, Package,
   ChevronRight, MessageSquare,
@@ -264,6 +265,9 @@ export default function Dashboard() {
           </Link>
         ))}
       </div>
+
+      {/* ── 사내 메신저 알림 ── */}
+      <MessengerFeedCard />
 
       {/* ── Middle: Recent repairs + AI Insight ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
