@@ -16,6 +16,9 @@ export default function PartsList() {
           <TabsTrigger value="inventory" className="gap-1.5">
             <Package className="h-4 w-4" /> 부품현황
           </TabsTrigger>
+          <TabsTrigger value="procurement" className="gap-1.5">
+            <Truck className="h-4 w-4" /> 부품조달
+          </TabsTrigger>
           <TabsTrigger value="compare" className="gap-1.5">
             <GitCompare className="h-4 w-4" /> 지점 비교
           </TabsTrigger>
@@ -31,6 +34,9 @@ export default function PartsList() {
         </TabsList>
         <TabsContent value="inventory">
           <InventoryManagement />
+        </TabsContent>
+        <TabsContent value="procurement">
+          <PartProcurement />
         </TabsContent>
         <TabsContent value="compare">
           <BranchInventoryCompare />
