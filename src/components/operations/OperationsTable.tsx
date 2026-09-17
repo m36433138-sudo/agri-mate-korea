@@ -81,6 +81,8 @@ export function OperationsTable({ data, statusFilter }: Props) {
               <TableHead className="cursor-pointer" onClick={() => handleSort("손님성명")}>손님 성명</TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort("기계")}>기계</TableHead>
               <TableHead>품목</TableHead>
+              <TableHead>전화번호</TableHead>
+              <TableHead className="min-w-[180px]">주소</TableHead>
               <TableHead>수리기사</TableHead>
               <TableHead className="min-w-[200px]">요구사항</TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort("수리시작일")}>수리시작일</TableHead>
