@@ -1515,6 +1515,132 @@ export type Database = {
           },
         ]
       }
+      part_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          order_id: string
+          part_code: string | null
+          part_name: string
+          quantity: number
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id: string
+          part_code?: string | null
+          part_name: string
+          quantity?: number
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+          part_code?: string | null
+          part_name?: string
+          quantity?: number
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "part_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_orders: {
+        Row: {
+          branch: string
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivered_at: string | null
+          handed_over_at: string | null
+          id: string
+          machine_id: string | null
+          notes: string | null
+          order_date: string
+          requester: string | null
+          shipped_at: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          branch?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivered_at?: string | null
+          handed_over_at?: string | null
+          id?: string
+          machine_id?: string | null
+          notes?: string | null
+          order_date?: string
+          requester?: string | null
+          shipped_at?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivered_at?: string | null
+          handed_over_at?: string | null
+          id?: string
+          machine_id?: string | null
+          notes?: string | null
+          order_date?: string
+          requester?: string | null
+          shipped_at?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "part_orders_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "part_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parts: {
         Row: {
           created_at: string
