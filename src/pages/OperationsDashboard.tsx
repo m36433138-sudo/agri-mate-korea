@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGoogleSheets";
 import { supabase } from "@/integrations/supabase/client";
-import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, formatSheetDate, isCompleted } from "@/types/operations";
+import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, getTechnicianColor, formatSheetDate, isCompleted } from "@/types/operations";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
 import { RepairDraftModal } from "@/components/operations/RepairDraftModal";
@@ -48,7 +48,7 @@ const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: Operati
 function StatusBadge({ status }: { status: OperationStatus }) {
   const m = STATUS_META[status];
   return (
-    <span className={`inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-md ring-1 ring-inset whitespace-nowrap ${m.badge}`}>
+    <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-md ring-1 ring-inset whitespace-nowrap ${m.badge}`}>
       {m.label}
     </span>
   );
@@ -255,12 +255,12 @@ export default function OperationsDashboard() {
       <div className="rounded-xl border border-border/60 overflow-hidden">
         {/* 헤더 */}
         <div
-          className="grid text-[11px] font-semibold text-muted-foreground uppercase tracking-wide"
+          className="grid text-xs font-semibold text-muted-foreground uppercase tracking-wide"
           style={{
-            gridTemplateColumns: "110px 52px 90px 1fr 120px 110px 1fr 80px 110px",
+            gridTemplateColumns: "112px 56px 104px 1fr 124px 132px 1fr 116px 210px",
             background: "hsl(var(--card))",
             borderBottom: "1px solid hsl(var(--border) / 0.6)",
-            padding: "10px 14px",
+            padding: "12px 14px",
           }}
         >
           <span>상태</span>
@@ -309,8 +309,8 @@ export default function OperationsDashboard() {
               <div
                 className="grid items-center"
                 style={{
-                  gridTemplateColumns: "110px 52px 90px 1fr 120px 110px 1fr 80px 110px",
-                  padding: "9px 14px",
+                  gridTemplateColumns: "112px 56px 104px 1fr 124px 132px 1fr 116px 210px",
+                  padding: "12px 14px",
                   gap: 0,
                 }}
               >
@@ -327,24 +327,24 @@ export default function OperationsDashboard() {
                 </div>
 
                 {/* 성함 */}
-                <div className="font-bold text-sm text-foreground truncate pr-2">
+                <div className="font-bold text-base text-foreground truncate pr-2">
                   {row.손님성명 || "-"}
                 </div>
 
                 {/* 기계 / 품목 */}
-                <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                <div className="flex items-center gap-2 min-w-0 pr-2">
                   {row.기계 && (
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded shrink-0 ${machineColor.bg} ${machineColor.text}`}>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded shrink-0 ${machineColor.bg} ${machineColor.text}`}>
                       {row.기계}
                     </span>
                   )}
                   {row.품목 && (
-                    <span className="text-xs text-foreground/80 truncate font-mono">{row.품목}</span>
+                    <span className="text-sm text-foreground/80 truncate font-mono">{row.품목}</span>
                   )}
                 </div>
 
                 {/* S/N */}
-                <div className="text-[11px] font-mono text-muted-foreground truncate pr-2">
+                <div className="text-xs font-mono text-muted-foreground truncate pr-2">
                   {row.제조번호 || "-"}
                 </div>
 
@@ -352,86 +352,97 @@ export default function OperationsDashboard() {
                 <div>
                   {row.전화번호 ? (
                     <a href={`tel:${row.전화번호}`}
-                      className="text-xs text-foreground/80 hover:text-primary transition-colors flex items-center gap-1 tabular-nums">
-                      <Phone className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      className="text-sm text-foreground/80 hover:text-primary transition-colors flex items-center gap-1 tabular-nums">
+                      <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       {row.전화번호}
                     </a>
-                  ) : <span className="text-muted-foreground/40 text-xs">-</span>}
+                  ) : <span className="text-muted-foreground/40 text-sm">-</span>}
                 </div>
 
                 {/* 주소 / 요구사항 */}
                 <div className="pr-2 min-w-0">
                   {row.주소 && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-                      <MapPin className="h-3 w-3 shrink-0" />
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground truncate">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{row.주소}</span>
                     </div>
                   )}
                   {row.손님요구사항 && (
                     <button
                       onClick={() => toggleReq(rowKey)}
-                      className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground mt-0.5 transition-colors"
+                      className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-muted-foreground mt-0.5 transition-colors"
                     >
-                      {reqExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      {reqExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       요구사항
                     </button>
                   )}
                 </div>
 
-                {/* 기사 */}
-                <div className="text-xs text-muted-foreground truncate pr-1">
-                  {row.수리기사 || "-"}
+                {/* 기사 — 색상 배지 */}
+                <div className="pr-1">
+                  {row.수리기사 ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-white px-2.5 py-1 rounded-lg whitespace-nowrap"
+                      style={{ backgroundColor: getTechnicianColor(row.수리기사) }}
+                    >
+                      <Wrench className="h-3 w-3" />
+                      {row.수리기사}
+                    </span>
+                  ) : <span className="text-muted-foreground/40 text-xs">미배정</span>}
                 </div>
 
-                {/* 액션 */}
-                <div className="flex items-center justify-end gap-1">
-                  {/* 조달 */}
-                  <button
-                    onClick={() => setNoteRow(row)}
-                    className={`p-1.5 rounded-lg transition-colors relative ${
-                      pendingNotes.length > 0
-                        ? "text-orange-400 bg-orange-950/50 hover:bg-orange-950/80"
-                        : "text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground"
-                    }`}
-                    title="조달"
-                  >
-                    <Package className="h-3.5 w-3.5" />
-                    {pendingNotes.length > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-orange-500 text-white rounded-full text-[8px] font-bold flex items-center justify-center">
-                        {pendingNotes.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* 수리내역 */}
-                  {(status === "수리중" || status === "수리완료" || status === "수리대기") && (
+                {/* 액션 — 기록 그룹과 상태전환 분리 */}
+                <div className="flex items-center justify-end gap-1.5">
+                  {/* 기록 그룹: 조달 · 수리내역 · 수정 */}
+                  <div className="flex items-center gap-1 pr-1.5 mr-1 border-r border-border/40">
+                    {/* 조달 */}
                     <button
-                      onClick={() => setDraftRow(row)}
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        hasDraft
-                          ? "text-blue-400 bg-blue-950/50 hover:bg-blue-950/80"
-                          : "text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground"
+                      onClick={() => setNoteRow(row)}
+                      className={`p-1.5 rounded-lg transition-colors relative ${
+                        pendingNotes.length > 0
+                          ? "text-orange-400 bg-orange-950/50 hover:bg-orange-950/80"
+                          : "text-muted-foreground/50 hover:bg-muted/40 hover:text-muted-foreground"
                       }`}
-                      title="수리내역"
+                      title="조달"
                     >
-                      <FileText className="h-3.5 w-3.5" />
+                      <Package className="h-4 w-4" />
+                      {pendingNotes.length > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
+                          {pendingNotes.length}
+                        </span>
+                      )}
                     </button>
-                  )}
 
-                  {/* 수정 */}
-                  <button
-                    onClick={() => { setEditRow(row); setFormOpen(true); }}
-                    className="p-1.5 rounded-lg text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground transition-colors"
-                    title="수정"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
+                    {/* 수리내역 */}
+                    {(status === "수리중" || status === "수리완료" || status === "수리대기") && (
+                      <button
+                        onClick={() => setDraftRow(row)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          hasDraft
+                            ? "text-blue-400 bg-blue-950/50 hover:bg-blue-950/80"
+                            : "text-muted-foreground/50 hover:bg-muted/40 hover:text-muted-foreground"
+                        }`}
+                        title="수리내역"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
+                    )}
 
-                  {/* 상태 전환 */}
+                    {/* 수정 */}
+                    <button
+                      onClick={() => { setEditRow(row); setFormOpen(true); }}
+                      className="p-1.5 rounded-lg text-muted-foreground/50 hover:bg-muted/40 hover:text-muted-foreground transition-colors"
+                      title="수정"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* 상태 전환 버튼 */}
                   {transition && (
                     <button
                       onClick={() => handleTransition(row)}
-                      className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap"
+                      className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-lg border transition-colors whitespace-nowrap"
                       style={{
                         color: meta.color,
                         borderColor: meta.color + "55",
@@ -440,7 +451,7 @@ export default function OperationsDashboard() {
                       title={transition.label}
                     >
                       {transition.label}
-                      <ArrowRight className="h-3 w-3" />
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
