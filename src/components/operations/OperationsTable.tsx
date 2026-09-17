@@ -149,6 +149,8 @@ export function OperationsTable({ data, statusFilter }: Props) {
               <OpsStatusBadge status={getStatus(row)} />
             </div>
             <div className="text-sm text-muted-foreground">{row.기계} · {row.품목}</div>
+            {row.전화번호 && <div className="text-sm font-semibold tabular-nums">{row.전화번호}</div>}
+            {row.주소 && <p className="text-sm text-foreground/80 line-clamp-2">{row.주소}</p>}
             {row.수리기사 && <TechBadge name={row.수리기사} />}
             {row.손님요구사항 && <p className="text-xs text-muted-foreground line-clamp-2">{row.손님요구사항}</p>}
             <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
