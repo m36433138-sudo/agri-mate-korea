@@ -94,7 +94,7 @@ export function OperationsTable({ data, statusFilter }: Props) {
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">데이터가 없습니다</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground">데이터가 없습니다</TableCell></TableRow>
             ) : filtered.map((row, i) => (
               <TableRow key={i} className="hover:bg-muted/30">
                 <TableCell><OpsStatusBadge status={getStatus(row)} /></TableCell>
