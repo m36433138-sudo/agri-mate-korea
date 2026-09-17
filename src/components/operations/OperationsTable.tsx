@@ -101,6 +101,23 @@ export function OperationsTable({ data, statusFilter }: Props) {
                 <TableCell className="font-medium">{row.손님성명}</TableCell>
                 <TableCell>{row.기계}</TableCell>
                 <TableCell>{row.품목}</TableCell>
+                <TableCell className="text-sm tabular-nums">{row.전화번호 || "—"}</TableCell>
+                <TableCell className="max-w-[200px]">
+                  {row.주소 ? (
+                    row.주소.length > 30 ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-sm text-foreground/80 cursor-help line-clamp-1">{row.주소}</span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm whitespace-pre-wrap">{row.주소}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-sm text-foreground/80">{row.주소}</span>
+                    )
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  )}
+                </TableCell>
                 <TableCell>{row.수리기사 ? <TechBadge name={row.수리기사} /> : <span className="text-muted-foreground text-xs">미배정</span>}</TableCell>
                 <TableCell>
                   {row.손님요구사항.length > 40 ? (
