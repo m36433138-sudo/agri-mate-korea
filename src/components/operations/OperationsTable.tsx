@@ -81,6 +81,8 @@ export function OperationsTable({ data, statusFilter }: Props) {
               <TableHead className="cursor-pointer" onClick={() => handleSort("손님성명")}>손님 성명</TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort("기계")}>기계</TableHead>
               <TableHead>품목</TableHead>
+              <TableHead>전화번호</TableHead>
+              <TableHead className="min-w-[180px]">주소</TableHead>
               <TableHead>수리기사</TableHead>
               <TableHead className="min-w-[200px]">요구사항</TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort("수리시작일")}>수리시작일</TableHead>
@@ -92,13 +94,30 @@ export function OperationsTable({ data, statusFilter }: Props) {
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">데이터가 없습니다</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground">데이터가 없습니다</TableCell></TableRow>
             ) : filtered.map((row, i) => (
               <TableRow key={i} className="hover:bg-muted/30">
                 <TableCell><OpsStatusBadge status={getStatus(row)} /></TableCell>
                 <TableCell className="font-medium">{row.손님성명}</TableCell>
                 <TableCell>{row.기계}</TableCell>
                 <TableCell>{row.품목}</TableCell>
+                <TableCell className="text-sm tabular-nums">{row.전화번호 || "—"}</TableCell>
+                <TableCell className="max-w-[200px]">
+                  {row.주소 ? (
+                    row.주소.length > 30 ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-sm text-foreground/80 cursor-help line-clamp-1">{row.주소}</span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm whitespace-pre-wrap">{row.주소}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-sm text-foreground/80">{row.주소}</span>
+                    )
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  )}
+                </TableCell>
                 <TableCell>{row.수리기사 ? <TechBadge name={row.수리기사} /> : <span className="text-muted-foreground text-xs">미배정</span>}</TableCell>
                 <TableCell>
                   {row.손님요구사항.length > 40 ? (
@@ -130,6 +149,8 @@ export function OperationsTable({ data, statusFilter }: Props) {
               <OpsStatusBadge status={getStatus(row)} />
             </div>
             <div className="text-sm text-muted-foreground">{row.기계} · {row.품목}</div>
+            {row.전화번호 && <div className="text-sm font-semibold tabular-nums">{row.전화번호}</div>}
+            {row.주소 && <p className="text-sm text-foreground/80 line-clamp-2">{row.주소}</p>}
             {row.수리기사 && <TechBadge name={row.수리기사} />}
             {row.손님요구사항 && <p className="text-xs text-muted-foreground line-clamp-2">{row.손님요구사항}</p>}
             <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
