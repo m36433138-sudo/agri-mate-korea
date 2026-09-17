@@ -4,7 +4,8 @@ import StockAdjustment from "@/components/StockAdjustment";
 import LowStockList from "@/components/LowStockList";
 import BranchInventoryCompare from "@/components/BranchInventoryCompare";
 import BulkPriceUpdate from "@/components/BulkPriceUpdate";
-import { Package, ArrowUpDown, AlertTriangle, GitCompare, Tag } from "lucide-react";
+import PartProcurement from "@/components/PartProcurement";
+import { Package, ArrowUpDown, AlertTriangle, GitCompare, Tag, Truck } from "lucide-react";
 
 export default function PartsList() {
   return (
