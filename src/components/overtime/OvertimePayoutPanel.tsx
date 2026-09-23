@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PenLine, RefreshCw, CheckCircle2, FileSignature } from "lucide-react";
+import { PenLine, RefreshCw, CheckCircle2, FileSignature, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -149,6 +150,9 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
   );
 }
 
+const PAYOUT_PASSCODE = "828256";
+const UNLOCK_KEY = "overtime-payout-unlocked";
+
 export default function OvertimePayoutPanel({
   isAdmin,
   myName,
@@ -162,9 +166,26 @@ export default function OvertimePayoutPanel({
   const [signTarget, setSignTarget] = useState<SheetRow | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [unlocked, setUnlocked] = useState(
+    () => typeof window !== "undefined" && sessionStorage.getItem(UNLOCK_KEY) === "1",
+  );
+  const [passcode, setPasscode] = useState("");
+  const [passError, setPassError] = useState(false);
+
+  const tryUnlock = () => {
+    if (passcode.trim() === PAYOUT_PASSCODE) {
+      sessionStorage.setItem(UNLOCK_KEY, "1");
+      setUnlocked(true);
+      setPasscode("");
+      setPassError(false);
+    } else {
+      setPassError(true);
+    }
+  };
 
   const tabsQuery = useQuery({
     queryKey: ["hr-overtime-tabs"],
+    enabled: unlocked,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("hr-overtime-sheet", {
         body: { action: "listTabs" },
@@ -184,7 +205,7 @@ export default function OvertimePayoutPanel({
 
   const rowsQuery = useQuery({
     queryKey: ["hr-overtime-rows", tab],
-    enabled: !!tab,
+    enabled: !!tab && unlocked,
     staleTime: 2 * 60 * 1000,
     retry: false,
     queryFn: async () => {
@@ -220,7 +241,7 @@ export default function OvertimePayoutPanel({
 
   const sigQuery = useQuery({
     queryKey: ["hr-overtime-signatures", tab],
-    enabled: !!tab,
+    enabled: !!tab && unlocked,
     staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -314,6 +335,34 @@ export default function OvertimePayoutPanel({
     (tabsQuery.error instanceof Error && tabsQuery.error.message) ||
     (rowsQuery.error instanceof Error && rowsQuery.error.message) ||
     null;
+
+  if (!unlocked) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Lock className="h-5 w-5" /> 초과수당 지급·서명
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="max-w-sm space-y-3">
+          <p className="text-sm text-muted-foreground">
+            민감한 금액 정보입니다. 비밀번호를 입력하면 내역이 표시됩니다.
+          </p>
+          <Input
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="비밀번호"
+            value={passcode}
+            onChange={(e) => { setPasscode(e.target.value); setPassError(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter") tryUnlock(); }}
+          />
+          {passError && <p className="text-xs text-destructive">비밀번호가 올바르지 않습니다.</p>}
+          <Button onClick={tryUnlock} disabled={!passcode.trim()}>확인</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
