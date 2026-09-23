@@ -335,6 +335,34 @@ export default function OvertimePayoutPanel({
     (rowsQuery.error instanceof Error && rowsQuery.error.message) ||
     null;
 
+  if (!unlocked) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Lock className="h-5 w-5" /> 초과수당 지급·서명
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="max-w-sm space-y-3">
+          <p className="text-sm text-muted-foreground">
+            민감한 금액 정보입니다. 비밀번호를 입력하면 내역이 표시됩니다.
+          </p>
+          <Input
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="비밀번호"
+            value={passcode}
+            onChange={(e) => { setPasscode(e.target.value); setPassError(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter") tryUnlock(); }}
+          />
+          {passError && <p className="text-xs text-destructive">비밀번호가 올바르지 않습니다.</p>}
+          <Button onClick={tryUnlock} disabled={!passcode.trim()}>확인</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">
