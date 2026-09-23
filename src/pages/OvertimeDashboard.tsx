@@ -521,6 +521,10 @@ export default function OvertimeDashboard() {
           </CardContent>
         </Card>
 
+        <OvertimePayoutPanel isAdmin={false} myName={myEmployee.name} />
+
+
+
         {/* Confirm Dialog */}
         <ClockConfirmDialog
           confirmAction={confirmAction}
