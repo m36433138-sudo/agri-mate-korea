@@ -79,7 +79,7 @@ function formToValues(f: FormData): string[] {
     f.location,     // 6: 위치
     f.technician,   // 7: 수리기사
     f.request,      // 8: 손님요구사항
-    f.serial_number, // 9: 제조번호
+    "",             // 9: S/N은 앱에서만 관리하며 시트에는 쓰지 않음
     f.entryDate,    // 10: 입고일
     f.repairStart,  // 11: 수리시작일
     f.repairDone,   // 12: 수리완료일
@@ -131,15 +131,40 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
       const sheetName = formBranch === "강진" ? "강진(입출수)" : "장흥(입출수)";
       const values = formToValues(form);
 
+      let savedRowIndex = row?._rowIndex;
       if (isEdit && row) {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "updateRow", sheetName, rowIndex: row._rowIndex, values },
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: { action: "updateRowWithoutSerial", sheetName, rowIndex: row._rowIndex, values },
         });
+        if (error || data?.error) throw new Error(data?.error || error?.message || "작업 수정에 실패했습니다.");
         toast({ title: "수정 완료" });
       } else {
-        await supabase.functions.invoke("google-sheets", {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: { action: "addRow", sheetName, values },
         });
+        if (error || data?.error) throw new Error(data?.error || error?.message || "작업 추가에 실패했습니다.");
+        const updatedRange = data?.result?.updates?.updatedRange as string | undefined;
+        const rowMatch = updatedRange?.match(/!(?:[A-Z]+)(\d+):/);
+        savedRowIndex = rowMatch ? Number(rowMatch[1]) : undefined;
+      }
+
+      if (!savedRowIndex) {
+        throw new Error("작업 행 번호를 확인할 수 없어 S/N을 저장하지 못했습니다.");
+      }
+
+      const { error: serialError } = await supabase
+        .from("operation_rows")
+        .upsert({
+          branch: formBranch,
+          source_tab: "active",
+          row_index: savedRowIndex,
+          serial_number: form.serial_number.trim() || null,
+        }, { onConflict: "branch,source_tab,row_index" });
+      if (serialError) {
+        throw new Error(`작업은 저장됐지만 S/N 저장에 실패했습니다: ${serialError.message}`);
+      }
+
+      if (!isEdit) {
         toast({ title: "추가 완료" });
       }
       onSuccess();
@@ -159,6 +184,13 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
       await supabase.functions.invoke("google-sheets", {
         body: { action: "clearRow", sheetName, rowIndex: row._rowIndex },
       });
+      const { error: operationDeleteError } = await supabase
+        .from("operation_rows")
+        .delete()
+        .eq("branch", row._branch)
+        .eq("source_tab", "active")
+        .eq("row_index", row._rowIndex);
+      if (operationDeleteError) throw operationDeleteError;
       toast({ title: "삭제 완료" });
       onSuccess();
       onClose();
@@ -247,21 +279,21 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
               onChange={v => set("model", v)}
               onSelect={m => {
                 set("model", m.model_name);
-                set("serial_number", m.serial_number || "");
               }}
               placeholder="모델명 검색 또는 직접 입력"
             />
           </div>
 
-          {/* 제조번호 — 새 칸 */}
+          {/* S/N — 앱 내부에서만 관리 */}
           <div className="col-span-2">
-            <Label>제조번호</Label>
+            <Label>S/N (앱 전용)</Label>
             <Input
               value={form.serial_number}
               onChange={e => set("serial_number", e.target.value)}
-              placeholder="예: YR60DZ-123456"
+              placeholder="비워 두거나 번호 입력"
               className="font-mono"
             />
+            <p className="mt-1 text-xs text-muted-foreground">구글 시트에는 저장되지 않습니다.</p>
           </div>
 
           {/* 주소 */}

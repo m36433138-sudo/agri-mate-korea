@@ -227,6 +227,36 @@ serve(async (req) => {
       });
     }
 
+    // Update an operation row without reading or writing column J.
+    // Column J is deliberately excluded because S/N is app-only.
+    if (action === "updateRowWithoutSerial") {
+      if (!sheetName || !rowIndex || !body.values) throw new Error("sheetName, rowIndex, and values are required for updateRowWithoutSerial");
+      const accessToken = await getAccessToken();
+      const values = body.values as unknown[];
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`;
+      const writeRes = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          valueInputOption: "USER_ENTERED",
+          data: [
+            { range: `'${sheetName}'!A${rowIndex}:I${rowIndex}`, values: [values.slice(0, 9)] },
+            { range: `'${sheetName}'!K${rowIndex}:R${rowIndex}`, values: [values.slice(10, 18)] },
+          ],
+        }),
+      });
+
+      if (!writeRes.ok) {
+        const errBody = await writeRes.text();
+        throw new Error(`Google Sheets update error [${writeRes.status}]: ${errBody}`);
+      }
+
+      const result = await writeRes.json();
+      return new Response(JSON.stringify({ success: true, result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // WRITE operation — clear a row (행 내용 비우기 = 삭제)
     if (action === "clearRow") {
       if (!sheetName || !rowIndex) throw new Error("sheetName and rowIndex are required for clearRow");
