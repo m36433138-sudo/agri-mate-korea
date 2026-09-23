@@ -390,7 +390,22 @@ export default function OvertimePayoutPanel({
           <CardTitle className="flex items-center gap-2 text-lg">
             <FileSignature className="h-5 w-5" /> 초과수당 지급·서명
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && availableNames.length > 0 && (
+              <Select value={effectiveName} onValueChange={setSelectedName}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="기사 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableNames.map((n) => (
+                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!isAdmin && effectiveName && (
+              <Badge variant="secondary" className="px-3 py-1.5 text-sm">{effectiveName}</Badge>
+            )}
             {(tabsQuery.data?.length ?? 0) > 0 && (
               <Select value={tab} onValueChange={setTab}>
                 <SelectTrigger className="w-[160px]">
