@@ -637,6 +637,10 @@ export default function OvertimeDashboard() {
         </CardContent>
       </Card>
 
+      {/* 초과수당 지급·서명 (인사관리 시트 연동) */}
+      <OvertimePayoutPanel isAdmin />
+
+
       {/* Daily Records */}
       <Card>
         <CardHeader className="pb-2">
