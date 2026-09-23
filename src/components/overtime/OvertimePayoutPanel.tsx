@@ -163,6 +163,7 @@ export default function OvertimePayoutPanel({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<string>("");
+  const [selectedName, setSelectedName] = useState<string>("");
   const [signTarget, setSignTarget] = useState<SheetRow | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -259,12 +260,30 @@ export default function OvertimePayoutPanel({
     return map;
   }, [sigQuery.data]);
 
+  // Names available in the current tab (unique, in sheet order)
+  const availableNames = useMemo(() => {
+    const rows = rowsQuery.data ?? [];
+    const seen = new Set<string>();
+    const names: string[] = [];
+    rows.forEach((r) => {
+      if (!seen.has(r.name)) {
+        seen.add(r.name);
+        names.push(r.name);
+      }
+    });
+    return names;
+  }, [rowsQuery.data]);
+
+  // Effective person: employees are locked to themselves, admin picks one person
+  const effectiveName = isAdmin
+    ? (selectedName || (myName && availableNames.includes(myName) ? myName : availableNames[0] ?? ""))
+    : (myName ?? "");
+
   const visibleRows = useMemo(() => {
     const rows = rowsQuery.data ?? [];
-    if (isAdmin) return rows;
-    if (!myName) return [];
-    return rows.filter((r) => r.name === myName);
-  }, [rowsQuery.data, isAdmin, myName]);
+    if (!effectiveName) return [];
+    return rows.filter((r) => r.name === effectiveName);
+  }, [rowsQuery.data, effectiveName]);
 
   const canSign = (row: SheetRow) => isAdmin || row.name === myName;
 
