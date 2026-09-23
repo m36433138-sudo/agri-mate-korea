@@ -73,9 +73,19 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const sheetId = hrSheetId();
     const body = await req.json();
     const action = String(body.action || "");
+
+    // Report which service account must be granted access to the sheet
+    if (action === "whoami") {
+      const saJson = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
+      const clientEmail = saJson ? JSON.parse(saJson).client_email : null;
+      return new Response(JSON.stringify({ clientEmail, sheetId: hrSheetId() }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const sheetId = hrSheetId();
     const accessToken = await getAccessToken();
 
     // List tab names
