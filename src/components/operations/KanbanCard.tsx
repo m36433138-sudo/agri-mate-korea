@@ -166,7 +166,7 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
             <div className="w-8 flex justify-center shrink-0 pt-0.5">
               <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
-            <span className="text-sm text-foreground leading-snug">{row.주소}</span>
+            <span className="min-w-0 flex-1 text-sm text-foreground leading-snug whitespace-pre-wrap break-words">{row.주소}</span>
           </div>
         )}
 
