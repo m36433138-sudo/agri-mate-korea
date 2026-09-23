@@ -105,7 +105,7 @@ serve(async (req) => {
       const tab = String(body.tab || "");
       if (!tab) throw new Error("tab is required");
       const range = `'${tab}'!A1:I200`;
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueRenderOption=UNFORMATTED_VALUE`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueRenderOption=FORMATTED_VALUE`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!res.ok) throw new Error(`Sheets read error [${res.status}]: ${await res.text()}`);
       const data = await res.json();
