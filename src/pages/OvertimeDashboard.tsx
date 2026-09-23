@@ -25,6 +25,7 @@ import {
   useAttendance, minutesToHM, type Employee, type AttendanceRecord,
 } from "@/hooks/useAttendance";
 import TechnicianMap from "@/components/TechnicianMap";
+import OvertimePayoutPanel from "@/components/overtime/OvertimePayoutPanel";
 
 const TECH_COLORS: Record<string, { bg: string; text: string; accent: string }> = {
   유호상: { bg: "bg-blue-500/10", text: "text-blue-400", accent: "bg-blue-500" },
