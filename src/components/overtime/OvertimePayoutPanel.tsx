@@ -149,6 +149,9 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
   );
 }
 
+const PAYOUT_PASSCODE = "828256";
+const UNLOCK_KEY = "overtime-payout-unlocked";
+
 export default function OvertimePayoutPanel({
   isAdmin,
   myName,
@@ -162,6 +165,22 @@ export default function OvertimePayoutPanel({
   const [signTarget, setSignTarget] = useState<SheetRow | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [unlocked, setUnlocked] = useState(
+    () => typeof window !== "undefined" && sessionStorage.getItem(UNLOCK_KEY) === "1",
+  );
+  const [passcode, setPasscode] = useState("");
+  const [passError, setPassError] = useState(false);
+
+  const tryUnlock = () => {
+    if (passcode.trim() === PAYOUT_PASSCODE) {
+      sessionStorage.setItem(UNLOCK_KEY, "1");
+      setUnlocked(true);
+      setPasscode("");
+      setPassError(false);
+    } else {
+      setPassError(true);
+    }
+  };
 
   const tabsQuery = useQuery({
     queryKey: ["hr-overtime-tabs"],
