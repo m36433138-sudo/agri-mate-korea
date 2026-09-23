@@ -82,7 +82,7 @@ export function OperationsTable({ data, statusFilter }: Props) {
               <TableHead className="cursor-pointer" onClick={() => handleSort("기계")}>기계</TableHead>
               <TableHead>품목</TableHead>
               <TableHead>전화번호</TableHead>
-              <TableHead className="min-w-[180px]">주소</TableHead>
+              <TableHead className="min-w-[260px]">주소</TableHead>
               <TableHead>수리기사</TableHead>
               <TableHead className="min-w-[200px]">요구사항</TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort("수리시작일")}>수리시작일</TableHead>
@@ -102,18 +102,9 @@ export function OperationsTable({ data, statusFilter }: Props) {
                 <TableCell>{row.기계}</TableCell>
                 <TableCell>{row.품목}</TableCell>
                 <TableCell className="text-sm tabular-nums">{row.전화번호 || "—"}</TableCell>
-                <TableCell className="max-w-[200px]">
+                <TableCell className="min-w-[260px] align-top">
                   {row.주소 ? (
-                    row.주소.length > 30 ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="text-sm text-foreground/80 cursor-help line-clamp-1">{row.주소}</span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-sm whitespace-pre-wrap">{row.주소}</TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <span className="text-sm text-foreground/80">{row.주소}</span>
-                    )
+                    <span className="block text-sm text-foreground/90 whitespace-pre-wrap break-words leading-snug">{row.주소}</span>
                   ) : (
                     <span className="text-muted-foreground text-xs">—</span>
                   )}
@@ -150,7 +141,7 @@ export function OperationsTable({ data, statusFilter }: Props) {
             </div>
             <div className="text-sm text-muted-foreground">{row.기계} · {row.품목}</div>
             {row.전화번호 && <div className="text-sm font-semibold tabular-nums">{row.전화번호}</div>}
-            {row.주소 && <p className="text-sm text-foreground/80 line-clamp-2">{row.주소}</p>}
+            {row.주소 && <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words leading-snug">{row.주소}</p>}
             {row.수리기사 && <TechBadge name={row.수리기사} />}
             {row.손님요구사항 && <p className="text-xs text-muted-foreground line-clamp-2">{row.손님요구사항}</p>}
             <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
