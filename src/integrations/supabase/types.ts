@@ -1465,6 +1465,86 @@ export type Database = {
         }
         Relationships: []
       }
+      overtime_payout_signatures: {
+        Row: {
+          bonus_amount: number | null
+          created_at: string
+          employee_id: string | null
+          employee_name: string
+          hours: number | null
+          id: string
+          is_paid: boolean
+          notes: string | null
+          overtime_amount: number | null
+          paid_at: string | null
+          period_end: string | null
+          period_start: string | null
+          row_index: number
+          sheet_synced_at: string | null
+          sheet_tab: string
+          signature_data: string | null
+          signed_at: string | null
+          signed_by: string | null
+          total_amount: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bonus_amount?: number | null
+          created_at?: string
+          employee_id?: string | null
+          employee_name: string
+          hours?: number | null
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          overtime_amount?: number | null
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          row_index: number
+          sheet_synced_at?: string | null
+          sheet_tab: string
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          total_amount?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bonus_amount?: number | null
+          created_at?: string
+          employee_id?: string | null
+          employee_name?: string
+          hours?: number | null
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          overtime_amount?: number | null
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          row_index?: number
+          sheet_synced_at?: string | null
+          sheet_tab?: string
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          total_amount?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overtime_payout_signatures_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       overtime_settlements: {
         Row: {
           bonus_amount: number
