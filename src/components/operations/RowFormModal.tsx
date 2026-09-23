@@ -279,7 +279,6 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
               onChange={v => set("model", v)}
               onSelect={m => {
                 set("model", m.model_name);
-                set("serial_number", m.serial_number || "");
               }}
               placeholder="모델명 검색 또는 직접 입력"
             />
