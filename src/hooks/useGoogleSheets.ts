@@ -9,7 +9,18 @@ async function fetchTab(tab: string, branch: "장흥" | "강진"): Promise<Sheet
   });
   if (error) throw new Error(error.message || "Failed to fetch sheet data");
   if (data?.error) throw new Error(data.error);
-  return parseRows(data?.values || [], branch);
+  const rows = parseRows(data?.values || [], branch);
+  const { data: operationRows, error: operationError } = await supabase
+    .from("operation_rows")
+    .select("row_index, serial_number")
+    .eq("branch", branch)
+    .eq("source_tab", "active");
+  if (operationError) throw new Error(operationError.message || "Failed to fetch operation S/N data");
+
+  const serials = new Map(
+    (operationRows || []).map(item => [item.row_index, item.serial_number || ""]),
+  );
+  return rows.map(row => ({ ...row, 제조번호: serials.get(row._rowIndex) || "" }));
 }
 
 export async function markRowComplete(sheetName: string, rowIndex: number, col: string = "P"): Promise<void> {
