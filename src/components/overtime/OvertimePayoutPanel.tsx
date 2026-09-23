@@ -163,6 +163,7 @@ export default function OvertimePayoutPanel({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<string>("");
+  const [selectedName, setSelectedName] = useState<string>("");
   const [signTarget, setSignTarget] = useState<SheetRow | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -259,12 +260,30 @@ export default function OvertimePayoutPanel({
     return map;
   }, [sigQuery.data]);
 
+  // Names available in the current tab (unique, in sheet order)
+  const availableNames = useMemo(() => {
+    const rows = rowsQuery.data ?? [];
+    const seen = new Set<string>();
+    const names: string[] = [];
+    rows.forEach((r) => {
+      if (!seen.has(r.name)) {
+        seen.add(r.name);
+        names.push(r.name);
+      }
+    });
+    return names;
+  }, [rowsQuery.data]);
+
+  // Effective person: employees are locked to themselves, admin picks one person
+  const effectiveName = isAdmin
+    ? (selectedName || (myName && availableNames.includes(myName) ? myName : availableNames[0] ?? ""))
+    : (myName ?? "");
+
   const visibleRows = useMemo(() => {
     const rows = rowsQuery.data ?? [];
-    if (isAdmin) return rows;
-    if (!myName) return [];
-    return rows.filter((r) => r.name === myName);
-  }, [rowsQuery.data, isAdmin, myName]);
+    if (!effectiveName) return [];
+    return rows.filter((r) => r.name === effectiveName);
+  }, [rowsQuery.data, effectiveName]);
 
   const canSign = (row: SheetRow) => isAdmin || row.name === myName;
 
@@ -371,7 +390,22 @@ export default function OvertimePayoutPanel({
           <CardTitle className="flex items-center gap-2 text-lg">
             <FileSignature className="h-5 w-5" /> 초과수당 지급·서명
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && availableNames.length > 0 && (
+              <Select value={effectiveName} onValueChange={setSelectedName}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="기사 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableNames.map((n) => (
+                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!isAdmin && effectiveName && (
+              <Badge variant="secondary" className="px-3 py-1.5 text-sm">{effectiveName}</Badge>
+            )}
             {(tabsQuery.data?.length ?? 0) > 0 && (
               <Select value={tab} onValueChange={setTab}>
                 <SelectTrigger className="w-[160px]">
