@@ -184,6 +184,7 @@ export default function OvertimePayoutPanel({
 
   const tabsQuery = useQuery({
     queryKey: ["hr-overtime-tabs"],
+    enabled: unlocked,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("hr-overtime-sheet", {
         body: { action: "listTabs" },
