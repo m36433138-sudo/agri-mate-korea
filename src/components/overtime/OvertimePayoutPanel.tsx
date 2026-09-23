@@ -240,7 +240,7 @@ export default function OvertimePayoutPanel({
 
   const sigQuery = useQuery({
     queryKey: ["hr-overtime-signatures", tab],
-    enabled: !!tab,
+    enabled: !!tab && unlocked,
     staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
