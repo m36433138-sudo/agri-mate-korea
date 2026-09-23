@@ -198,11 +198,14 @@ export default function OvertimePayoutPanel({
       values.forEach((raw, idx) => {
         const name = cellText(raw?.[0]);
         if (!name || name === "기사 이름" || name.includes("총합")) return;
+        const startRaw = cellText(raw?.[1]);
+        const endRaw = cellText(raw?.[2]);
+        const refYear = Number(startRaw.match(/^\d{4}/)?.[0]) || undefined;
         rows.push({
           rowIndex: idx + 1,
           name,
-          periodStart: cellText(raw?.[1]),
-          periodEnd: cellText(raw?.[2]),
+          periodStart: formatSheetDate(startRaw),
+          periodEnd: formatSheetDate(endRaw, refYear),
           hours: cellNumber(raw?.[3]),
           amount: cellNumber(raw?.[4]),
           bonus: cellNumber(raw?.[5]),
