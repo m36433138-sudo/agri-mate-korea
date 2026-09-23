@@ -204,7 +204,7 @@ export default function OvertimePayoutPanel({
 
   const rowsQuery = useQuery({
     queryKey: ["hr-overtime-rows", tab],
-    enabled: !!tab,
+    enabled: !!tab && unlocked,
     staleTime: 2 * 60 * 1000,
     retry: false,
     queryFn: async () => {
