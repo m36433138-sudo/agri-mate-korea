@@ -25,6 +25,7 @@ import {
   useAttendance, minutesToHM, type Employee, type AttendanceRecord,
 } from "@/hooks/useAttendance";
 import TechnicianMap from "@/components/TechnicianMap";
+import OvertimePayoutPanel from "@/components/overtime/OvertimePayoutPanel";
 
 const TECH_COLORS: Record<string, { bg: string; text: string; accent: string }> = {
   유호상: { bg: "bg-blue-500/10", text: "text-blue-400", accent: "bg-blue-500" },
@@ -520,6 +521,10 @@ export default function OvertimeDashboard() {
           </CardContent>
         </Card>
 
+        <OvertimePayoutPanel isAdmin={false} myName={myEmployee.name} />
+
+
+
         {/* Confirm Dialog */}
         <ClockConfirmDialog
           confirmAction={confirmAction}
@@ -636,6 +641,10 @@ export default function OvertimeDashboard() {
           <MonthlySummary records={allRecords} employees={employees} />
         </CardContent>
       </Card>
+
+      {/* 초과수당 지급·서명 (인사관리 시트 연동) */}
+      <OvertimePayoutPanel isAdmin />
+
 
       {/* Daily Records */}
       <Card>
