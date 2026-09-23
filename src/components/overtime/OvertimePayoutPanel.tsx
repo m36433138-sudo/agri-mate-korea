@@ -432,7 +432,6 @@ export default function OvertimePayoutPanel({
               {saving ? "저장 중..." : "서명 저장 및 지급 처리"}
             </Button>
           </DialogFooter>
-        </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
