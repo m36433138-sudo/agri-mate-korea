@@ -238,6 +238,9 @@ export default function OperationsDashboard() {
           <Button onClick={() => { setEditRow(null); setFormOpen(true); }} size="sm" className="h-8 text-xs">
             <Plus className="h-3.5 w-3.5 mr-1" /> 추가
           </Button>
+          <Button asChild variant="outline" size="sm" className="h-8 text-xs">
+            <a href="/blades">예취 칼날</a>
+          </Button>
           <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading} className="h-8 text-xs">
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
           </Button>
