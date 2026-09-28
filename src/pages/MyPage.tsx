@@ -7,6 +7,7 @@ import { formatPrice, formatDate } from "@/lib/formatters";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Tractor, Wrench, User } from "lucide-react";
 import { MyAssignments } from "@/components/MyAssignments";
+import { BladeSharpeningPanel } from "@/components/blades/BladeSharpeningPanel";
 import type { Customer, Machine, Repair } from "@/types/database";
 
 export default function MyPage() {
@@ -103,7 +104,10 @@ export default function MyPage() {
 
       {/* 직원 배정 작업 (admin/employee만) */}
       {(role === "admin" || role === "employee") && (
-        <MyAssignments employeeId={employee?.id ?? null} />
+        <>
+          <MyAssignments employeeId={employee?.id ?? null} />
+          <BladeSharpeningPanel compact />
+        </>
       )}
 
       {/* My Machines */}

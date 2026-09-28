@@ -1,0 +1,1 @@
+ALTER TABLE public.blade_sharpenings ADD COLUMN sheet_row_index integer;
