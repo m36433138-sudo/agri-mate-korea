@@ -325,6 +325,7 @@ export type Database = {
           notes: string | null
           photo_paths: string[]
           quantity: number
+          sheet_row_index: number | null
           sheet_synced: boolean
           status: string
           updated_at: string
@@ -339,6 +340,7 @@ export type Database = {
           notes?: string | null
           photo_paths?: string[]
           quantity?: number
+          sheet_row_index?: number | null
           sheet_synced?: boolean
           status?: string
           updated_at?: string
@@ -353,6 +355,7 @@ export type Database = {
           notes?: string | null
           photo_paths?: string[]
           quantity?: number
+          sheet_row_index?: number | null
           sheet_synced?: boolean
           status?: string
           updated_at?: string
