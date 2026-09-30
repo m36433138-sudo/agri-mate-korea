@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 const db = supabase as any;
 const BUCKET = "blade-photos";
 const SHEET_TAB = "연마 칼날";
-const STATUSES = ["연마대기", "연마중", "연마완료", "전달완료"];
+const STATUSES = ["맡김", "연마중", "연마완료", "찾아감", "폐기처분"];
 const APP_URL = "https://cs.gwangmun.com";
 
 type Blade = {
@@ -159,15 +159,18 @@ function AddBladeDialog({ open, onClose }: { open: boolean; onClose: () => void 
         if (error) throw error;
         uploaded.push(path);
       }
+      const qtyText = qty.trim() || "1";
       const { data: row, error } = await db.from("blade_sharpenings").insert({
-        customer_name: name.trim(), customer_id: customerId, branch,
-        quantity: Number(qty) || 1, notes: notes || null, photo_paths: uploaded,
+        customer_name: name.trim(), customer_id: customerId, branch, status: "맡김",
+        quantity: Math.max(1, Math.round(parseFloat(qtyText) || 1)),
+        notes: [qtyText !== String(parseInt(qtyText)) ? `수량 ${qtyText}` : "", notes].filter(Boolean).join(" · ") || null,
+        photo_paths: uploaded,
       }).select().single();
       if (error) throw error;
 
       try {
         const link = `=HYPERLINK("${APP_URL}/blades?blade=${row.id}","사진 ${uploaded.length}장")`;
-        const res = await sheet({ action: "addRow", sheetName: SHEET_TAB, values: [name.trim(), branch, Number(qty) || 1, link, "연마대기", notes] });
+        const res = await sheet({ action: "addRow", sheetName: SHEET_TAB, values: [name.trim(), branch, qtyText, link, "맡김", notes] });
         const m = (res?.result?.updates?.updatedRange as string | undefined)?.match(/!(?:[A-Z]+)(\d+)/);
         await db.from("blade_sharpenings").update({ sheet_synced: true, sheet_row_index: m ? Number(m[1]) : null }).eq("id", row.id);
         toast({ title: "등록 완료", description: "시트에도 추가했습니다." });
@@ -217,7 +220,7 @@ function AddBladeDialog({ open, onClose }: { open: boolean; onClose: () => void 
                 ))}
               </div>
             </div>
-            <div><Label>수량</Label><Input type="number" inputMode="numeric" min={1} value={qty} onChange={e => setQty(e.target.value)} /></div>
+            <div><Label>수량</Label><Input placeholder="예: 2, 3.5봉, 1set" value={qty} onChange={e => setQty(e.target.value)} /></div>
           </div>
           <div><Label>비고</Label><Input value={notes} onChange={e => setNotes(e.target.value)} /></div>
         </div>
