@@ -19,7 +19,7 @@ const APP_URL = "https://cs.gwangmun.com";
 
 type Blade = {
   id: string; customer_name: string; customer_id: string | null; branch: string;
-  quantity: number; status: string; notes: string | null; photo_paths: string[];
+  quantity: number; status: string; notes: string | null; photo_paths: string[]; sheet_synced: boolean;
   sheet_row_index: number | null; created_at: string; urls?: string[];
 };
 
@@ -78,10 +78,29 @@ export function BladeSharpeningPanel({ compact = false }: { compact?: boolean })
       if (error) throw error;
       if (b.sheet_row_index) {
         try { await sheet({ action: "updateCell", sheetName: SHEET_TAB, rowIndex: b.sheet_row_index, col: "E", value: status }); }
-        catch (e: any) { toast({ title: "앱에는 저장, 시트 반영 실패", description: e.message, variant: "destructive" }); }
+        catch (e: any) {
+          await db.from("blade_sharpenings").update({ sheet_synced: false }).eq("id", b.id);
+          toast({ title: "앱에는 저장, 시트 반영 실패", description: e.message, variant: "destructive" });
+        }
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["blade-sharpenings"] }),
+  });
+
+  const retrySync = useMutation({
+    mutationFn: async (b: Blade) => {
+      if (b.sheet_row_index) {
+        await sheet({ action: "updateCell", sheetName: SHEET_TAB, rowIndex: b.sheet_row_index, col: "E", value: b.status });
+        await db.from("blade_sharpenings").update({ sheet_synced: true }).eq("id", b.id);
+      } else {
+        const link = `=HYPERLINK("${APP_URL}/blades?blade=${b.id}","사진 ${b.photo_paths.length}장")`;
+        const res = await sheet({ action: "addRow", sheetName: SHEET_TAB, values: [b.customer_name, b.branch, String(b.quantity), link, b.status, b.notes || ""] });
+        const m = (res?.result?.updates?.updatedRange as string | undefined)?.match(/!(?:[A-Z]+)(\d+)/);
+        await db.from("blade_sharpenings").update({ sheet_synced: true, sheet_row_index: m ? Number(m[1]) : null }).eq("id", b.id);
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["blade-sharpenings"] }); toast({ title: "시트에 다시 반영했습니다" }); },
+    onError: (e: any) => toast({ title: "시트 반영 실패", description: e.message, variant: "destructive" }),
   });
 
   const remove = useMutation({
@@ -113,6 +132,15 @@ export function BladeSharpeningPanel({ compact = false }: { compact?: boolean })
             <div className="min-w-0 flex-1">
               <p className="font-semibold truncate">{b.customer_name} <span className="text-xs text-muted-foreground">· {b.branch} · {b.quantity}개</span></p>
               <p className="text-xs text-muted-foreground truncate">{new Date(b.created_at).toLocaleDateString("ko-KR")}{b.notes ? ` · ${b.notes}` : ""}</p>
+              <div className="flex items-center gap-2 mt-1">
+                {b.sheet_synced
+                  ? <span className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400">시트 반영됨</span>
+                  : <span className="text-[11px] px-1.5 py-0.5 rounded bg-red-950/60 text-red-400">시트 미반영</span>}
+                {!b.sheet_synced && (
+                  <button className="text-[11px] text-primary underline disabled:opacity-50" disabled={retrySync.isPending}
+                    onClick={() => retrySync.mutate(b)}>{retrySync.isPending && retrySync.variables?.id === b.id ? "재시도 중…" : "다시 시도"}</button>
+                )}
+              </div>
             </div>
             <Select value={b.status} onValueChange={s => changeStatus.mutate({ b, status: s })}>
               <SelectTrigger className="h-8 w-[104px] text-xs"><SelectValue /></SelectTrigger>
