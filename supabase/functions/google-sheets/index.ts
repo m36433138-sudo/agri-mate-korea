@@ -97,7 +97,30 @@ serve(async (req) => {
     if (!sheetId) throw new Error("GOOGLE_SHEETS_ID is not configured");
 
     const body = await req.json();
-    const { tab, action, rowIndex, sheetName } = body;
+    const { tab, action, rowIndex } = body;
+    let sheetName: string | undefined = body.sheetName;
+
+    // 탭 이름의 공백/대소문자 차이를 실제 탭 이름으로 보정
+    if (sheetName && action) {
+      try {
+        const tok = await getAccessToken();
+        const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`, {
+          headers: { Authorization: `Bearer ${tok}` },
+        });
+        if (metaRes.ok) {
+          const meta = await metaRes.json();
+          const titles: string[] = (meta.sheets || []).map((s: any) => s.properties.title);
+          const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+          const hit = titles.find(t => t === sheetName) || titles.find(t => norm(t) === norm(sheetName!));
+          if (hit) sheetName = hit;
+          else if (action === "addRow" || action === "updateCell") {
+            throw new Error(`시트에 '${sheetName}' 탭이 없습니다. 현재 탭: ${titles.join(", ")}`);
+          }
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith("시트에")) throw e;
+      }
+    }
 
     // WRITE operation — mark row as complete
     if (action === "markComplete") {
