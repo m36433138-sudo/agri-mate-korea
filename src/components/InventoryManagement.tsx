@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes } from "lucide-react";
+import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes, Lightbulb } from "lucide-react";
 import * as XLSX from "xlsx";
+import PartTipsDialog from "@/components/parts/PartTipsDialog";
 
 type InventoryItem = {
   id: string;
@@ -45,6 +46,7 @@ export default function InventoryManagement() {
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [tipsItem, setTipsItem] = useState<InventoryItem | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
