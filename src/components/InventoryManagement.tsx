@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes } from "lucide-react";
+import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes, Lightbulb } from "lucide-react";
 import * as XLSX from "xlsx";
+import PartTipsDialog from "@/components/parts/PartTipsDialog";
 
 type InventoryItem = {
   id: string;
@@ -45,6 +46,7 @@ export default function InventoryManagement() {
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [tipsItem, setTipsItem] = useState<InventoryItem | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -97,6 +99,26 @@ export default function InventoryManagement() {
     },
     enabled: hasSearch, // 검색어 2자 이상일 때만 실행
     staleTime: 1000 * 30, // 30초 캐시
+  });
+
+  // ③ 검색 결과 부품들의 팁 개수 (부품코드 기준, 지점 공통)
+  const partCodes = (searchResults || []).map((i) => i.part_code);
+  const { data: tipCounts = {} } = useQuery({
+    queryKey: ["part-tip-counts", partCodes],
+    enabled: hasSearch && partCodes.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("part_tips")
+        .select("part_code")
+        .in("part_code", partCodes);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data as { part_code: string }[]).forEach((t) => {
+        counts[t.part_code] = (counts[t.part_code] || 0) + 1;
+      });
+      return counts;
+    },
+    staleTime: 1000 * 60,
   });
 
   const deleteMutation = useMutation({
@@ -297,6 +319,14 @@ export default function InventoryManagement() {
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => setTipsItem(item)} title="부품 팁·사진">
+                            <Lightbulb className={`h-3.5 w-3.5 ${tipCounts[item.part_code] ? "text-amber-400" : "text-muted-foreground"}`} />
+                            {!!tipCounts[item.part_code] && (
+                              <span className="absolute -top-0.5 -right-0.5 text-[9px] bg-amber-400/20 text-amber-400 rounded-full px-1 leading-3">
+                                {tipCounts[item.part_code]}
+                              </span>
+                            )}
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditItem(item)}>
                             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
@@ -319,6 +349,14 @@ export default function InventoryManagement() {
         <EditInventoryDialog item={editItem} onOpenChange={(v) => !v && setEditItem(null)} />
       )}
       <BulkInventoryDialog open={bulkOpen} onOpenChange={setBulkOpen} branch={branch} onDownloadTemplate={downloadTemplate} />
+      {tipsItem && (
+        <PartTipsDialog
+          partCode={tipsItem.part_code}
+          partName={tipsItem.part_name}
+          open={!!tipsItem}
+          onOpenChange={(v) => !v && setTipsItem(null)}
+        />
+      )}
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

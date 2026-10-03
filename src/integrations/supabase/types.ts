@@ -1777,6 +1777,42 @@ export type Database = {
           },
         ]
       }
+      part_tips: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          part_code: string
+          part_name: string | null
+          photo_paths: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          part_code: string
+          part_name?: string | null
+          photo_paths?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          part_code?: string
+          part_name?: string | null
+          photo_paths?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       parts: {
         Row: {
           created_at: string
