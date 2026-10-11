@@ -236,6 +236,9 @@ function AddBladeDialog({ open, onClose }: { open: boolean; onClose: () => void 
               <Button type="button" variant="outline" className="h-20 w-20 flex-col" onClick={() => fileRef.current?.click()}>
                 <Plus className="h-5 w-5" /><span className="text-xs">촬영</span>
               </Button>
+              <Button type="button" variant="outline" className="h-20 w-20 flex-col" onClick={() => galleryRef.current?.click()}>
+                <ImagePlus className="h-5 w-5" /><span className="text-xs">갤러리</span>
+              </Button>
             </div>
           </div>
           <div>
