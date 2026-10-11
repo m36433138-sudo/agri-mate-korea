@@ -164,6 +164,7 @@ function AddBladeDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const qc = useQueryClient();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [branch, setBranch] = useState("장흥");
