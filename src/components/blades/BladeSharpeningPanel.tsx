@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, Loader2, Plus, Scissors, Trash2 } from "lucide-react";
+import { Camera, ImagePlus, Loader2, Plus, Scissors, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -164,6 +164,7 @@ function AddBladeDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const qc = useQueryClient();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [branch, setBranch] = useState("장흥");
@@ -222,6 +223,8 @@ function AddBladeDialog({ open, onClose }: { open: boolean; onClose: () => void 
             <Label>사진</Label>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple hidden
               onChange={e => { setFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ""; }} />
+            <input ref={galleryRef} type="file" accept="image/*" multiple hidden
+              onChange={e => { setFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ""; }} />
             <div className="flex flex-wrap gap-2 mt-1">
               {files.map((f, i) => (
                 <div key={i} className="relative">
@@ -232,6 +235,9 @@ function AddBladeDialog({ open, onClose }: { open: boolean; onClose: () => void 
               ))}
               <Button type="button" variant="outline" className="h-20 w-20 flex-col" onClick={() => fileRef.current?.click()}>
                 <Plus className="h-5 w-5" /><span className="text-xs">촬영</span>
+              </Button>
+              <Button type="button" variant="outline" className="h-20 w-20 flex-col" onClick={() => galleryRef.current?.click()}>
+                <ImagePlus className="h-5 w-5" /><span className="text-xs">갤러리</span>
               </Button>
             </div>
           </div>
