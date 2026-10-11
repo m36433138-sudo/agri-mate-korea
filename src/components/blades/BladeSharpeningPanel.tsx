@@ -223,6 +223,8 @@ function AddBladeDialog({ open, onClose }: { open: boolean; onClose: () => void 
             <Label>사진</Label>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple hidden
               onChange={e => { setFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ""; }} />
+            <input ref={galleryRef} type="file" accept="image/*" multiple hidden
+              onChange={e => { setFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ""; }} />
             <div className="flex flex-wrap gap-2 mt-1">
               {files.map((f, i) => (
                 <div key={i} className="relative">
