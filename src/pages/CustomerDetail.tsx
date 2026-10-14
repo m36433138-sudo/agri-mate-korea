@@ -248,15 +248,15 @@ export default function CustomerDetail() {
 
       {/* 구글 드라이브 링크 */}
       <Card className="shadow-card border-0 mb-6">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
+          <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
             사진/서류 (드라이브)
             {driveLinks && driveLinks.length > 0 && (
               <span className="text-sm font-normal text-muted-foreground">({driveLinks.length})</span>
             )}
           </CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
+          <Button size="sm" variant="outline" className="shrink-0" onClick={() => setLinkOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> 링크 추가
           </Button>
         </CardHeader>
@@ -299,12 +299,12 @@ export default function CustomerDetail() {
       </Card>
 
       <Card className="shadow-card border-0 mb-6">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <History className="h-4 w-4 text-muted-foreground" />
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
+          <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
+            <History className="h-4 w-4 shrink-0 text-muted-foreground" />
             보유/구매/이전 기계 ({machineHistory.length})
           </CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setMachineOpen(true)}>
+          <Button size="sm" variant="outline" className="shrink-0" onClick={() => setMachineOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> 기계 추가
           </Button>
         </CardHeader>
@@ -328,18 +328,18 @@ export default function CustomerDetail() {
                   "bg-muted text-muted-foreground border-border";
 
                 return (
-                  <div key={m.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors group">
-                    <Link to={`/machines/${m.id}`} className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{m.model_name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{m.serial_number}</p>
-                      {(m as any).engine_number && <p className="text-xs text-muted-foreground">엔진: {(m as any).engine_number}</p>}
+                  <div key={m.id} className="flex flex-col gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <Link to={`/machines/${m.id}`} className="min-w-0 sm:flex-1">
+                      <p className="text-sm font-medium [overflow-wrap:anywhere]">{m.model_name}</p>
+                      <p className="text-xs text-muted-foreground font-mono [overflow-wrap:anywhere]">{m.serial_number}</p>
+                      {(m as any).engine_number && <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">엔진: {(m as any).engine_number}</p>}
                     </Link>
-                    <div className="flex items-center gap-3 text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
-                        {(m as any).classification && <Badge variant="outline" className="text-xs">{(m as any).classification}</Badge>}
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 sm:justify-end sm:text-right">
+                      <div className="flex flex-wrap items-center gap-1 sm:flex-col sm:items-end">
+                        <span className={`whitespace-nowrap text-xs px-2 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
+                        {(m as any).classification && <Badge variant="outline" className="whitespace-nowrap text-xs">{(m as any).classification}</Badge>}
                       </div>
-                      <div className="flex flex-col items-end text-xs text-muted-foreground">
+                      <div className="flex min-w-0 flex-col text-xs text-muted-foreground sm:items-end">
                         <span>보유 {m._ownershipDays.toLocaleString()}일</span>
                         {m._lastEventDate && <span>마지막 거래 {formatDate(m._lastEventDate)}</span>}
                       </div>
@@ -347,7 +347,8 @@ export default function CustomerDetail() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="ml-auto h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive sm:ml-0 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                          aria-label={`${m.model_name} 삭제`}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
