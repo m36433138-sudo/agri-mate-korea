@@ -371,7 +371,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
 
         <DialogFooter className="flex justify-between">
           <div>
-            {initialData && isReceivable && !initialData.is_paid && (
+            {live && isReceivable && !live.is_paid && (
               <Button
                 variant="outline"
                 type="button"
