@@ -52,6 +52,46 @@ export default function ErrorCodeLog() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [onlyUnresolved, setOnlyUnresolved] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickedRepair, setPickedRepair] = useState<RepairPick | null>(null);
+  const [repairSearch, setRepairSearch] = useState("");
+
+  const { data: repairOptions = [], isLoading: repairsLoading } = useQuery({
+    queryKey: ["error-code-repair-picker"],
+    enabled: pickerOpen,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("repairs")
+        .select("id, repair_date, technician, repair_content, machines(id, model_name, serial_number, customer_id, customers(name))")
+        .order("repair_date", { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      return (data ?? []) as unknown as RepairPick[];
+    },
+  });
+
+  const repairMatches = useMemo(() => {
+    const kw = repairSearch.trim().toLowerCase();
+    const list = kw
+      ? repairOptions.filter((r) =>
+          [
+            r.machines?.customers?.name,
+            r.machines?.model_name,
+            r.machines?.serial_number,
+            r.technician,
+            r.repair_content,
+            r.repair_date,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(kw),
+        )
+      : repairOptions;
+    return list.slice(0, 50);
+  }, [repairOptions, repairSearch]);
+
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["error-code-log"],
