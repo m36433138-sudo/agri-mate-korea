@@ -152,15 +152,21 @@ export default function ErrorCodeLog() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <AlertTriangle className="h-6 w-6 text-amber-400" />
-          에러코드 기록
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          수리이력에 기록된 에러코드·증상·조치 내용을 한 곳에서 검색합니다.
-        </p>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <AlertTriangle className="h-6 w-6 text-amber-400" />
+            에러코드 기록
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            수리이력에 기록된 에러코드·증상·조치 내용을 한 곳에서 검색합니다.
+          </p>
+        </div>
+        <Button className="shrink-0 gap-1.5 w-full sm:w-auto" onClick={() => setPickerOpen(true)}>
+          <Plus className="h-4 w-4" /> 에러코드 등록
+        </Button>
       </div>
+
 
       <div className="grid grid-cols-3 gap-3">
         <Card className="shadow-card border-0">
