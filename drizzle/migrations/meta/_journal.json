@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792329348424,
+      "tag": "0000_error_code_record_photos",
+      "breakpoints": true
+    }
+  ]
+}

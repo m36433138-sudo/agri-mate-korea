@@ -1,0 +1,2 @@
+# Architecture rules
+- Error-code records retain independent photo paths in a private bucket; batch creation uploads before one atomic insert and cleans up on failure so records can be deleted independently.
