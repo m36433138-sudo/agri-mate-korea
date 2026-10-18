@@ -9,23 +9,29 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Trash2, Plus } from "lucide-react";
 import { useFinance } from "@/hooks/useFinance";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
-import type { FinanceRecord, FinanceRecordType } from "@/types/workspace";
-import { FINANCE_TYPE_LABELS } from "@/types/workspace";
+import type { FinanceRecord, FinanceRecordType, FinanceSourceType } from "@/types/workspace";
+import {
+  FINANCE_TYPE_LABELS, SOURCE_TYPE_LABELS, PAYMENT_METHODS, outstandingOf,
+} from "@/types/workspace";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   initialData?: FinanceRecord;
   defaultDocumentId?: string;
+  defaultCustomerId?: string;
 }
 
-export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: Props) {
+const fmt = (n: number) => `₩${Number(n).toLocaleString("ko-KR")}`;
+
+export function FinanceModal({ open, onClose, initialData, defaultDocumentId, defaultCustomerId }: Props) {
   const { userId } = useUserRole();
-  const { addFinance, updateFinance, markPaid } = useFinance();
+  const { addFinance, updateFinance, markPaid, addPayment, deletePayment } = useFinance();
   const { documents } = useDocuments();
   const { toast } = useToast();
 
@@ -33,6 +39,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
 
   const [form, setForm] = useState({
     record_type: "receivable" as string,
+    source_type: "manual" as string,
     customer_id: "",
     document_id: defaultDocumentId ?? "",
     amount: "",
@@ -42,10 +49,19 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
     notes: "",
   });
 
+  // 부분 입금 입력 폼
+  const [pay, setPay] = useState({
+    amount: "",
+    paid_date: today,
+    method: "계좌이체",
+    notes: "",
+  });
+
   useEffect(() => {
     if (initialData) {
       setForm({
         record_type: initialData.record_type,
+        source_type: initialData.source_type ?? "manual",
         customer_id: initialData.customer_id ?? "",
         document_id: initialData.document_id ?? "",
         amount: initialData.amount?.toString() ?? "",
@@ -57,7 +73,8 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
     } else {
       setForm({
         record_type: "receivable",
-        customer_id: "",
+        source_type: "manual",
+        customer_id: defaultCustomerId ?? "",
         document_id: defaultDocumentId ?? "",
         amount: "",
         due_date: "",
@@ -66,10 +83,18 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
         notes: "",
       });
     }
-  }, [initialData, open, defaultDocumentId]);
+    setPay({ amount: "", paid_date: today, method: "계좌이체", notes: "" });
+  }, [initialData, open, defaultDocumentId, defaultCustomerId]);
 
   const set = (key: string, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const isReceivable = form.record_type === "receivable";
+  const currentPaid = Number(initialData?.paid_amount ?? 0);
+  const balance = initialData ? outstandingOf(initialData) : 0;
+  const payments = (initialData?.finance_payments ?? [])
+    .slice()
+    .sort((a, b) => (b.paid_date > a.paid_date ? 1 : -1));
 
   const handleSubmit = async () => {
     if (!form.amount || !userId) return;
@@ -77,6 +102,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
     const payload = {
       created_by: initialData?.created_by ?? userId,
       record_type: form.record_type as FinanceRecordType,
+      source_type: form.source_type as FinanceSourceType,
       customer_id: form.customer_id || null,
       document_id: form.document_id || null,
       amount: Number(form.amount.toString().replace(/,/g, "")),
@@ -89,10 +115,10 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
     try {
       if (initialData) {
         await updateFinance.mutateAsync({ id: initialData.id, ...payload });
-        toast({ title: "재무 기록이 수정됐어요." });
+        toast({ title: "미수금 기록이 수정됐어요." });
       } else {
-        await addFinance.mutateAsync(payload);
-        toast({ title: "재무 기록이 저장됐어요." });
+        await addFinance.mutateAsync({ ...payload, paid_amount: 0, source_id: null } as any);
+        toast({ title: "미수금이 저장됐어요." });
       }
       onClose();
     } catch {
@@ -103,7 +129,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
   const handleMarkPaid = async () => {
     if (!initialData) return;
     try {
-      await markPaid.mutateAsync({ id: initialData.id, paid_date: today });
+      await markPaid.mutateAsync({ id: initialData.id, paid_date: today, amount: Number(initialData.amount) });
       toast({ title: "입금 처리됐어요." });
       onClose();
     } catch {
@@ -111,11 +137,42 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
     }
   };
 
+  const handleAddPayment = async () => {
+    if (!initialData || !userId || !pay.amount) return;
+    const amt = Number(pay.amount.replace(/,/g, ""));
+    if (!amt || amt <= 0) return;
+    try {
+      await addPayment.mutateAsync({
+        finance_id: initialData.id,
+        amount: amt,
+        paid_date: pay.paid_date || today,
+        method: pay.method || null,
+        notes: pay.notes || null,
+        created_by: userId,
+        totalAmount: Number(initialData.amount),
+        currentPaid,
+      });
+      toast({ title: "입금이 기록됐어요." });
+      setPay({ amount: "", paid_date: today, method: "계좌이체", notes: "" });
+    } catch {
+      toast({ title: "입금 기록 실패", variant: "destructive" });
+    }
+  };
+
+  const handleDeletePayment = async (p: (typeof payments)[number]) => {
+    try {
+      await deletePayment.mutateAsync(p);
+      toast({ title: "입금 기록이 삭제됐어요." });
+    } catch {
+      toast({ title: "삭제 실패", variant: "destructive" });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initialData ? "재무 수정" : "미수금 등록"}</DialogTitle>
+          <DialogTitle>{initialData ? "미수금 수정" : "미수금 등록"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -135,6 +192,22 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
             </div>
 
             <div className="space-y-1.5">
+              <Label>원천</Label>
+              <Select value={form.source_type} onValueChange={(v) => set("source_type", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SOURCE_TYPE_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
               <Label>금액 (원) *</Label>
               <Input
                 type="number"
@@ -143,24 +216,12 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
                 placeholder="예: 5000000"
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>만기일</Label>
               <Input
                 type="date"
                 value={form.due_date}
                 onChange={(e) => set("due_date", e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>입금일</Label>
-              <Input
-                type="date"
-                value={form.paid_date}
-                onChange={(e) => set("paid_date", e.target.value)}
               />
             </div>
           </div>
@@ -196,11 +257,100 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
               rows={2}
             />
           </div>
+
+          {/* ── 입금 내역 (수정 시 · 미수금 건만) ── */}
+          {initialData && isReceivable && (
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">입금 내역</Label>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">잔액 </span>
+                  <span className={balance > 0 ? "font-semibold text-destructive" : "font-semibold text-green-500"}>
+                    {fmt(balance)}
+                  </span>
+                  {initialData.is_paid && <span className="ml-2 text-xs text-green-500">완납</span>}
+                </div>
+              </div>
+
+              {payments.length > 0 && (
+                <div className="space-y-1.5">
+                  {payments.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <span className="font-medium">{fmt(p.amount)}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {p.paid_date}
+                          {p.method ? ` · ${p.method}` : ""}
+                          {p.notes ? ` · ${p.notes}` : ""}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeletePayment(p)}
+                        disabled={deletePayment.isPending}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!initialData.is_paid && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      placeholder="입금액 (원)"
+                      value={pay.amount}
+                      onChange={(e) => setPay((p) => ({ ...p, amount: e.target.value }))}
+                    />
+                    <Input
+                      type="date"
+                      value={pay.paid_date}
+                      onChange={(e) => setPay((p) => ({ ...p, paid_date: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={pay.method} onValueChange={(v) => setPay((p) => ({ ...p, method: v }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder="메모 (선택)"
+                      value={pay.notes}
+                      onChange={(e) => setPay((p) => ({ ...p, notes: e.target.value }))}
+                    />
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    onClick={handleAddPayment}
+                    disabled={!pay.amount || addPayment.isPending}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> 입금 기록 추가
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex justify-between">
           <div>
-            {initialData && !initialData.is_paid && (
+            {initialData && isReceivable && !initialData.is_paid && (
               <Button
                 variant="outline"
                 type="button"
@@ -208,7 +358,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId }: 
                 disabled={markPaid.isPending}
                 className="text-green-600 border-green-200 hover:bg-green-50"
               >
-                ✓ 입금 처리
+                ✓ 전액 입금 처리
               </Button>
             )}
           </div>
