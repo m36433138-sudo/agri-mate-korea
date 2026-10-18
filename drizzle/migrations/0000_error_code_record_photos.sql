@@ -1,0 +1,4 @@
+ALTER TABLE public.repair_error_codes ADD COLUMN IF NOT EXISTS photo_paths text[] NOT NULL DEFAULT '{}';
+CREATE POLICY "Staff read error code photos" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'error-code-photos' AND public.is_staff(auth.uid()));
+CREATE POLICY "Staff upload error code photos" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'error-code-photos' AND public.is_staff(auth.uid()));
+CREATE POLICY "Staff delete error code photos" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'error-code-photos' AND public.is_staff(auth.uid()));

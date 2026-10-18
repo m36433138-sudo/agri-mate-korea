@@ -2067,6 +2067,7 @@ export type Database = {
           id: string
           is_resolved: boolean
           notes: string | null
+          photo_paths: string[]
           repair_id: string
           resolved_at: string | null
           symptom: string | null
@@ -2080,6 +2081,7 @@ export type Database = {
           id?: string
           is_resolved?: boolean
           notes?: string | null
+          photo_paths?: string[]
           repair_id: string
           resolved_at?: string | null
           symptom?: string | null
@@ -2093,6 +2095,7 @@ export type Database = {
           id?: string
           is_resolved?: boolean
           notes?: string | null
+          photo_paths?: string[]
           repair_id?: string
           resolved_at?: string | null
           symptom?: string | null

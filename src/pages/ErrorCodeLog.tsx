@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle2, Loader2, Search } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
+import ErrorCodePhotos from "@/components/ErrorCodePhotos";
 
 type Row = {
   id: string;
@@ -21,6 +22,7 @@ type Row = {
   resolved_at: string | null;
   notes: string | null;
   created_at: string;
+  photo_paths: string[];
   repairs: {
     id: string;
     repair_date: string;
@@ -221,9 +223,10 @@ export default function ErrorCodeLog() {
                   )}
                 </div>
 
-                {r.symptom && <p className="text-sm"><span className="text-muted-foreground">증상 </span>{r.symptom}</p>}
-                {r.action_taken && <p className="text-sm"><span className="text-muted-foreground">조치 </span>{r.action_taken}</p>}
-                {r.notes && <p className="text-xs text-muted-foreground">{r.notes}</p>}
+                {r.symptom && <p className="text-sm whitespace-pre-wrap break-words"><span className="text-muted-foreground">증상 </span>{r.symptom}</p>}
+                {r.action_taken && <p className="text-sm whitespace-pre-wrap break-words"><span className="text-muted-foreground">조치 방법 </span>{r.action_taken}</p>}
+                {r.notes && <p className="text-xs text-muted-foreground break-words">{r.notes}</p>}
+                <ErrorCodePhotos paths={r.photo_paths ?? []} />
               </CardContent>
             </Card>
           ))}
