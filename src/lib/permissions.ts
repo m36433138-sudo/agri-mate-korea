@@ -89,6 +89,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    group: "재무",
+    items: [
+      { key: "view_receivables", label: "미수금 조회" },
+      { key: "manage_receivables", label: "미수금 등록·입금 처리", requires: "view_receivables" },
+    ],
+  },
+  {
     group: "통계 · 근태",
     items: [
       { key: "view_stats", label: "실적 현황 조회" },
@@ -133,6 +140,7 @@ export const PERMISSION_PRESETS: Record<string, { label: string; keys: Permissio
       "view_quotes", "manage_quotes",
       "view_insurance",
       "view_attachments", "view_stats", "view_knowledge",
+      "view_receivables",
     ],
   },
   사무팀: {
@@ -146,6 +154,7 @@ export const PERMISSION_PRESETS: Record<string, { label: string; keys: Permissio
       "view_insurance", "manage_insurance",
       "view_quotes", "manage_quotes",
       "view_assets", "manage_assets",
+      "view_receivables", "manage_receivables",
       "view_stats", "view_overtime",
       "view_knowledge", "manage_knowledge",
       "view_repair_templates", "manage_repair_templates",

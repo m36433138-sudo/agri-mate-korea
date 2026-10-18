@@ -60,22 +60,44 @@ export interface Document {
   machines?: { id: string; model_name: string; serial_number: string } | null;
 }
 
+export type FinanceSourceType = 'quotation' | 'repair' | 'parts' | 'manual';
+
+export interface FinancePayment {
+  id: string;
+  finance_id: string;
+  amount: number;
+  paid_date: string;
+  method: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface FinanceRecord {
   id: string;
   created_by: string;
   record_type: FinanceRecordType;
   customer_id: string | null;
   document_id: string | null;
+  source_type: FinanceSourceType;
+  source_id: string | null;
   amount: number;
+  paid_amount: number;
   due_date: string | null;
   paid_date: string | null;
   is_paid: boolean;
   notes: string | null;
   created_at: string;
+  updated_at: string;
   // joined
   customers?: { id: string; name: string } | null;
   documents?: { id: string; title: string; doc_type: string } | null;
+  finance_payments?: FinancePayment[];
 }
+
+/** 미수금 잔액 (금액 - 입금 누계) */
+export const outstandingOf = (f: Pick<FinanceRecord, "amount" | "paid_amount">) =>
+  Math.max(0, Number(f.amount) - Number(f.paid_amount ?? 0));
 
 export interface WorkspaceFilters {
   myOnly: boolean;
@@ -214,3 +236,12 @@ export const FINANCE_TYPE_LABELS: Record<FinanceRecordType, string> = {
   payment:    '입금',
   refund:     '환불',
 };
+
+export const SOURCE_TYPE_LABELS: Record<FinanceSourceType, string> = {
+  quotation: '견적·판매',
+  repair:    '수리비',
+  parts:     '부품 판매',
+  manual:    '직접 입력',
+};
+
+export const PAYMENT_METHODS = ['계좌이체', '현금', '카드', '상품권', '기타'];
