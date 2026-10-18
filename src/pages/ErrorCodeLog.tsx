@@ -8,9 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle2, Loader2, Search } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Plus, Search, Wrench } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 import ErrorCodePhotos from "@/components/ErrorCodePhotos";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import RepairErrorCodeDialog from "@/components/RepairErrorCodeDialog";
+
+type RepairPick = {
+  id: string;
+  repair_date: string;
+  technician: string | null;
+  repair_content: string | null;
+  machines: any;
+};
 
 type Row = {
   id: string;
