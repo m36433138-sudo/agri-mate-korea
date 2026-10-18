@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package,
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
   ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin, Landmark, FileText,
-  BookOpen, ShieldCheck,
+  BookOpen, ShieldCheck, Wallet,
   AlertTriangle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -74,6 +74,7 @@ export function AppSidebar() {
     ...(hasPermission("view_machines") ? [{ title: "기계관리", url: "/machines", icon: Tractor }] : []),
     ...(hasPermission("view_attachments") ? [{ title: "작업기 관리", url: "/attachments", icon: Tractor }] : []),
     ...(hasPermission("view_customers") ? [{ title: "고객관리", url: "/customers", icon: Users }] : []),
+    ...(hasPermission("view_receivables") ? [{ title: "미수금 관리", url: "/receivables", icon: Wallet }] : []),
     ...(hasPermission("view_repairs") || hasPermission("manage_repairs") ? [{ title: "수리이력", url: "/repairs", icon: Wrench }] : []),
     ...(hasPermission("view_repairs") ? [{ title: "에러코드 기록", url: "/error-codes", icon: AlertTriangle }] : []),
     ...(hasPermission("view_parts") ? [{ title: "부품관리", url: "/parts", icon: Package }] : []),

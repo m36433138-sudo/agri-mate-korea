@@ -14,6 +14,8 @@ import { formatPrice, formatDate } from "@/lib/formatters";
 import { TypeBadge } from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
+import { useFinance } from "@/hooks/useFinance";
+import { outstandingOf } from "@/types/workspace";
 
 // ── Glass card component ──
 function GlassCard({
@@ -56,6 +58,10 @@ export default function Dashboard() {
   useRealtimeSync("repairs", [["repairs-recent"]]);
   useRealtimeSync("customers", [["customers-count"]]);
   useRealtimeSync("inventory", [["parts-count"]]);
+  const { finance } = useFinance();
+  const receivableOutstanding = finance
+    .filter((f) => f.record_type === "receivable" && !f.is_paid)
+    .reduce((s, f) => s + outstandingOf(f), 0);
 
   const { data: machines, isLoading: ml } = useQuery({
     queryKey: ["machines"],
@@ -448,7 +454,7 @@ export default function Dashboard() {
           </div>
 
           {/* Quick stats grid */}
-          <div className="grid grid-cols-2 gap-3 mt-6 pt-5 border-t border-border/40">
+          <div className="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-border/40">
             <div className="rounded-2xl bg-accent/50 p-4 text-center">
               <p className="text-2xl font-extrabold tabular-nums text-foreground">
                 {loading ? "–" : inStock.length}
@@ -461,6 +467,21 @@ export default function Dashboard() {
               </p>
               <p className="text-xs text-muted-foreground mt-1">등록 부품</p>
             </div>
+            <Link
+              to="/receivables"
+              className="rounded-2xl bg-accent/50 p-4 text-center block hover:bg-accent/70 transition-colors"
+            >
+              <p className="text-2xl font-extrabold tabular-nums text-foreground">
+                {loading
+                  ? "–"
+                  : receivableOutstanding >= 100000000
+                    ? `${(receivableOutstanding / 100000000).toFixed(1)}억`
+                    : receivableOutstanding >= 10000
+                      ? `${Math.round(receivableOutstanding / 10000).toLocaleString("ko-KR")}만`
+                      : receivableOutstanding.toLocaleString("ko-KR")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">미수금 잔액</p>
+            </Link>
           </div>
         </GlassCard>
       </div>

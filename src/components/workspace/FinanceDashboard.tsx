@@ -39,7 +39,7 @@ export function FinanceDashboard({ filters, onAdd, onEdit }: Props) {
 
   // 요약 통계
   const unpaid = finance.filter((f) => !f.is_paid && f.record_type === "receivable");
-  const totalReceivable = unpaid.reduce((sum, f) => sum + Number(f.amount), 0);
+  const totalReceivable = unpaid.reduce((sum, f) => sum + Math.max(0, Number(f.amount) - Number(f.paid_amount ?? 0)), 0);
   const overdueCount = unpaid.filter((f) => f.due_date && f.due_date < today).length;
 
   const thisMonth = new Date().toISOString().slice(0, 7);
@@ -59,7 +59,7 @@ export function FinanceDashboard({ filters, onAdd, onEdit }: Props) {
 
   const handleMarkPaid = async (record: FinanceRecord) => {
     try {
-      await markPaid.mutateAsync({ id: record.id, paid_date: today });
+      await markPaid.mutateAsync({ id: record.id, paid_date: today, amount: Number(record.amount) });
       toast({ title: "입금 처리됐어요." });
     } catch {
       toast({ title: "처리 실패", variant: "destructive" });

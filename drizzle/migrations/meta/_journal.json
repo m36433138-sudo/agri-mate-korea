@@ -8,6 +8,13 @@
       "when": 1792329348424,
       "tag": "0000_error_code_record_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792332111597,
+      "tag": "0001_create_receivables_tables",
+      "breakpoints": true
     }
   ]
 }
