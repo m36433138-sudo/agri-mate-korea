@@ -12,6 +12,7 @@ import {
 import { Trash2, Plus } from "lucide-react";
 import { useFinance } from "@/hooks/useFinance";
 import { useDocuments } from "@/hooks/useDocuments";
+import { CustomerSearchInput } from "@/components/CustomerSearchInput";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
 import type { FinanceRecord, FinanceRecordType, FinanceSourceType } from "@/types/workspace";
@@ -57,6 +58,8 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
     notes: "",
   });
 
+  const [customerName, setCustomerName] = useState("");
+
   useEffect(() => {
     if (initialData) {
       setForm({
@@ -70,6 +73,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
         is_paid: initialData.is_paid,
         notes: initialData.notes ?? "",
       });
+      setCustomerName(initialData.customers?.name ?? "");
     } else {
       setForm({
         record_type: "receivable",
@@ -82,6 +86,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
         is_paid: false,
         notes: "",
       });
+      setCustomerName("");
     }
     setPay({ amount: "", paid_date: today, method: "계좌이체", notes: "" });
   }, [initialData, open, defaultDocumentId, defaultCustomerId]);
@@ -204,6 +209,20 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>고객</Label>
+            <CustomerSearchInput
+              value={customerName}
+              onChange={(name) => {
+                setCustomerName(name);
+                // 직접 입력으로 이름이 바뀌면 연결된 고객 해제
+                if (initialData?.customers?.name !== name) setForm((f) => ({ ...f, customer_id: "" }));
+              }}
+              onSelect={(c) => setForm((f) => ({ ...f, customer_id: c.id }))}
+              placeholder="고객 검색 (선택사항)"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
