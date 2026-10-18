@@ -6,6 +6,7 @@ import CursorGlow from "@/components/CursorGlow";
 import { useLocation, Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { useMessengerNotifications } from "@/hooks/useMessengerNotifications";
+import { useReceivablesAlert } from "@/hooks/useReceivablesAlert";
 
 // 경로 → 페이지 이름 매핑
 const PAGE_LABELS: Record<string, string> = {
@@ -24,6 +25,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/my-page": "마이페이지",
   "/vendors": "업체관리",
   "/assets": "자산관리",
+  "/receivables": "미수금 관리",
 };
 
 function Breadcrumb() {
@@ -65,6 +67,7 @@ function Breadcrumb() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   useMessengerNotifications();
+  useReceivablesAlert();
   return (
     <SidebarProvider>
       <CursorGlow />

@@ -10,13 +10,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink, History } from "lucide-react";
+import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink, History, Wallet } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { Customer, Machine, Repair } from "@/types/database";
 import { CustomerGradeBadge } from "@/pages/CustomersList";
 import LastModifiedInfo from "@/components/LastModifiedInfo";
+import { FinanceModal } from "@/components/workspace/modals/FinanceModal";
+import type { FinanceRecord } from "@/types/workspace";
+import { outstandingOf, SOURCE_TYPE_LABELS } from "@/types/workspace";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 
@@ -25,6 +28,8 @@ export default function CustomerDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [machineOpen, setMachineOpen] = useState(false);
+  const [financeOpen, setFinanceOpen] = useState(false);
+  const [editFinance, setEditFinance] = useState<FinanceRecord | undefined>();
   const qc = useQueryClient();
   const { toast } = useToast();
 
@@ -79,6 +84,20 @@ export default function CustomerDetail() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["customer-drive-links", id] }),
     onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
+  });
+
+  const { data: receivables } = useQuery({
+    queryKey: ["customer-receivables", id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("finance_records")
+        .select("*, documents(title), finance_payments(*)")
+        .eq("customer_id", id!)
+        .eq("record_type", "receivable")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as FinanceRecord[];
+    },
   });
 
   const deleteMachineMutation = useMutation({
@@ -298,6 +317,68 @@ export default function CustomerDetail() {
         </CardContent>
       </Card>
 
+      {/* 미수금 */}
+      <Card className="shadow-card border-0 mb-6">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
+          <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
+            <Wallet className="h-4 w-4 shrink-0 text-muted-foreground" />
+            미수금
+            {receivables && receivables.some((r) => !r.is_paid) && (
+              <Badge variant="secondary" className="text-xs">
+                잔액 {formatPrice(receivables.filter((r) => !r.is_paid).reduce((s, r) => s + outstandingOf(r), 0))}
+              </Badge>
+            )}
+          </CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            onClick={() => { setEditFinance(undefined); setFinanceOpen(true); }}
+          >
+            <Plus className="h-4 w-4 mr-1" /> 미수금 등록
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!receivables || receivables.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">미수금이 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {receivables.map((r) => {
+                const balance = outstandingOf(r);
+                const todayStr = new Date().toISOString().slice(0, 10);
+                const overdue = !r.is_paid && !!r.due_date && r.due_date < todayStr;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => { setEditFinance(r); setFinanceOpen(true); }}
+                    className="w-full text-left flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {r.documents?.title || r.notes || `${SOURCE_TYPE_LABELS[r.source_type] ?? "미수금"} 미수금`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {r.due_date ? `만기 ${r.due_date}` : `등록 ${r.created_at?.slice(0, 10)}`}
+                        {(r.finance_payments?.length ?? 0) > 0 ? ` · 입금 ${r.finance_payments!.length}회` : ""}
+                      </p>
+                    </div>
+                    {r.is_paid ? (
+                      <Badge className="text-[11px] bg-green-950/60 text-green-400 shrink-0">완납</Badge>
+                    ) : overdue ? (
+                      <Badge className="text-[11px] bg-destructive/15 text-destructive shrink-0">연체</Badge>
+                    ) : null}
+                    <span className={`text-sm font-bold tabular-nums shrink-0 ${balance > 0 ? "text-destructive" : "text-green-500"}`}>
+                      {formatPrice(balance)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="shadow-card border-0 mb-6">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
           <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
@@ -403,6 +484,12 @@ export default function CustomerDetail() {
       {customer && <EditCustomerDialog open={editOpen} onOpenChange={setEditOpen} customer={customer} />}
       <AddDriveLinkDialog open={linkOpen} onOpenChange={setLinkOpen} customerId={id!} />
       <AddMachineForCustomerDialog open={machineOpen} onOpenChange={setMachineOpen} customerId={id!} />
+      <FinanceModal
+        open={financeOpen}
+        onClose={() => { setFinanceOpen(false); setEditFinance(undefined); }}
+        initialData={editFinance}
+        defaultCustomerId={id!}
+      />
     </div>
   );
 }
