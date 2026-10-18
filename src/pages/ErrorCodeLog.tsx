@@ -222,10 +222,14 @@ export default function ErrorCodeLog() {
         </div>
       ) : filtered.length === 0 ? (
         <Card className="shadow-card border-0">
-          <CardContent className="py-12 text-center text-muted-foreground text-sm">
-            기록된 에러코드가 없습니다.
+          <CardContent className="py-12 text-center space-y-3">
+            <p className="text-muted-foreground text-sm">기록된 에러코드가 없습니다.</p>
+            <Button className="gap-1.5" onClick={() => setPickerOpen(true)}>
+              <Plus className="h-4 w-4" /> 에러코드 등록
+            </Button>
           </CardContent>
         </Card>
+
       ) : (
         <div className="grid gap-2">
           {filtered.map((r) => (
@@ -288,6 +292,84 @@ export default function ErrorCodeLog() {
           ))}
         </div>
       )}
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-lg max-h-[85dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-primary" />
+              수리 이력 선택
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-1">
+            에러코드는 수리 이력에 연결되어 저장됩니다. 해당 작업을 찾아 선택해 주세요.
+          </p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={repairSearch}
+              onChange={(e) => setRepairSearch(e.target.value)}
+              placeholder="고객 · 기계 · 제조번호 · 담당 검색"
+              className="pl-9"
+            />
+          </div>
+          {repairsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : repairMatches.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              {repairOptions.length === 0
+                ? "아직 수리 이력이 없습니다."
+                : "검색 결과가 없습니다. 다른 단어로 찾아 보세요."}
+              <Link to="/repairs" className="block mt-2 text-primary underline">
+                수리이력에서 먼저 등록
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {repairMatches.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  className="w-full text-left rounded-lg border border-border bg-card hover:border-primary/60 px-3 py-2.5 min-h-[52px]"
+                  onClick={() => {
+                    setPickedRepair(r);
+                    setPickerOpen(false);
+                  }}
+                >
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="font-medium text-sm truncate">
+                      {r.machines?.model_name || "기계 미지정"}
+                    </span>
+                    {r.machines?.serial_number && (
+                      <span className="font-mono text-xs text-muted-foreground truncate">
+                        {r.machines.serial_number}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {formatDate(r.repair_date)} · {r.machines?.customers?.name || "고객 미지정"} ·{" "}
+                    {r.technician || "담당 미지정"}
+                  </p>
+                  {r.repair_content && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{r.repair_content}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <RepairErrorCodeDialog
+        open={!!pickedRepair}
+        onOpenChange={(v) => {
+          if (!v) setPickedRepair(null);
+        }}
+        repair={pickedRepair}
+      />
     </div>
   );
+
 }
