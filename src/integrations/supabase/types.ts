@@ -629,6 +629,69 @@ export type Database = {
         }
         Relationships: []
       }
+      documents: {
+        Row: {
+          amount: number | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          doc_type: string
+          file_url: string | null
+          id: string
+          issued_date: string
+          machine_id: string | null
+          notes: string | null
+          status: string
+          title: string
+          valid_until: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          doc_type?: string
+          file_url?: string | null
+          id?: string
+          issued_date?: string
+          machine_id?: string | null
+          notes?: string | null
+          status?: string
+          title: string
+          valid_until?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          doc_type?: string
+          file_url?: string | null
+          id?: string
+          issued_date?: string
+          machine_id?: string | null
+          notes?: string | null
+          status?: string
+          title?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_permissions: {
         Row: {
           employee_id: string
@@ -709,6 +772,119 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      finance_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          finance_id: string
+          id: string
+          method: string | null
+          notes: string | null
+          paid_date: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          finance_id: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          paid_date?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          finance_id?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          paid_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_payments_finance_id_fkey"
+            columns: ["finance_id"]
+            isOneToOne: false
+            referencedRelation: "finance_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_records: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          document_id: string | null
+          due_date: string | null
+          id: string
+          is_paid: boolean
+          notes: string | null
+          paid_amount: number
+          paid_date: string | null
+          record_type: string
+          source_id: string | null
+          source_type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          document_id?: string | null
+          due_date?: string | null
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          paid_amount?: number
+          paid_date?: string | null
+          record_type?: string
+          source_id?: string | null
+          source_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          document_id?: string | null
+          due_date?: string | null
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          paid_amount?: number
+          paid_date?: string | null
+          record_type?: string
+          source_id?: string | null
+          source_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_records_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_records_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       insurance_companies: {
         Row: {
