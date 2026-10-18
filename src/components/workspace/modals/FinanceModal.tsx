@@ -32,7 +32,7 @@ const fmt = (n: number) => `₩${Number(n).toLocaleString("ko-KR")}`;
 
 export function FinanceModal({ open, onClose, initialData, defaultDocumentId, defaultCustomerId }: Props) {
   const { userId } = useUserRole();
-  const { addFinance, updateFinance, markPaid, addPayment, deletePayment } = useFinance();
+  const { addFinance, updateFinance, markPaid, addPayment, deletePayment, finance } = useFinance();
   const { documents } = useDocuments();
   const { toast } = useToast();
 
@@ -95,9 +95,11 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
     setForm((f) => ({ ...f, [key]: value }));
 
   const isReceivable = form.record_type === "receivable";
-  const currentPaid = Number(initialData?.paid_amount ?? 0);
-  const balance = initialData ? outstandingOf(initialData) : 0;
-  const payments = (initialData?.finance_payments ?? [])
+  // 목록 쿼리에서 최신 상태를 읽어 입금 후 잔액·내역이 즉시 갱신되게 함
+  const live = initialData ? finance.find((f) => f.id === initialData.id) ?? initialData : undefined;
+  const currentPaid = Number(live?.paid_amount ?? 0);
+  const balance = live ? outstandingOf(live) : 0;
+  const payments = (live?.finance_payments ?? [])
     .slice()
     .sort((a, b) => (b.paid_date > a.paid_date ? 1 : -1));
 
@@ -132,9 +134,9 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
   };
 
   const handleMarkPaid = async () => {
-    if (!initialData) return;
+    if (!live) return;
     try {
-      await markPaid.mutateAsync({ id: initialData.id, paid_date: today, amount: Number(initialData.amount) });
+      await markPaid.mutateAsync({ id: live.id, paid_date: today, amount: Number(live.amount) });
       toast({ title: "입금 처리됐어요." });
       onClose();
     } catch {
@@ -143,18 +145,18 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
   };
 
   const handleAddPayment = async () => {
-    if (!initialData || !userId || !pay.amount) return;
+    if (!live || !userId || !pay.amount) return;
     const amt = Number(pay.amount.replace(/,/g, ""));
     if (!amt || amt <= 0) return;
     try {
       await addPayment.mutateAsync({
-        finance_id: initialData.id,
+        finance_id: live.id,
         amount: amt,
         paid_date: pay.paid_date || today,
         method: pay.method || null,
         notes: pay.notes || null,
         created_by: userId,
-        totalAmount: Number(initialData.amount),
+        totalAmount: Number(live.amount),
         currentPaid,
       });
       toast({ title: "입금이 기록됐어요." });
@@ -278,7 +280,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
           </div>
 
           {/* ── 입금 내역 (수정 시 · 미수금 건만) ── */}
-          {initialData && isReceivable && (
+          {live && isReceivable && (
             <div className="space-y-3 rounded-lg border border-border p-3">
               <div className="flex items-center justify-between">
                 <Label className="text-sm">입금 내역</Label>
@@ -287,7 +289,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
                   <span className={balance > 0 ? "font-semibold text-destructive" : "font-semibold text-green-500"}>
                     {fmt(balance)}
                   </span>
-                  {initialData.is_paid && <span className="ml-2 text-xs text-green-500">완납</span>}
+                  {live.is_paid && <span className="ml-2 text-xs text-green-500">완납</span>}
                 </div>
               </div>
 
@@ -320,7 +322,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
                 </div>
               )}
 
-              {!initialData.is_paid && (
+              {!live.is_paid && (
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <Input
