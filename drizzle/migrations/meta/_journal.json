@@ -15,6 +15,13 @@
       "when": 1792332111597,
       "tag": "0001_create_receivables_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792653910393,
+      "tag": "0002_create_diagrams",
+      "breakpoints": true
     }
   ]
 }
