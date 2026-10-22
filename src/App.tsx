@@ -45,6 +45,7 @@ const Messenger = lazy(() => import("@/pages/Messenger"));
 const ErrorCodeLog = lazy(() => import("@/pages/ErrorCodeLog"));
 const BladeSharpening = lazy(() => import("@/pages/BladeSharpening"));
 const ReceivablesPage = lazy(() => import("@/pages/ReceivablesPage"));
+const DiagramsPage = lazy(() => import("@/pages/DiagramsPage"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
@@ -105,6 +106,7 @@ const App = () => (
                         <Route path="/blades" element={<ProtectedRoute><BladeSharpening /></ProtectedRoute>} />
                         <Route path="/receivables" element={<ProtectedRoute requiredPermission="view_receivables"><ReceivablesPage /></ProtectedRoute>} />
                         <Route path="/parts" element={<ProtectedRoute requiredPermission="view_parts"><PartsList /></ProtectedRoute>} />
+                        <Route path="/diagrams" element={<ProtectedRoute requiredPermission="view_parts"><DiagramsPage /></ProtectedRoute>} />
                         <Route path="/repair-templates" element={<ProtectedRoute requiredPermission="view_repair_templates"><RepairTemplates /></ProtectedRoute>} />
                         <Route path="/chat" element={<ChatBot />} />
                         <Route path="/knowledge" element={<ProtectedRoute requiredPermission="view_knowledge"><KnowledgeBase /></ProtectedRoute>} />
