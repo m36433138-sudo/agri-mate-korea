@@ -21,7 +21,8 @@ type InventoryItem = {
 };
 
 type Props = {
-  branch?: string;
+  /** 지점 필터. null이면 두 지점 모두 검색 */
+  branch?: string | null;
   onSelect: (item: InventoryItem) => void;
   placeholder?: string;
 };
@@ -36,13 +37,14 @@ export default function PartCodeAutocomplete({ branch = "장흥", onSelect, plac
     enabled: search.length >= 3,
     queryFn: async () => {
       const like = `%${search}%`;
-      const { data, error } = await supabase
+      let q = supabase
         .from("inventory")
         .select("id, part_code, part_name, quantity, branch")
-        .eq("branch", branch)
         .or(`part_code.ilike.${like},part_name.ilike.${like}`)
         .order("part_code")
         .limit(15);
+      if (branch) q = q.eq("branch", branch);
+      const { data, error } = await q;
       if (error) throw error;
       return data as InventoryItem[];
     },

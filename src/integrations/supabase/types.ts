@@ -629,6 +629,92 @@ export type Database = {
         }
         Relationships: []
       }
+      diagram_hotspots: {
+        Row: {
+          created_at: string
+          diagram_id: string
+          h: number
+          id: string
+          notes: string | null
+          part_code: string
+          part_name: string | null
+          w: number
+          x: number
+          y: number
+        }
+        Insert: {
+          created_at?: string
+          diagram_id: string
+          h: number
+          id?: string
+          notes?: string | null
+          part_code: string
+          part_name?: string | null
+          w: number
+          x: number
+          y: number
+        }
+        Update: {
+          created_at?: string
+          diagram_id?: string
+          h?: number
+          id?: string
+          notes?: string | null
+          part_code?: string
+          part_name?: string | null
+          w?: number
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagram_hotspots_diagram_id_fkey"
+            columns: ["diagram_id"]
+            isOneToOne: false
+            referencedRelation: "diagrams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagrams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          image_path: string
+          machine_type: string | null
+          model_name: string | null
+          notes: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path: string
+          machine_type?: string | null
+          model_name?: string | null
+          notes?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path?: string
+          machine_type?: string | null
+          model_name?: string | null
+          notes?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           amount: number | null
