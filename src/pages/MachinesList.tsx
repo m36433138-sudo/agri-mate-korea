@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MachineWithCustomer } from "@/types/database";
 import { validateMachineTypeClassification } from "@/lib/machineValidation";
+import { fetchAllRows } from "@/lib/pagination";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 const CLASSIFICATIONS = ["농업용트랙터", "콤바인", "이앙기", "기타"];
@@ -49,12 +50,15 @@ export default function MachinesList() {
   const { data: machines, isLoading } = useQuery({
     queryKey: ["machines"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      return fetchAllRows<MachineWithCustomer>(async (from, to) => {
+        const { data, error } = await supabase
         .from("machines")
         .select("*, customers(name)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as MachineWithCustomer[];
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to);
+        return { data: data as MachineWithCustomer[] | null, error };
+      });
     },
   });
 
@@ -68,12 +72,12 @@ export default function MachinesList() {
   };
   const typeFilteredData = useMemo(() => {
     if (typeTab === "전체") return machines;
-    return machines.filter((m) => normalizeClassification((m as any).classification) === typeTab);
+    return machines?.filter((m) => normalizeClassification((m as any).classification) === typeTab);
   }, [machines, typeTab]);
 
   const { search, setSearch, filtered } = useListFilter<MachineWithCustomer>({
     data: typeFilteredData,
-    searchFields: ["model_name", "serial_number"],
+    searchFields: ["model_name", "serial_number", "customers.name", "manufacturer"],
     tabFilters: { status: statusTab },
   });
 

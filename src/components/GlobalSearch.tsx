@@ -2,15 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Tractor, Users, Wrench, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
-
-type Result = {
-  id: string;
-  label: string;
-  sub: string;
-  category: "machine" | "customer" | "repair" | "part";
-  link: string;
-};
+import { Button } from "@/components/ui/button";
+import { useGlobalSearch, type SearchResult as Result } from "@/hooks/useGlobalSearch";
 
 const CATEGORY_META = {
   machine: { label: "기계", icon: Tractor },
@@ -23,7 +16,7 @@ const CATEGORIES = ["machine", "customer", "repair", "part"] as const;
 
 export default function GlobalSearch() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Result[]>([]);
+  const { results, pending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useGlobalSearch(query);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const navigate = useNavigate();
@@ -40,51 +33,18 @@ export default function GlobalSearch() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  useEffect(() => { setActiveIndex(-1); }, [results]);
-
-  useEffect(() => {
-    const q = query.trim();
-    if (!q) { setResults([]); setOpen(false); return; }
-
-    const timer = setTimeout(async () => {
-      const like = `%${q}%`;
-
-      const [machinesRes, customersRes, repairsRes, partsRes] = await Promise.all([
-        supabase.from("machines").select("id, model_name, serial_number").or(`model_name.ilike.${like},serial_number.ilike.${like}`).limit(5),
-        supabase.from("customers").select("id, name, phone").or(`name.ilike.${like},phone.ilike.${like}`).limit(5),
-        supabase.from("repairs").select("id, machine_id, repair_content, repair_date, machines(model_name)").ilike("repair_content", like).limit(5),
-        supabase.from("parts").select("id, part_name, part_number").or(`part_name.ilike.${like},part_number.ilike.${like}`).limit(5),
-      ]);
-
-      const items: Result[] = [
-        ...(machinesRes.data || []).map((m) => ({
-          id: m.id, label: m.model_name, sub: m.serial_number, category: "machine" as const, link: `/machines/${m.id}`,
-        })),
-        ...(customersRes.data || []).map((c) => ({
-          id: c.id, label: c.name, sub: c.phone, category: "customer" as const, link: `/customers/${c.id}`,
-        })),
-        ...(repairsRes.data || []).map((r: any) => ({
-          id: r.id, label: r.repair_content, sub: `${r.repair_date} · ${r.machines?.model_name || ""}`, category: "repair" as const, link: `/machines/${r.machine_id}`,
-        })),
-        ...(partsRes.data || []).map((p) => ({
-          id: p.id, label: p.part_name, sub: p.part_number, category: "part" as const, link: `/parts`,
-        })),
-      ];
-
-      setResults(items);
-      setOpen(items.length > 0);
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [query]);
+  useEffect(() => { setActiveIndex(-1); }, [query]);
 
   const pick = useCallback((r: Result) => {
-    navigate(r.link);
+    const link = r.category === 'part'
+      ? `/parts?search=${encodeURIComponent(r.link.split('?search=')[1] ?? '')}` : r.link;
+    navigate(link);
     setQuery("");
     setOpen(false);
   }, [navigate]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape") { setOpen(false); return; }
     if (!open || flatResults.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -92,9 +52,9 @@ export default function GlobalSearch() {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((prev) => (prev > 0 ? prev - 1 : flatResults.length - 1));
-    } else if (e.key === "Enter" && activeIndex >= 0) {
+    } else if (e.key === "Enter") {
       e.preventDefault();
-      pick(flatResults[activeIndex]);
+      pick(flatResults[activeIndex >= 0 ? activeIndex : 0]);
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -119,8 +79,11 @@ export default function GlobalSearch() {
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
       <Input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => results.length > 0 && setOpen(true)}
+        onChange={(e) => { setQuery(e.target.value); setOpen(!!e.target.value.trim()); }}
+        onFocus={() => query.trim() && setOpen(true)}
+        aria-label="통합 검색"
+        role="combobox"
+        aria-expanded={open}
         onKeyDown={handleKeyDown}
         placeholder="검색 (기계, 고객, 수리, 부품)"
         className="pl-9 h-9 bg-background border-border"
@@ -128,6 +91,9 @@ export default function GlobalSearch() {
 
       {open && (
         <div ref={listRef} className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg z-50 overflow-hidden max-h-80 overflow-y-auto">
+          {pending && <div className="p-3 text-sm text-muted-foreground" role="status">검색 중…</div>}
+          {isError && <div className="p-3 text-sm text-destructive" role="alert">검색을 불러오지 못했습니다.<Button variant="ghost" size="sm" onClick={() => refetch()}>다시 시도</Button></div>}
+          {!pending && !isError && !results.length && <div className="p-3 text-sm text-muted-foreground">검색 결과가 없습니다.</div>}
           {CATEGORIES.map((cat) => {
             const items = grouped[cat];
             if (!items?.length) return null;
@@ -141,22 +107,24 @@ export default function GlobalSearch() {
                 {items.map((r) => {
                   const idx = flatIndex++;
                   return (
-                    <button
+                    <Button
+                      variant="ghost"
                       key={r.id}
                       data-index={idx}
                       onClick={() => pick(r)}
-                      className={`w-full text-left px-3 py-2 text-sm flex flex-col transition-colors ${
+                      className={`w-full h-auto items-start whitespace-normal text-left px-3 py-2 text-sm flex flex-col gap-0 transition-colors ${
                         idx === activeIndex ? "bg-accent" : "hover:bg-accent"
                       }`}
                     >
-                      <span className="font-medium text-foreground truncate">{r.label}</span>
-                      <span className="text-xs text-muted-foreground truncate">{r.sub}</span>
-                    </button>
+                      <span className="w-full font-medium text-foreground truncate">{r.label}</span>
+                      <span className="w-full text-xs text-muted-foreground truncate">{r.sub}</span>
+                    </Button>
                   );
                 })}
               </div>
             );
           })}
+          {hasNextPage && <Button variant="ghost" className="w-full" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>{isFetchingNextPage ? '불러오는 중…' : '결과 더 보기'}</Button>}
         </div>
       )}
     </div>

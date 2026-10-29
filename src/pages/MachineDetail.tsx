@@ -679,6 +679,8 @@ function SaleDialog({ open, onOpenChange, machineId, entryDate, isSale = true }:
       qc.invalidateQueries({ queryKey: ["machines"] });
       qc.invalidateQueries({ queryKey: ["customers"] });
       qc.invalidateQueries({ queryKey: ["machine-sales-history", machineId] });
+      qc.invalidateQueries({ queryKey: ["customer-machines"] });
+      qc.invalidateQueries({ queryKey: ["customer-machine-history"] });
       toast({ title: isSale ? "판매 처리가 완료되었습니다." : "고객 연결이 완료되었습니다." });
       handleClose();
     },

@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes, Lightbulb } from "lucide-react";
 import * as XLSX from "xlsx";
 import PartTipsDialog from "@/components/parts/PartTipsDialog";
+import { useSearchParams } from "react-router-dom";
 
 type InventoryItem = {
   id: string;
@@ -40,8 +41,10 @@ function useDebounce<T>(value: T, delay = 300): T {
 }
 
 export default function InventoryManagement() {
+  const [searchParams] = useSearchParams();
   const [branch, setBranch] = useState<"장흥" | "강진">("장흥");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get('search') ?? "");
+  useEffect(() => { setSearch(searchParams.get('search') ?? ''); }, [searchParams]);
   const [addOpen, setAddOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);

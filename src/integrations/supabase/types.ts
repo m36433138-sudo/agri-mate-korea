@@ -3101,6 +3101,16 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      global_search: {
+        Args: { page_offset?: number; page_size?: number; search_query: string }
+        Returns: {
+          category: string
+          id: string
+          label: string
+          link: string
+          sub: string
+        }[]
+      }
       has_permission: {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
@@ -3138,6 +3148,7 @@ export type Database = {
         }[]
       }
       next_quote_number: { Args: never; Returns: string }
+      search_normalize: { Args: { value: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "employee" | "customer"
