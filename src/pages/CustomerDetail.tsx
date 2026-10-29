@@ -20,6 +20,7 @@ import LastModifiedInfo from "@/components/LastModifiedInfo";
 import { FinanceModal } from "@/components/workspace/modals/FinanceModal";
 import type { FinanceRecord } from "@/types/workspace";
 import { outstandingOf, SOURCE_TYPE_LABELS } from "@/types/workspace";
+import { validateMachineTypeClassification } from "@/lib/machineValidation";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 
@@ -563,7 +564,7 @@ function AddMachineForCustomerDialog({ open, onOpenChange, customerId }: { open:
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    manufacturer: "얀마", model_name: "", serial_number: "", machine_type: "새기계",
+    manufacturer: "얀마", model_name: "", serial_number: "", machine_type: "새기계", classification: "농업용트랙터",
     entry_date: "", purchase_price: "", notes: "",
   });
 
@@ -571,9 +572,11 @@ function AddMachineForCustomerDialog({ open, onOpenChange, customerId }: { open:
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const check = validateMachineTypeClassification(form);
+      if (!check.ok) throw new Error(check.message);
       const { error } = await supabase.from("machines").insert({
         model_name: form.model_name, serial_number: form.serial_number,
-        machine_type: form.machine_type, manufacturer: form.manufacturer,
+        machine_type: form.machine_type, manufacturer: form.manufacturer, classification: form.classification,
         entry_date: form.entry_date, purchase_price: parseInt(form.purchase_price),
         notes: form.notes || null, customer_id: customerId, status: "판매완료",
       });
@@ -584,7 +587,7 @@ function AddMachineForCustomerDialog({ open, onOpenChange, customerId }: { open:
       qc.invalidateQueries({ queryKey: ["machines"] });
       toast({ title: "기계가 등록되었습니다." });
       onOpenChange(false);
-      setForm({ manufacturer: "얀마", model_name: "", serial_number: "", machine_type: "새기계", entry_date: "", purchase_price: "", notes: "" });
+      setForm({ manufacturer: "얀마", model_name: "", serial_number: "", machine_type: "새기계", classification: "농업용트랙터", entry_date: "", purchase_price: "", notes: "" });
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
@@ -601,6 +604,13 @@ function AddMachineForCustomerDialog({ open, onOpenChange, customerId }: { open:
               <SelectContent>{MANUFACTURERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+          <div>
+            <Label>기종 *</Label>
+            <Select value={form.classification} onValueChange={classification => setForm(f => ({ ...f, classification }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{["농업용트랙터", "콤바인", "이앙기", "기타"].map(c => <SelectItem key={c} value={c}>{c === "농업용트랙터" ? "트랙터" : c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div><Label>모델명 *</Label><Input value={form.model_name} onChange={e => setForm(f => ({ ...f, model_name: e.target.value }))} placeholder="예: YT5101" /></div>
           <div><Label>제조번호 *</Label><Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))} placeholder="예: YT5101-001" /></div>
           <div>
@@ -610,7 +620,7 @@ function AddMachineForCustomerDialog({ open, onOpenChange, customerId }: { open:
               <SelectContent>
                 <SelectItem value="새기계">새기계</SelectItem>
                 <SelectItem value="중고기계">중고기계</SelectItem>
-                <SelectItem value="타사구매">타사구매</SelectItem>
+                <SelectItem value="타사기계">타사기계</SelectItem>
               </SelectContent>
             </Select>
           </div>
