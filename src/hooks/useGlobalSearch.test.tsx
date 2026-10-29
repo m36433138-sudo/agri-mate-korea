@@ -35,7 +35,7 @@ describe('current global search results', () => {
     const { result } = renderHook(() => useGlobalSearch('D'), { wrapper });
     await waitFor(() => expect(result.current.hasNextPage).toBe(true));
     await act(async () => { await result.current.fetchNextPage(); });
-    expect(result.current.results).toHaveLength(21);
+    await waitFor(() => expect(result.current.results).toHaveLength(21));
     expect(result.current.results[20].label).toBe('D4351');
     expect(result.current.hasNextPage).toBe(false);
   });
