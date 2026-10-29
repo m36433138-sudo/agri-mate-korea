@@ -573,7 +573,7 @@ function AddMachineForCustomerDialog({ open, onOpenChange, customerId }: { open:
   const mutation = useMutation({
     mutationFn: async () => {
       const check = validateMachineTypeClassification(form);
-      if (!check.ok) throw new Error(check.message);
+      if (check.ok === false) throw new Error(check.message);
       const { error } = await supabase.from("machines").insert({
         model_name: form.model_name, serial_number: form.serial_number,
         machine_type: form.machine_type, manufacturer: form.manufacturer, classification: form.classification,
