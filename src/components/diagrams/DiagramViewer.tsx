@@ -267,9 +267,10 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
               key={h.id}
               type="button"
               onClick={() => setSelected({ code: h.part_code, name: h.part_name })}
-              className="text-xs font-mono px-2.5 py-1.5 rounded-lg border bg-card hover:border-primary hover:text-primary transition-colors"
+              className="text-xs px-2.5 py-1.5 rounded-lg border bg-card hover:border-primary hover:text-primary transition-colors text-left"
             >
-              {h.part_code}
+              <span className="font-mono font-semibold">{h.part_code}</span>
+              {h.part_name && <span className="ml-1.5 text-muted-foreground">{h.part_name}</span>}
             </button>
           ))}
         </div>

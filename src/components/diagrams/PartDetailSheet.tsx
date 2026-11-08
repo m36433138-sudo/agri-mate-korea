@@ -48,7 +48,7 @@ export default function PartDetailSheet({ partCode, partName, open, onOpenChange
       const { data, error } = await db
         .from("inventory")
         .select("branch, quantity, location_main, location_sub, purchase_price, sales_price")
-        .eq("part_code", partCode)
+        .or(`part_code.eq."${partCode}",alt_part_code.eq."${partCode}"`)
         .order("branch");
       if (error) throw error;
       return data as InvRow[];
