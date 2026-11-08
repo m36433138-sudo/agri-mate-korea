@@ -638,6 +638,7 @@ export type Database = {
           notes: string | null
           part_code: string
           part_name: string | null
+          target_diagram_id: string | null
           w: number
           x: number
           y: number
@@ -650,6 +651,7 @@ export type Database = {
           notes?: string | null
           part_code: string
           part_name?: string | null
+          target_diagram_id?: string | null
           w: number
           x: number
           y: number
@@ -662,6 +664,7 @@ export type Database = {
           notes?: string | null
           part_code?: string
           part_name?: string | null
+          target_diagram_id?: string | null
           w?: number
           x?: number
           y?: number
@@ -674,6 +677,13 @@ export type Database = {
             referencedRelation: "diagrams"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "diagram_hotspots_target_diagram_id_fkey"
+            columns: ["target_diagram_id"]
+            isOneToOne: false
+            referencedRelation: "diagrams"
+            referencedColumns: ["id"]
+          },
         ]
       }
       diagrams: {
@@ -682,9 +692,11 @@ export type Database = {
           created_by: string | null
           id: string
           image_path: string
+          kind: string
           machine_type: string | null
           model_name: string | null
           notes: string | null
+          sort_order: number
           title: string
           updated_at: string
           updated_by: string | null
@@ -694,9 +706,11 @@ export type Database = {
           created_by?: string | null
           id?: string
           image_path: string
+          kind?: string
           machine_type?: string | null
           model_name?: string | null
           notes?: string | null
+          sort_order?: number
           title: string
           updated_at?: string
           updated_by?: string | null
@@ -706,9 +720,11 @@ export type Database = {
           created_by?: string | null
           id?: string
           image_path?: string
+          kind?: string
           machine_type?: string | null
           model_name?: string | null
           notes?: string | null
+          sort_order?: number
           title?: string
           updated_at?: string
           updated_by?: string | null
