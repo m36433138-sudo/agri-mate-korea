@@ -29,6 +29,13 @@
       "when": 1793250721439,
       "tag": "0003_indexed_global_search",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794143456317,
+      "tag": "0004_diagram_photos_and_links",
+      "breakpoints": true
     }
   ]
 }

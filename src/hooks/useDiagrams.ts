@@ -12,6 +12,8 @@ export type Diagram = {
   machine_type: string | null;
   notes: string | null;
   image_path: string;
+  kind: "diagram" | "photo";
+  sort_order: number;
   created_at: string;
 };
 
@@ -25,6 +27,7 @@ export type DiagramHotspot = {
   w: number;
   h: number;
   notes: string | null;
+  target_diagram_id: string | null;
 };
 
 export function useDiagrams() {
@@ -36,6 +39,7 @@ export function useDiagrams() {
       const { data, error } = await db
         .from("diagrams")
         .select("*")
+        .order("sort_order", { ascending: true })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Diagram[];
@@ -43,7 +47,7 @@ export function useDiagrams() {
   });
 
   const addDiagram = useMutation({
-    mutationFn: async (d: { title: string; model_name?: string; machine_type?: string; notes?: string; image_path: string }) => {
+    mutationFn: async (d: { title: string; model_name?: string; machine_type?: string; notes?: string; image_path: string; kind?: "diagram" | "photo" }) => {
       const { data, error } = await db.from("diagrams").insert(d).select("id").single();
       if (error) throw error;
       return data.id as string;
