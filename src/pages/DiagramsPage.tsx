@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useDiagrams, useDiagramImageUrl, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
@@ -29,7 +30,7 @@ function DiagramCard({ diagram, onClick, onDelete }: { diagram: Diagram; onClick
     <div className="border rounded-xl overflow-hidden bg-card hover:border-primary/60 transition-colors cursor-pointer group relative">
       <div onClick={onClick}>
         {url ? (
-          <img src={url} alt={diagram.title} className="w-full aspect-[3/4] object-cover object-top" />
+          <img src={url} alt={diagram.title} className={`w-full object-cover ${diagram.kind === "photo" ? "aspect-[4/3]" : "aspect-[3/4] object-top"}`} />
         ) : (
           <Skeleton className="w-full aspect-[3/4]" />
         )}
@@ -58,7 +59,14 @@ function DiagramCard({ diagram, onClick, onDelete }: { diagram: Diagram; onClick
 export default function DiagramsPage() {
   const { toast } = useToast();
   const { diagrams, isLoading, addDiagram, deleteDiagram } = useDiagrams();
-  const [selected, setSelected] = useState<Diagram | null>(null);
+  const [stack, setStack] = useState<Diagram[]>([]);
+  const selected = stack[stack.length - 1] ?? null;
+  const setSelected = (d: Diagram | null) => setStack(d ? [d] : []);
+  const [kindTab, setKindTab] = useState<"photo" | "diagram">("photo");
+  const [modelFilter, setModelFilter] = useState("전체");
+  const [kind, setKind] = useState<"photo" | "diagram">("photo");
+  const models = ["전체", ...Array.from(new Set(diagrams.map((d) => d.model_name).filter(Boolean) as string[]))];
+  const shown = diagrams.filter((d) => d.kind === kindTab && (modelFilter === "전체" || d.model_name === modelFilter));
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -95,6 +103,7 @@ export default function DiagramsPage() {
         model_name: modelName.trim() || undefined,
         notes: notes.trim() || undefined,
         image_path: path,
+        kind,
       });
       toast({ title: "도면이 등록되었습니다." });
       setUploadOpen(false);
@@ -108,7 +117,15 @@ export default function DiagramsPage() {
   };
 
   if (selected) {
-    return <DiagramViewer diagram={selected} onBack={() => setSelected(null)} />;
+    return (
+      <DiagramViewer
+        key={selected.id}
+        diagram={selected}
+        allDiagrams={diagrams}
+        onBack={() => setStack((s) => s.slice(0, -1))}
+        onOpenDiagram={(d) => setStack((s) => [...s, d])}
+      />
+    );
   }
 
   return (
@@ -122,17 +139,40 @@ export default function DiagramsPage() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <Tabs value={kindTab} onValueChange={(v) => setKindTab(v as "photo" | "diagram")}>
+          <TabsList>
+            <TabsTrigger value="photo">기계 사진</TabsTrigger>
+            <TabsTrigger value="diagram">부품 도면</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex gap-1 flex-wrap">
+          {models.map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setModelFilter(m)}
+              className={`text-xs px-2.5 py-1 rounded-full border ${modelFilter === m ? "border-primary text-primary" : "text-muted-foreground"}`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="aspect-[3/4] rounded-xl" />)}
         </div>
-      ) : diagrams.length === 0 ? (
+      ) : shown.length === 0 ? (
         <p className="text-sm text-muted-foreground border rounded-xl p-8 text-center">
-          등록된 도면이 없습니다. 「도면 등록」을 눌러 부품 배치도를 올려 주세요.
+          {kindTab === "photo"
+            ? "등록된 기계 사진이 없습니다. 「도면 등록」에서 '기계 사진'을 골라 올려 주세요."
+            : "등록된 도면이 없습니다. 「도면 등록」을 눌러 부품 배치도를 올려 주세요."}
         </p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {diagrams.map((d) => (
+          {shown.map((d) => (
             <DiagramCard
               key={d.id}
               diagram={d}
@@ -152,7 +192,13 @@ export default function DiagramsPage() {
             <DialogTitle>도면 등록</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Input placeholder="도면 이름 (예: HV2200 헤머 벨트 배치도)" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Tabs value={kind} onValueChange={(v) => setKind(v as "photo" | "diagram")}>
+              <TabsList className="grid grid-cols-2 w-full">
+                <TabsTrigger value="photo">기계 사진</TabsTrigger>
+                <TabsTrigger value="diagram">부품 도면</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Input placeholder={kind === "photo" ? "사진 이름 (예: YH1150 좌측면)" : "도면 이름 (예: HV2200 헤머 벨트 배치도)"} value={title} onChange={(e) => setTitle(e.target.value)} />
             <Input placeholder="기종 (선택, 예: HV2200)" value={modelName} onChange={(e) => setModelName(e.target.value)} />
             <Textarea placeholder="메모 (선택)" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
 

@@ -6,16 +6,61 @@ import { useToast } from "@/hooks/use-toast";
 import { useDiagramImageUrl, useHotspots, type Diagram, type DiagramHotspot } from "@/hooks/useDiagrams";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
 import PartDetailSheet from "@/components/diagrams/PartDetailSheet";
-import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick } from "lucide-react";
+import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick, Link2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Rect = { x: number; y: number; w: number; h: number };
 
 type Props = {
   diagram: Diagram;
   onBack: () => void;
+  allDiagrams?: Diagram[];
+  onOpenDiagram?: (d: Diagram) => void;
 };
 
-export default function DiagramViewer({ diagram, onBack }: Props) {
+export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram }: Props) {
+  const isPhoto = diagram.kind === "photo";
+  const [assignMode, setAssignMode] = useState<"part" | "link">(isPhoto ? "link" : "part");
+  const [linkSearch, setLinkSearch] = useState("");
+  const byId = new Map(allDiagrams.map((d) => [d.id, d]));
+  const linkCandidates = allDiagrams
+    .filter((d) => d.id !== diagram.id)
+    .filter((d) => {
+      const q = linkSearch.trim().toLowerCase();
+      if (!q) return !diagram.model_name || d.model_name === diagram.model_name;
+      return `${d.title} ${d.model_name ?? ""}`.toLowerCase().includes(q);
+    })
+    .slice(0, 50);
+  const openHotspot = (h: DiagramHotspot) => {
+    if (h.target_diagram_id) {
+      const t = byId.get(h.target_diagram_id);
+      if (t && onOpenDiagram) onOpenDiagram(t);
+      else toast({ title: "연결된 도면을 찾을 수 없습니다." });
+    } else {
+      setSelected({ code: h.part_code, name: h.part_name });
+    }
+  };
+  const handleLink = (target: Diagram) => {
+    if (!pendingRect) return;
+    addHotspot.mutate(
+      {
+        diagram_id: diagram.id,
+        part_code: "",
+        part_name: target.title,
+        target_diagram_id: target.id,
+        x: Math.round(pendingRect.x * 10) / 10,
+        y: Math.round(pendingRect.y * 10) / 10,
+        w: Math.round(pendingRect.w * 10) / 10,
+        h: Math.round(pendingRect.h * 10) / 10,
+        notes: null,
+      },
+      {
+        onSuccess: () => { toast({ title: `「${target.title}」로 연결했습니다.` }); setPendingRect(null); },
+        onError: (e: any) => toast({ title: "추가 실패", description: e.message, variant: "destructive" }),
+      }
+    );
+  };
   const { toast } = useToast();
   const { data: imageUrl, isLoading: imgLoading } = useDiagramImageUrl(diagram.image_path);
   const { hotspots, isLoading, addHotspot, deleteHotspot } = useHotspots(diagram.id);
@@ -74,6 +119,7 @@ export default function DiagramViewer({ diagram, onBack }: Props) {
         diagram_id: diagram.id,
         part_code: item.part_code,
         part_name: item.part_name,
+        target_diagram_id: null,
         x: Math.round(pendingRect.x * 10) / 10,
         y: Math.round(pendingRect.y * 10) / 10,
         w: Math.round(pendingRect.w * 10) / 10,
@@ -90,7 +136,8 @@ export default function DiagramViewer({ diagram, onBack }: Props) {
     );
   };
 
-  const uniqueCodes = Array.from(new Map(hotspots.map((h) => [h.part_code, h])).values());
+  const uniqueCodes = Array.from(new Map(hotspots.filter((h) => !h.target_diagram_id).map((h) => [h.part_code, h])).values());
+  const links = hotspots.filter((h) => h.target_diagram_id);
 
   return (
     <div className="space-y-3">
@@ -118,7 +165,7 @@ export default function DiagramViewer({ diagram, onBack }: Props) {
 
       {editing && (
         <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-          부품 라벨 위를 드래그해서 네모 상자를 그리면 부품번호를 지정할 수 있습니다. 상자 왼쪽 위 × 버튼으로 삭제합니다.
+          드래그해서 네모 상자를 그리면 부품번호를 지정하거나 다른 도면으로 연결할 수 있습니다. 상자 왼쪽 위 × 버튼으로 삭제합니다.
         </p>
       )}
 
@@ -144,20 +191,22 @@ export default function DiagramViewer({ diagram, onBack }: Props) {
             className={`absolute rounded-md border-2 transition-colors ${
               editing
                 ? "border-amber-400/80 bg-amber-400/15"
-                : "border-transparent hover:border-primary hover:bg-primary/20 active:bg-primary/30"
+                : h.target_diagram_id
+                  ? "border-primary/80 bg-primary/10 hover:bg-primary/25 active:bg-primary/35"
+                  : "border-transparent hover:border-primary hover:bg-primary/20 active:bg-primary/30"
             }`}
             style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%` }}
             onClick={(e) => {
               e.stopPropagation();
-              if (!editing) setSelected({ code: h.part_code, name: h.part_name });
+              if (!editing) openHotspot(h);
             }}
           >
             <span
               className={`absolute -top-4 left-0 text-[9px] leading-none px-1 py-0.5 rounded whitespace-nowrap font-mono ${
-                editing ? "bg-amber-400 text-black font-bold" : "bg-primary text-primary-foreground opacity-0 hover:opacity-100"
+                editing ? "bg-amber-400 text-black font-bold" : h.target_diagram_id ? "bg-primary text-primary-foreground font-sans text-[11px]" : "bg-primary text-primary-foreground opacity-0 hover:opacity-100"
               }`}
             >
-              {h.part_code}
+              {h.target_diagram_id ? (byId.get(h.target_diagram_id)?.title ?? h.part_name) : h.part_code}
             </span>
             {editing && (
               <span
@@ -187,8 +236,27 @@ export default function DiagramViewer({ diagram, onBack }: Props) {
       {!editing && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <MousePointerClick className="h-3.5 w-3.5" />
-          도면 위 부품 영역을 누르면 재고 위치·가격과 수리 이력을 볼 수 있습니다. 아래 부품 목록을 눌러도 됩니다.
+          {isPhoto
+            ? "사진의 파란 상자를 누르면 해당 부위의 부품 도면으로 이동합니다."
+            : "도면 위 부품 영역을 누르면 재고 위치·가격과 수리 이력을 볼 수 있습니다. 아래 부품 목록을 눌러도 됩니다."}
         </p>
+      )}
+
+      {/* 연결된 도면 목록 */}
+      {links.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {links.map((h) => (
+            <button
+              key={h.id}
+              type="button"
+              onClick={() => openHotspot(h)}
+              className="text-xs px-2.5 py-1.5 rounded-lg border border-primary/50 bg-card text-primary hover:bg-primary/10 transition-colors flex items-center gap-1"
+            >
+              <Link2 className="h-3 w-3" />
+              {byId.get(h.target_diagram_id!)?.title ?? h.part_name}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* 부품 칩 목록 */}
@@ -208,7 +276,7 @@ export default function DiagramViewer({ diagram, onBack }: Props) {
       )}
       {!isLoading && hotspots.length === 0 && !editing && (
         <p className="text-sm text-muted-foreground">
-          아직 부품 영역이 등록되지 않았습니다. 위의 「영역 편집」을 눌러 추가하세요.
+          아직 누를 수 있는 영역이 없습니다. 위의 「영역 편집」을 눌러 추가하세요.
         </p>
       )}
 
@@ -216,12 +284,40 @@ export default function DiagramViewer({ diagram, onBack }: Props) {
       <Dialog open={!!pendingRect} onOpenChange={(v) => !v && setPendingRect(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>부품번호 지정</DialogTitle>
+            <DialogTitle>이 영역에 연결</DialogTitle>
           </DialogHeader>
-          <PartCodeAutocomplete branch={null} onSelect={handleAssign} placeholder="부품번호 또는 이름 검색..." />
-          <p className="text-xs text-muted-foreground">
-            목록에 없는 부품번호는 부품관리에 먼저 등록해 주세요.
-          </p>
+          <Tabs value={assignMode} onValueChange={(v) => setAssignMode(v as "part" | "link")}>
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="link">도면으로 이동</TabsTrigger>
+              <TabsTrigger value="part">부품번호</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {assignMode === "part" ? (
+            <>
+              <PartCodeAutocomplete branch={null} onSelect={handleAssign} placeholder="부품번호 또는 이름 검색..." />
+              <p className="text-xs text-muted-foreground">목록에 없는 부품번호는 부품관리에 먼저 등록해 주세요.</p>
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Input placeholder="도면 이름 검색 (비우면 같은 기종)" value={linkSearch} onChange={(e) => setLinkSearch(e.target.value)} />
+              <div className="max-h-72 overflow-y-auto space-y-1">
+                {linkCandidates.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-4 text-center">연결할 도면이 없습니다.</p>
+                )}
+                {linkCandidates.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => handleLink(d)}
+                    className="w-full text-left text-sm px-3 py-2 rounded-lg border bg-card hover:border-primary"
+                  >
+                    <span className="block truncate">{d.title}</span>
+                    <span className="text-xs text-muted-foreground">{d.kind === "photo" ? "사진" : "도면"}{d.model_name ? ` · ${d.model_name}` : ""}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
