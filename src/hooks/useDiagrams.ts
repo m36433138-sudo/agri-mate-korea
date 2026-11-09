@@ -100,7 +100,15 @@ export function useHotspots(diagramId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["diagram-hotspots", diagramId] }),
   });
 
-  return { hotspots, isLoading, addHotspot, deleteHotspot };
+  const updateHotspot = useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<DiagramHotspot> & { id: string }) => {
+      const { error } = await db.from("diagram_hotspots").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["diagram-hotspots", diagramId] }),
+  });
+
+  return { hotspots, isLoading, addHotspot, deleteHotspot, updateHotspot };
 }
 
 /** 도면 이미지 서명 URL (1시간) */
