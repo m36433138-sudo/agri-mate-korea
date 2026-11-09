@@ -38,7 +38,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       if (t && onOpenDiagram) onOpenDiagram(t);
       else toast({ title: "연결된 도면을 찾을 수 없습니다." });
     } else {
-      setSelected({ code: h.part_code, name: h.part_name });
+      setSelected({ code: h.part_code, name: h.part_name, rect: { x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) } });
     }
   };
   const handleLink = (target: Diagram) => {
@@ -68,7 +68,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   const [editing, setEditing] = useState(false);
   const [drawRect, setDrawRect] = useState<Rect | null>(null);
   const [pendingRect, setPendingRect] = useState<Rect | null>(null);
-  const [selected, setSelected] = useState<{ code: string; name: string | null } | null>(null);
+  const [selected, setSelected] = useState<{ code: string; name: string | null; rect?: Rect } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
@@ -328,6 +328,9 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
         partName={selected?.name ?? null}
         open={!!selected}
         onOpenChange={(v) => !v && setSelected(null)}
+        diagramUrl={imageUrl ?? null}
+        diagramTitle={diagram.title}
+        highlight={selected?.rect ?? null}
       />
     </div>
   );
