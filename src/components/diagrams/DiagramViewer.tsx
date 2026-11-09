@@ -359,7 +359,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       )}
 
       {/* 부품번호 지정 다이얼로그 */}
-      <Dialog open={!!pendingRect} onOpenChange={(v) => !v && setPendingRect(null)}>
+      <Dialog open={!!pendingRect} onOpenChange={(v) => { if (!v) { setPendingRect(null); setEditId(null); } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>이 영역에 연결</DialogTitle>
