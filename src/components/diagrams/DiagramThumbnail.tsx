@@ -46,7 +46,7 @@ export default function DiagramThumbnail({ src, title }: { src: string; title: s
   return (
     <div className="aspect-square w-full overflow-hidden bg-[hsl(var(--diagram-paper))] p-2">
       <img src={src} crossOrigin="anonymous" alt="" aria-hidden="true" className="hidden"
-        loading="lazy" onLoad={(event) => makePreview(event.currentTarget)} />
+        onLoad={(event) => makePreview(event.currentTarget)} />
       <img src={preview ?? src} alt={title} loading="lazy" decoding="async"
         className="h-full w-full object-contain" />
     </div>
