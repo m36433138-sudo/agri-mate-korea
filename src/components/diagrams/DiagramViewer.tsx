@@ -63,7 +63,56 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   };
   const { toast } = useToast();
   const { data: imageUrl, isLoading: imgLoading } = useDiagramImageUrl(diagram.image_path);
-  const { hotspots, isLoading, addHotspot, deleteHotspot } = useHotspots(diagram.id);
+  const { hotspots: rawHotspots, isLoading, addHotspot, deleteHotspot, updateHotspot } = useHotspots(diagram.id);
+  // 드래그 중 위치 (저장 전 미리보기)
+  const [overrides, setOverrides] = useState<Record<string, Rect>>({});
+  const hotspots = rawHotspots.map((h) => (overrides[h.id] ? { ...h, ...overrides[h.id] } : h));
+  const [editId, setEditId] = useState<string | null>(null);
+  const dragRef = useRef<{ id: string; mode: "move" | "resize"; start: { x: number; y: number }; orig: Rect; moved: boolean } | null>(null);
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+
+  const startDrag = (e: React.PointerEvent, h: DiagramHotspot, mode: "move" | "resize") => {
+    if (!editing) return;
+    e.stopPropagation();
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    dragRef.current = { id: h.id, mode, start: toPercent(e), orig: { x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) }, moved: false };
+  };
+  const moveDrag = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    e.stopPropagation();
+    const p = toPercent(e);
+    const dx = p.x - d.start.x, dy = p.y - d.start.y;
+    if (Math.abs(dx) + Math.abs(dy) > 0.3) d.moved = true;
+    const o = d.orig;
+    const next = d.mode === "move"
+      ? { ...o, x: Math.min(100 - o.w, Math.max(0, o.x + dx)), y: Math.min(100 - o.h, Math.max(0, o.y + dy)) }
+      : { ...o, w: Math.min(100 - o.x, Math.max(1, o.w + dx)), h: Math.min(100 - o.y, Math.max(1, o.h + dy)) };
+    setOverrides((s) => ({ ...s, [d.id]: next }));
+  };
+  const endDrag = (e: React.PointerEvent, h: DiagramHotspot) => {
+    const d = dragRef.current;
+    if (!d) return;
+    e.stopPropagation();
+    dragRef.current = null;
+    const r = overrides[d.id];
+    if (!d.moved || !r) {
+      // 이동 없이 탭 → 연결 대상 변경
+      setOverrides((s) => { const { [d.id]: _, ...rest } = s; return rest; });
+      setEditId(h.id);
+      setAssignMode(h.target_diagram_id ? "link" : "part");
+      setPendingRect({ x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) });
+      return;
+    }
+    updateHotspot.mutate(
+      { id: d.id, x: r1(r.x), y: r1(r.y), w: r1(r.w), h: r1(r.h) },
+      {
+        onSettled: () => setOverrides((s) => { const { [d.id]: _, ...rest } = s; return rest; }),
+        onError: (err: any) => toast({ title: "위치 저장 실패", description: err.message, variant: "destructive" }),
+      }
+    );
+  };
 
   const [editing, setEditing] = useState(false);
   const [drawRect, setDrawRect] = useState<Rect | null>(null);
