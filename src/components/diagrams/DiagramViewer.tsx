@@ -43,6 +43,13 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   };
   const handleLink = (target: Diagram) => {
     if (!pendingRect) return;
+    if (editId) {
+      updateHotspot.mutate({ id: editId, part_code: "", part_name: target.title, target_diagram_id: target.id }, {
+        onSuccess: () => { toast({ title: `「${target.title}」로 연결을 바꿨습니다.` }); setPendingRect(null); setEditId(null); },
+        onError: (e: any) => toast({ title: "변경 실패", description: e.message, variant: "destructive" }),
+      });
+      return;
+    }
     addHotspot.mutate(
       {
         diagram_id: diagram.id,
@@ -63,7 +70,56 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   };
   const { toast } = useToast();
   const { data: imageUrl, isLoading: imgLoading } = useDiagramImageUrl(diagram.image_path);
-  const { hotspots, isLoading, addHotspot, deleteHotspot } = useHotspots(diagram.id);
+  const { hotspots: rawHotspots, isLoading, addHotspot, deleteHotspot, updateHotspot } = useHotspots(diagram.id);
+  // 드래그 중 위치 (저장 전 미리보기)
+  const [overrides, setOverrides] = useState<Record<string, Rect>>({});
+  const hotspots = rawHotspots.map((h) => (overrides[h.id] ? { ...h, ...overrides[h.id] } : h));
+  const [editId, setEditId] = useState<string | null>(null);
+  const dragRef = useRef<{ id: string; mode: "move" | "resize"; start: { x: number; y: number }; orig: Rect; moved: boolean } | null>(null);
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+
+  const startDrag = (e: React.PointerEvent, h: DiagramHotspot, mode: "move" | "resize") => {
+    if (!editing) return;
+    e.stopPropagation();
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    dragRef.current = { id: h.id, mode, start: toPercent(e), orig: { x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) }, moved: false };
+  };
+  const moveDrag = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    e.stopPropagation();
+    const p = toPercent(e);
+    const dx = p.x - d.start.x, dy = p.y - d.start.y;
+    if (Math.abs(dx) + Math.abs(dy) > 0.3) d.moved = true;
+    const o = d.orig;
+    const next = d.mode === "move"
+      ? { ...o, x: Math.min(100 - o.w, Math.max(0, o.x + dx)), y: Math.min(100 - o.h, Math.max(0, o.y + dy)) }
+      : { ...o, w: Math.min(100 - o.x, Math.max(1, o.w + dx)), h: Math.min(100 - o.y, Math.max(1, o.h + dy)) };
+    setOverrides((s) => ({ ...s, [d.id]: next }));
+  };
+  const endDrag = (e: React.PointerEvent, h: DiagramHotspot) => {
+    const d = dragRef.current;
+    if (!d) return;
+    e.stopPropagation();
+    dragRef.current = null;
+    const r = overrides[d.id];
+    if (!d.moved || !r) {
+      // 이동 없이 탭 → 연결 대상 변경
+      setOverrides((s) => { const { [d.id]: _, ...rest } = s; return rest; });
+      setEditId(h.id);
+      setAssignMode(h.target_diagram_id ? "link" : "part");
+      setPendingRect({ x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) });
+      return;
+    }
+    updateHotspot.mutate(
+      { id: d.id, x: r1(r.x), y: r1(r.y), w: r1(r.w), h: r1(r.h) },
+      {
+        onSettled: () => setOverrides((s) => { const { [d.id]: _, ...rest } = s; return rest; }),
+        onError: (err: any) => toast({ title: "위치 저장 실패", description: err.message, variant: "destructive" }),
+      }
+    );
+  };
 
   const [editing, setEditing] = useState(false);
   const [drawRect, setDrawRect] = useState<Rect | null>(null);
@@ -114,6 +170,13 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
 
   const handleAssign = (item: { part_code: string; part_name: string }) => {
     if (!pendingRect) return;
+    if (editId) {
+      updateHotspot.mutate({ id: editId, part_code: item.part_code, part_name: item.part_name, target_diagram_id: null }, {
+        onSuccess: () => { toast({ title: `${item.part_code}로 바꿨습니다.` }); setPendingRect(null); setEditId(null); },
+        onError: (e: any) => toast({ title: "변경 실패", description: e.message, variant: "destructive" }),
+      });
+      return;
+    }
     addHotspot.mutate(
       {
         diagram_id: diagram.id,
@@ -165,7 +228,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
 
       {editing && (
         <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-          드래그해서 네모 상자를 그리면 부품번호를 지정하거나 다른 도면으로 연결할 수 있습니다. 상자 왼쪽 위 × 버튼으로 삭제합니다.
+          빈 곳을 드래그하면 새 상자, 상자를 끌면 이동, 오른쪽 아래 점을 끌면 크기 조절, 상자를 탭하면 부품번호나 연결할 사진·도면을 바꿉니다. 왼쪽 위 버튼으로 삭제합니다.
         </p>
       )}
 
@@ -195,7 +258,10 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
                   ? "border-primary/80 bg-primary/10 hover:bg-primary/25 active:bg-primary/35"
                   : "border-transparent hover:border-primary hover:bg-primary/20 active:bg-primary/30"
             }`}
-            style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%` }}
+            style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%`, cursor: editing ? "move" : undefined }}
+            onPointerDown={(e) => startDrag(e, h, "move")}
+            onPointerMove={moveDrag}
+            onPointerUp={(e) => endDrag(e, h)}
             onClick={(e) => {
               e.stopPropagation();
               if (!editing) openHotspot(h);
@@ -213,6 +279,8 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
                 role="button"
                 tabIndex={0}
                 className="absolute -top-2 -left-2 bg-destructive text-destructive-foreground rounded-full p-0.5 z-10"
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   deleteHotspot.mutate(h.id);
@@ -220,6 +288,15 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
               >
                 <Trash2 className="h-3 w-3" />
               </span>
+            )}
+            {editing && (
+              <span
+                aria-label="크기 조절"
+                className="absolute -bottom-1.5 -right-1.5 h-3.5 w-3.5 rounded-sm bg-amber-400 border border-background z-10 cursor-nwse-resize"
+                onPointerDown={(e) => startDrag(e, h, "resize")}
+                onPointerMove={moveDrag}
+                onPointerUp={(e) => endDrag(e, h)}
+              />
             )}
           </button>
         ))}
@@ -282,7 +359,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       )}
 
       {/* 부품번호 지정 다이얼로그 */}
-      <Dialog open={!!pendingRect} onOpenChange={(v) => !v && setPendingRect(null)}>
+      <Dialog open={!!pendingRect} onOpenChange={(v) => { if (!v) { setPendingRect(null); setEditId(null); } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>이 영역에 연결</DialogTitle>
