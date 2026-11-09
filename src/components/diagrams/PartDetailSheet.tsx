@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PartTipsDialog from "@/components/parts/PartTipsDialog";
-import { Lightbulb, MapPin, Wrench, Package } from "lucide-react";
+import { Lightbulb, MapPin, Wrench, Package, Image as ImageIcon, FileImage } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
 
 const db = supabase as any;
@@ -15,6 +16,9 @@ type Props = {
   partName: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  diagramUrl?: string | null;
+  diagramTitle?: string | null;
+  highlight?: { x: number; y: number; w: number; h: number } | null;
 };
 
 type InvRow = {
@@ -38,8 +42,30 @@ type UsageRow = {
 
 const won = (n: number | null | undefined) => (n == null ? "—" : `${n.toLocaleString("ko-KR")}원`);
 
-export default function PartDetailSheet({ partCode, partName, open, onOpenChange }: Props) {
+export default function PartDetailSheet({ partCode, partName, open, onOpenChange, diagramUrl, diagramTitle, highlight }: Props) {
   const [tipsOpen, setTipsOpen] = useState(false);
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+
+  const { data: photos = [], isLoading: photoLoading } = useQuery<{ url: string; content: string }[]>({
+    queryKey: ["diagram-part-photos", partCode],
+    enabled: open && !!partCode,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("part_tips")
+        .select("content, photo_paths")
+        .eq("part_code", partCode)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const paths: string[] = (data || []).flatMap((t: any) => t.photo_paths || []);
+      if (paths.length === 0) return [];
+      const { data: signed } = await supabase.storage.from("part-photos").createSignedUrls(paths, 3600);
+      const map: Record<string, string> = {};
+      (signed || []).forEach((s) => { if (s.path && s.signedUrl) map[s.path] = s.signedUrl; });
+      return (data || []).flatMap((t: any) =>
+        (t.photo_paths || []).filter((p: string) => map[p]).map((p: string) => ({ url: map[p], content: t.content }))
+      );
+    },
+  });
 
   const { data: inventory = [], isLoading: invLoading } = useQuery<InvRow[]>({
     queryKey: ["diagram-part-inventory", partCode],
@@ -129,8 +155,48 @@ export default function PartDetailSheet({ partCode, partName, open, onOpenChange
             </Button>
           </SheetHeader>
 
-          {/* 재고 정보 */}
+          {/* 부품 사진 */}
           <section className="mt-4 space-y-2">
+            <h3 className="text-sm font-semibold flex items-center gap-1.5">
+              <ImageIcon className="h-3.5 w-3.5 text-amber-400" /> 부품 사진
+            </h3>
+            {photoLoading ? (
+              <Skeleton className="h-20 w-full rounded-lg" />
+            ) : photos.length === 0 ? (
+              <p className="text-sm text-muted-foreground border rounded-lg p-3">
+                등록된 사진이 없습니다. 위 「부품 팁 · 사진 보기」에서 추가할 수 있어요.
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {photos.map((p, i) => (
+                  <button key={i} type="button" onClick={() => setZoomUrl(p.url)} className="aspect-square rounded-lg overflow-hidden border bg-muted">
+                    <img src={p.url} alt={p.content || partCode || ""} className="w-full h-full object-cover" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* 도면 위치 */}
+          {diagramUrl && (
+            <section className="mt-5 space-y-2">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                <FileImage className="h-3.5 w-3.5 text-primary" /> 도면{diagramTitle ? ` · ${diagramTitle}` : ""}
+              </h3>
+              <button type="button" onClick={() => setZoomUrl(diagramUrl)} className="relative block w-full rounded-lg overflow-hidden border bg-card">
+                <img src={diagramUrl} alt={diagramTitle || "도면"} className="w-full h-auto block" />
+                {highlight && (
+                  <span
+                    className="absolute border-2 border-primary bg-primary/25 rounded-sm"
+                    style={{ left: `${highlight.x}%`, top: `${highlight.y}%`, width: `${highlight.w}%`, height: `${highlight.h}%` }}
+                  />
+                )}
+              </button>
+            </section>
+          )}
+
+          {/* 재고 정보 */}
+          <section className="mt-5 space-y-2">
             <h3 className="text-sm font-semibold flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-emerald-400" /> 재고 · 위치 · 가격
             </h3>
@@ -199,6 +265,12 @@ export default function PartDetailSheet({ partCode, partName, open, onOpenChange
           </section>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={!!zoomUrl} onOpenChange={(v) => !v && setZoomUrl(null)}>
+        <DialogContent className="max-w-4xl p-2">
+          {zoomUrl && <img src={zoomUrl} alt="확대" className="w-full h-auto max-h-[85vh] object-contain" />}
+        </DialogContent>
+      </Dialog>
 
       {partCode && (
         <PartTipsDialog
