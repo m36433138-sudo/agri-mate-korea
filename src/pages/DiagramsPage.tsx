@@ -69,8 +69,18 @@ export default function DiagramsPage() {
   const [kindTab, setKindTab] = useState<"photo" | "diagram">("photo");
   const [modelFilter, setModelFilter] = useState("전체");
   const [kind, setKind] = useState<"photo" | "diagram">("photo");
-  const models = ["전체", ...Array.from(new Set(diagrams.map((d) => d.model_name).filter(Boolean) as string[]))];
-  const shown = diagrams.filter((d) => d.kind === kindTab && (modelFilter === "전체" || d.model_name === modelFilter));
+  // 트랙터 도면 분류: YT488은 따로, YT490·5101·5113(공용 엔진 포함)은 하나로 묶는다.
+  const modelGroup = (name?: string | null) => {
+    if (!name) return "";
+    if (name.includes("YT")) {
+      return name.includes("YT490") || name.includes("YT5101") || name.includes("YT5113")
+        ? "YT490 / YT5101 / YT5113"
+        : "YT488";
+    }
+    return name;
+  };
+  const models = ["전체", ...Array.from(new Set(diagrams.map((d) => modelGroup(d.model_name)).filter(Boolean)))];
+  const shown = diagrams.filter((d) => d.kind === kindTab && (modelFilter === "전체" || modelGroup(d.model_name) === modelFilter));
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [title, setTitle] = useState("");
