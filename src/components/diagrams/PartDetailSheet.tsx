@@ -22,6 +22,9 @@ type Props = {
 };
 
 type InvRow = {
+  id: string;
+  part_code: string;
+  part_name: string | null;
   branch: string;
   quantity: number | null;
   location_main: string | null;
