@@ -7,6 +7,7 @@
 @layer base {
   /* ── 라이트 모드 (기본) ── */
   :root {
+    --diagram-paper: 0 0% 100%;
     --background: 210 40% 98%;         /* #F6F9FC */
     --foreground: 222 47% 11%;         /* #0F172A */
 

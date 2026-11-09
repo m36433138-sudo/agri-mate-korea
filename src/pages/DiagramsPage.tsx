@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useDiagrams, useDiagramImageUrl, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
 import DiagramViewer from "@/components/diagrams/DiagramViewer";
+import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
 import { Map, Plus, Camera, ImagePlus, Trash2, Loader2 } from "lucide-react";
 
 async function compressImage(file: File): Promise<Blob> {
@@ -28,19 +29,22 @@ function DiagramCard({ diagram, onClick, onDelete }: { diagram: Diagram; onClick
   const { data: url } = useDiagramImageUrl(diagram.image_path);
   return (
     <div className="border rounded-xl overflow-hidden bg-card hover:border-primary/60 transition-colors cursor-pointer group relative">
-      <div onClick={onClick}>
+      <Button variant="ghost" onClick={onClick} aria-label={`${diagram.title} 열기`}
+        className="block h-auto w-full rounded-none p-0 text-left whitespace-normal hover:bg-transparent">
         {url ? (
-          <img src={url} alt={diagram.title} className={`w-full object-cover ${diagram.kind === "photo" ? "aspect-[4/3]" : "aspect-[3/4] object-top"}`} />
+          diagram.kind === "photo" ? (
+            <img src={url} alt={diagram.title} loading="lazy" className="w-full object-cover aspect-[4/3]" />
+          ) : <DiagramThumbnail key={url} src={url} title={diagram.title} />
         ) : (
-          <Skeleton className="w-full aspect-[3/4]" />
+          <Skeleton className={`w-full ${diagram.kind === "photo" ? "aspect-[4/3]" : "aspect-square"}`} />
         )}
         <div className="p-3">
-          <p className="font-semibold truncate">{diagram.title}</p>
+          <p className="font-semibold line-clamp-2 min-h-10 text-sm" title={diagram.title}>{diagram.title}</p>
           {diagram.model_name && (
             <p className="text-xs text-muted-foreground truncate">{diagram.model_name}</p>
           )}
         </div>
-      </div>
+      </Button>
       <Button
         variant="ghost"
         size="icon"
