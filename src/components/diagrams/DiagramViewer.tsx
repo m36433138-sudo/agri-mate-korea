@@ -408,6 +408,8 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
         diagramUrl={imageUrl ?? null}
         diagramTitle={diagram.title}
         highlight={selected?.rect ?? null}
+        currentDiagramId={diagram.id}
+        onOpenDiagram={(id) => { const t = byId.get(id); if (t && onOpenDiagram) { setSelected(null); onOpenDiagram(t); } }}
       />
     </div>
   );
