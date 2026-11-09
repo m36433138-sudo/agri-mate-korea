@@ -43,6 +43,13 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   };
   const handleLink = (target: Diagram) => {
     if (!pendingRect) return;
+    if (editId) {
+      updateHotspot.mutate({ id: editId, part_code: "", part_name: target.title, target_diagram_id: target.id }, {
+        onSuccess: () => { toast({ title: `「${target.title}」로 연결을 바꿨습니다.` }); setPendingRect(null); setEditId(null); },
+        onError: (e: any) => toast({ title: "변경 실패", description: e.message, variant: "destructive" }),
+      });
+      return;
+    }
     addHotspot.mutate(
       {
         diagram_id: diagram.id,
@@ -163,6 +170,13 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
 
   const handleAssign = (item: { part_code: string; part_name: string }) => {
     if (!pendingRect) return;
+    if (editId) {
+      updateHotspot.mutate({ id: editId, part_code: item.part_code, part_name: item.part_name, target_diagram_id: null }, {
+        onSuccess: () => { toast({ title: `${item.part_code}로 바꿨습니다.` }); setPendingRect(null); setEditId(null); },
+        onError: (e: any) => toast({ title: "변경 실패", description: e.message, variant: "destructive" }),
+      });
+      return;
+    }
     addHotspot.mutate(
       {
         diagram_id: diagram.id,
@@ -214,7 +228,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
 
       {editing && (
         <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-          드래그해서 네모 상자를 그리면 부품번호를 지정하거나 다른 도면으로 연결할 수 있습니다. 상자 왼쪽 위 × 버튼으로 삭제합니다.
+          빈 곳을 드래그하면 새 상자, 상자를 끌면 이동, 오른쪽 아래 점을 끌면 크기 조절, 상자를 탭하면 부품번호나 연결할 사진·도면을 바꿉니다. 왼쪽 위 버튼으로 삭제합니다.
         </p>
       )}
 
@@ -244,7 +258,10 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
                   ? "border-primary/80 bg-primary/10 hover:bg-primary/25 active:bg-primary/35"
                   : "border-transparent hover:border-primary hover:bg-primary/20 active:bg-primary/30"
             }`}
-            style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%` }}
+            style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%`, cursor: editing ? "move" : undefined }}
+            onPointerDown={(e) => startDrag(e, h, "move")}
+            onPointerMove={moveDrag}
+            onPointerUp={(e) => endDrag(e, h)}
             onClick={(e) => {
               e.stopPropagation();
               if (!editing) openHotspot(h);
@@ -262,6 +279,8 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
                 role="button"
                 tabIndex={0}
                 className="absolute -top-2 -left-2 bg-destructive text-destructive-foreground rounded-full p-0.5 z-10"
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   deleteHotspot.mutate(h.id);
@@ -269,6 +288,15 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
               >
                 <Trash2 className="h-3 w-3" />
               </span>
+            )}
+            {editing && (
+              <span
+                aria-label="크기 조절"
+                className="absolute -bottom-1.5 -right-1.5 h-3.5 w-3.5 rounded-sm bg-amber-400 border border-background z-10 cursor-nwse-resize"
+                onPointerDown={(e) => startDrag(e, h, "resize")}
+                onPointerMove={moveDrag}
+                onPointerUp={(e) => endDrag(e, h)}
+              />
             )}
           </button>
         ))}
