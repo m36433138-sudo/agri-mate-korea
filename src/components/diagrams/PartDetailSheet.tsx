@@ -22,6 +22,9 @@ type Props = {
 };
 
 type InvRow = {
+  id: string;
+  part_code: string;
+  part_name: string | null;
   branch: string;
   quantity: number | null;
   location_main: string | null;
@@ -73,9 +76,10 @@ export default function PartDetailSheet({ partCode, partName, open, onOpenChange
     queryFn: async () => {
       const { data, error } = await db
         .from("inventory")
-        .select("branch, quantity, location_main, location_sub, purchase_price, sales_price")
-        .or(`part_code.eq."${partCode}",alt_part_code.eq."${partCode}"`)
-        .order("branch");
+        .select("id, branch, part_code, part_name, quantity, location_main, location_sub, purchase_price, sales_price")
+        .or(`part_code.eq."${partCode}",alt_part_code.eq."${partCode}",part_code.like."${partCode}-*",alt_part_code.like."${partCode}-*"`)
+        .order("branch")
+        .order("part_code");
       if (error) throw error;
       return data as InvRow[];
     },
@@ -208,7 +212,8 @@ export default function PartDetailSheet({ partCode, partName, open, onOpenChange
               </p>
             ) : (
               inventory.map((inv) => (
-                <div key={inv.branch} className="border rounded-lg p-3 space-y-1.5">
+                <div key={inv.id} className="border rounded-lg p-3 space-y-1.5">
+                  <p className="text-xs font-mono">{inv.part_code}{inv.part_name ? ` · ${inv.part_name}` : ""}</p>
                   <div className="flex items-center justify-between">
                     <Badge variant="outline">{inv.branch}</Badge>
                     <span className={`text-sm font-bold ${(inv.quantity ?? 0) > 0 ? "" : "text-destructive"}`}>
