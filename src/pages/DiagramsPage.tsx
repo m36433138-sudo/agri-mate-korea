@@ -10,7 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDiagrams, useDiagramImageUrl, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
 import DiagramViewer from "@/components/diagrams/DiagramViewer";
 import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
-import { Map, Plus, Camera, ImagePlus, Trash2, Loader2 } from "lucide-react";
+import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import LabelPhotoDialog from "@/components/diagrams/LabelPhotoDialog";
+import PdfDiagramImportDialog from "@/components/diagrams/PdfDiagramImportDialog";
 
 async function compressImage(file: File): Promise<Blob> {
   const img = await createImageBitmap(file);
@@ -82,6 +85,9 @@ export default function DiagramsPage() {
   const models = ["전체", ...Array.from(new Set(diagrams.map((d) => modelGroup(d.model_name)).filter(Boolean)))];
   const shown = diagrams.filter((d) => d.kind === kindTab && (modelFilter === "전체" || modelGroup(d.model_name) === modelFilter));
 
+  const { isAdmin } = useUserRole();
+  const [labelOpen, setLabelOpen] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [modelName, setModelName] = useState("");
@@ -148,7 +154,15 @@ export default function DiagramsPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Map className="h-6 w-6 text-primary" /> 부품 도면
         </h1>
-        <Button className="ml-auto gap-1.5" onClick={() => setUploadOpen(true)}>
+        <Button variant="outline" className="ml-auto gap-1.5" onClick={() => setLabelOpen(true)}>
+          <Tag className="h-4 w-4" /> 부품 사진(라벨)
+        </Button>
+        {isAdmin && (
+          <Button variant="outline" className="gap-1.5" onClick={() => setPdfOpen(true)}>
+            <FileUp className="h-4 w-4" /> PDF 자동 등록
+          </Button>
+        )}
+        <Button className="gap-1.5" onClick={() => setUploadOpen(true)}>
           <Plus className="h-4 w-4" /> 도면 등록
         </Button>
       </div>
@@ -267,6 +281,8 @@ export default function DiagramsPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <LabelPhotoDialog open={labelOpen} onOpenChange={setLabelOpen} />
+      {isAdmin && <PdfDiagramImportDialog open={pdfOpen} onOpenChange={setPdfOpen} />}
     </div>
   );
 }
