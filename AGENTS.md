@@ -2,4 +2,4 @@
 - Diagram catalogue thumbnails crop the illustration client-side only; full source images and hotspot coordinates remain unchanged for part lookup.
 - Error-code records retain independent photo paths in a private bucket; batch creation uploads before one atomic insert and cleans up on failure so records can be deleted independently.
 - Machine lists fetch stable range-based pages before filtering so records beyond the Data API row cap remain discoverable.
-- Global search uses a paginated SECURITY INVOKER RPC with normalized indexed fields and abortable query-keyed requests so RLS remains authoritative and stale responses cannot replace current results.
+- Global search uses a paginated SECURITY INVOKER RPC with normalized indexed fields and abortable query-keyed requests so RLS remains authoritative and stale responses cannot replace current results.- PDF diagram import runs in the browser (pdfjs text layer → part-number hotspots); label-photo linking reads codes server-side via the read-part-label function and only links after a staff pick, so AI never writes data directly.
