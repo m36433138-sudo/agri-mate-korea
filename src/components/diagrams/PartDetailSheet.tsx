@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import PartTipsDialog from "@/components/parts/PartTipsDialog";
-import { Lightbulb, MapPin, Wrench, Package, Image as ImageIcon, FileImage } from "lucide-react";
+import { Lightbulb, MapPin, Wrench, Package, Image as ImageIcon, FileImage, GitBranch } from "lucide-react";
+import { modelsOf } from "@/lib/diagramModelGroup";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
 
@@ -19,6 +20,8 @@ type Props = {
   diagramUrl?: string | null;
   diagramTitle?: string | null;
   highlight?: { x: number; y: number; w: number; h: number } | null;
+  currentDiagramId?: string;
+  onOpenDiagram?: (diagramId: string) => void;
 };
 
 type InvRow = {
@@ -45,7 +48,7 @@ type UsageRow = {
 
 const won = (n: number | null | undefined) => (n == null ? "—" : `${n.toLocaleString("ko-KR")}원`);
 
-export default function PartDetailSheet({ partCode, partName, open, onOpenChange, diagramUrl, diagramTitle, highlight }: Props) {
+export default function PartDetailSheet({ partCode, partName, open, onOpenChange, diagramUrl, diagramTitle, highlight, currentDiagramId, onOpenDiagram }: Props) {
   const [tipsOpen, setTipsOpen] = useState(false);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
 
@@ -137,6 +140,31 @@ export default function PartDetailSheet({ partCode, partName, open, onOpenChange
     },
   });
 
+  const { data: usedIn = [] } = useQuery<{ model: string; diagrams: { id: string; title: string }[] }[]>({
+    queryKey: ["diagram-part-models", partCode],
+    enabled: open && !!partCode,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("diagram_hotspots")
+        .select("diagram_id, diagrams!diagram_hotspots_diagram_id_fkey(id, title, model_name)")
+        .eq("part_code", partCode)
+        .limit(500);
+      if (error) throw error;
+      const groups = new Map<string, Map<string, string>>();
+      (data || []).forEach((r: any) => {
+        const d = r.diagrams;
+        if (!d) return;
+        modelsOf(d.model_name).forEach((m) => {
+          if (!groups.has(m)) groups.set(m, new Map());
+          groups.get(m)!.set(d.id, d.title);
+        });
+      });
+      return Array.from(groups.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([model, ds]) => ({ model: model || "기종 미지정", diagrams: Array.from(ds, ([id, title]) => ({ id, title })) }));
+    },
+  });
+
   const totalUsed = usage.reduce((s, u) => s + (u.qty || 0), 0);
 
   return (
@@ -158,6 +186,34 @@ export default function PartDetailSheet({ partCode, partName, open, onOpenChange
               <Lightbulb className="h-3.5 w-3.5 text-amber-400" /> 부품 팁 · 사진 보기
             </Button>
           </SheetHeader>
+
+          {/* 사용 기종 분기 */}
+          {usedIn.length > 0 && (
+            <section className="mt-4 space-y-2">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                <GitBranch className="h-3.5 w-3.5 text-primary" /> 사용 기종
+                {usedIn.length > 1 && <span className="text-xs font-normal text-muted-foreground">({usedIn.length}개 기종 공용)</span>}
+              </h3>
+              {usedIn.map((g) => (
+                <div key={g.model} className="border rounded-lg p-2.5 space-y-1.5">
+                  <Badge variant="outline">{g.model}</Badge>
+                  <div className="flex flex-col gap-1">
+                    {g.diagrams.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        disabled={!onOpenDiagram || d.id === currentDiagramId}
+                        onClick={() => { onOpenDiagram?.(d.id); onOpenChange(false); }}
+                        className="text-left text-xs text-muted-foreground hover:text-primary disabled:hover:text-muted-foreground truncate"
+                      >
+                        {d.id === currentDiagramId ? "• (현재) " : "→ "}{d.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
 
           {/* 부품 사진 */}
           <section className="mt-4 space-y-2">
