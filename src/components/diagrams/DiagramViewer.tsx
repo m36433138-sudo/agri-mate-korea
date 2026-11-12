@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDiagramImageUrl, useHotspots, type Diagram, type DiagramHotspot } from "@/hooks/useDiagrams";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
 import PartDetailSheet from "@/components/diagrams/PartDetailSheet";
-import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick, Link2 } from "lucide-react";
+import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick, Link2, ZoomIn, ZoomOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -214,11 +214,14 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
     );
   };
 
+  const [zoom, setZoom] = useState(() => (typeof window !== "undefined" && window.innerWidth < 640 ? 2 : 1));
+
   const uniqueCodes = Array.from(new Map(hotspots.filter((h) => !h.target_diagram_id).map((h) => [h.part_code, h])).values());
   const links = hotspots.filter((h) => h.target_diagram_id);
 
   return (
     <div className="space-y-3">
+      <ZoomBar zoom={zoom} setZoom={setZoom} />
       {/* 상단 바 */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5">
@@ -248,9 +251,11 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       )}
 
       {/* 도면 이미지 */}
+      <div className="w-full overflow-auto rounded-xl border bg-card max-h-[75vh] sm:max-h-none overscroll-contain">
       <div
         ref={containerRef}
-        className={`relative w-full select-none rounded-xl overflow-hidden border bg-card ${editing ? "touch-none cursor-crosshair" : ""}`}
+        style={{ width: `${zoom * 100}%` }}
+        className={`relative select-none rounded-xl overflow-hidden border bg-card ${editing ? "touch-none cursor-crosshair" : ""}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -325,6 +330,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             style={{ left: `${drawRect.x}%`, top: `${drawRect.y}%`, width: `${drawRect.w}%`, height: `${drawRect.h}%` }}
           />
         )}
+      </div>
       </div>
 
       {!editing && (
@@ -428,6 +434,23 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
         currentDiagramId={diagram.id}
         onOpenDiagram={(id) => { const t = byId.get(id); if (t && onOpenDiagram) { setSelected(null); onOpenDiagram(t); } }}
       />
+    </div>
+  );
+}
+
+function ZoomBar({ zoom, setZoom }: { zoom: number; setZoom: (z: number) => void }) {
+  const steps = [1, 1.5, 2, 3, 4];
+  const idx = steps.indexOf(zoom);
+  return (
+    <div className="flex items-center gap-1.5">
+      <Button variant="outline" size="icon" className="h-8 w-8" disabled={idx <= 0} onClick={() => setZoom(steps[Math.max(0, idx - 1)])} aria-label="축소">
+        <ZoomOut className="h-4 w-4" />
+      </Button>
+      <span className="text-xs w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+      <Button variant="outline" size="icon" className="h-8 w-8" disabled={idx >= steps.length - 1} onClick={() => setZoom(steps[Math.min(steps.length - 1, idx + 1)])} aria-label="확대">
+        <ZoomIn className="h-4 w-4" />
+      </Button>
+      <span className="text-[11px] text-muted-foreground ml-1 sm:hidden">손가락으로 밀어서 이동</span>
     </div>
   );
 }
