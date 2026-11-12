@@ -38,7 +38,7 @@ function DiagramCard({ diagram, match, onClick, onDelete }: {
 }) {
   const { data: url } = useDiagramImageUrl(diagram.image_path);
   return (
-    <div className="border rounded-xl overflow-hidden bg-card hover:border-primary/60 transition-colors cursor-pointer group relative">
+    <div className="rounded-lg sm:rounded-xl overflow-hidden bg-card/60 sm:bg-card sm:border hover:border-primary/60 transition-colors cursor-pointer group relative">
       <Button variant="ghost" onClick={onClick} aria-label={`${diagram.title} 열기`}
         className="block h-auto w-full rounded-none p-0 text-left whitespace-normal hover:bg-transparent">
         {url ? (
@@ -48,13 +48,13 @@ function DiagramCard({ diagram, match, onClick, onDelete }: {
         ) : (
           <Skeleton className={`w-full ${diagram.kind === "photo" ? "aspect-[4/3]" : "aspect-square"}`} />
         )}
-        <div className="p-3">
-          <p className="font-semibold line-clamp-2 min-h-10 text-sm" title={diagram.title}>{diagram.title}</p>
+        <div className="px-1.5 py-1 sm:p-3">
+          <p className="font-medium sm:font-semibold line-clamp-2 sm:min-h-10 text-[11px] leading-tight sm:text-sm" title={diagram.title}>{diagram.title}</p>
           {diagram.model_name && (
-            <p className="text-xs text-muted-foreground truncate">{diagram.model_name}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{diagram.model_name}</p>
           )}
           {match && match.codes.length > 0 && (
-            <p className="text-xs text-primary truncate" title={match.codes.join(", ")}>
+            <p className="text-[10px] sm:text-xs text-primary truncate" title={match.codes.join(", ")}>
               부품번호 {match.codes[0]}
               {match.count > 1 ? ` 외 ${match.count - 1}건` : ""}
             </p>
@@ -233,7 +233,7 @@ export default function DiagramsPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="aspect-[3/4] rounded-xl" />)}
         </div>
       ) : results.length === 0 ? (
@@ -245,7 +245,7 @@ export default function DiagramsPage() {
               : "등록된 도면이 없습니다. 「도면 등록」을 눌러 부품 배치도를 올려 주세요."}
         </p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-3">
           {results.map((r) => (
             <DiagramCard
               key={r.diagram.id}

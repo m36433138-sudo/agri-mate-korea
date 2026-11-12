@@ -361,16 +361,16 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
 
       {/* 부품 칩 목록 */}
       {uniqueCodes.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="divide-y divide-border/50 sm:divide-y-0 sm:flex sm:flex-wrap sm:gap-1.5">
           {uniqueCodes.map((h) => (
             <button
               key={h.id}
               type="button"
               onClick={() => setSelected({ code: h.part_code, name: h.part_name })}
-              className="text-xs px-2.5 py-1.5 rounded-lg border bg-card hover:border-primary hover:text-primary transition-colors text-left"
+              className="flex w-full sm:w-auto items-baseline gap-2 text-xs px-1 py-2 sm:px-2.5 sm:py-1.5 sm:rounded-lg sm:border sm:bg-card hover:text-primary sm:hover:border-primary transition-colors text-left"
             >
-              <span className="font-mono font-semibold">{h.part_code}</span>
-              {h.part_name && <span className="ml-1.5 text-muted-foreground">{h.part_name}</span>}
+              <span className="font-mono font-semibold shrink-0">{h.part_code}</span>
+              {h.part_name && <span className="truncate text-muted-foreground">{h.part_name}</span>}
             </button>
           ))}
         </div>
