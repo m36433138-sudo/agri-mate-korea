@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useDiagrams, useDiagramImageUrl, useDiagramPartSearch, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
+import { useDiagrams, useDiagramImageUrl, useDiagramPartSearch, useDiagramThumbUrls, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
 import DiagramViewer from "@/components/diagrams/DiagramViewer";
 import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
 import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp, Search, X } from "lucide-react";
@@ -30,21 +30,37 @@ async function compressImage(file: File): Promise<Blob> {
   );
 }
 
-function DiagramCard({ diagram, match, onClick, onDelete }: {
+function FastThumb({ thumb, diagram }: { thumb: string; diagram: Diagram }) {
+  const [bad, setBad] = useState(false);
+  if (bad) return <SlowThumb diagram={diagram} />;
+  return (
+    <div className="aspect-square w-full overflow-hidden bg-[hsl(var(--diagram-paper))] p-1.5">
+      <img src={thumb} alt={diagram.title} loading="lazy" decoding="async" onError={() => setBad(true)} className="h-full w-full object-contain" />
+    </div>
+  );
+}
+
+function SlowThumb({ diagram }: { diagram: Diagram }) {
+  const { data: url } = useDiagramImageUrl(diagram.image_path);
+  return url ? <DiagramThumbnail key={url} src={url} title={diagram.title} /> : <Skeleton className="w-full aspect-square" />;
+}
+
+function DiagramCard({ diagram, match, thumb, onClick, onDelete }: {
   diagram: Diagram;
+  thumb?: string | null;
   match?: { codes: string[]; count: number };
   onClick: () => void;
   onDelete: () => void;
 }) {
-  const { data: url } = useDiagramImageUrl(diagram.image_path);
+  const { data: url } = useDiagramImageUrl(diagram.kind === "photo" ? diagram.image_path : null);
   return (
     <div className="rounded-lg sm:rounded-xl overflow-hidden bg-card/60 sm:bg-card sm:border hover:border-primary/60 transition-colors cursor-pointer group relative">
       <Button variant="ghost" onClick={onClick} aria-label={`${diagram.title} 열기`}
         className="block h-auto w-full rounded-none p-0 text-left whitespace-normal hover:bg-transparent">
-        {url ? (
-          diagram.kind === "photo" ? (
-            <img src={url} alt={diagram.title} loading="lazy" className="w-full object-cover aspect-[4/3]" />
-          ) : <DiagramThumbnail key={url} src={url} title={diagram.title} />
+        {diagram.kind !== "photo" ? (
+          thumb ? <FastThumb thumb={thumb} diagram={diagram} /> : thumb === null ? <SlowThumb diagram={diagram} /> : <Skeleton className="w-full aspect-square" />
+        ) : url ? (
+          <img src={url} alt={diagram.title} loading="lazy" className="w-full object-cover aspect-[4/3]" />
         ) : (
           <Skeleton className={`w-full ${diagram.kind === "photo" ? "aspect-[4/3]" : "aspect-square"}`} />
         )}
@@ -89,6 +105,11 @@ export default function DiagramsPage() {
   const [term, setTerm] = useState("");
   const { hits: partHits, pending: partPending } = useDiagramPartSearch(term);
   const [initialPart, setInitialPart] = useState<string | null>(null);
+  const thumbPaths = useMemo(
+    () => (diagrams ?? []).filter((d: Diagram) => d.kind !== "photo" && d.image_path).map((d: Diagram) => d.image_path as string),
+    [diagrams],
+  );
+  const { data: thumbs, isError: thumbsFailed } = useDiagramThumbUrls(thumbPaths);
   const results = useMemo(
     () => searchDiagrams(diagrams, term, partHits, { kind: kindTab, model: modelFilter }),
     [diagrams, term, partHits, kindTab, modelFilter],
@@ -250,6 +271,7 @@ export default function DiagramsPage() {
             <DiagramCard
               key={r.diagram.id}
               diagram={r.diagram}
+              thumb={thumbs ? (thumbs.get(r.diagram.image_path ?? "") ?? null) : thumbsFailed ? null : undefined}
               match={r.partCount > 0 ? { codes: r.partCodes, count: r.partCount } : undefined}
               onClick={() => openDiagram(r.diagram, r.partCodes[0])}
               onDelete={() => deleteDiagram.mutate(r.diagram, {

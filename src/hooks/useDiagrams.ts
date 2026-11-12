@@ -182,3 +182,26 @@ export function useDiagramImageUrl(imagePath: string | null) {
     staleTime: 1000 * 60 * 50,
   });
 }
+
+/** Pre-made small previews live at thumbs/<image_path>; signed in bulk so the list shows instantly. */
+export function useDiagramThumbUrls(paths: string[]) {
+  const key = paths.join("|");
+  return useQuery({
+    queryKey: ["diagram-thumb-urls", key],
+    enabled: paths.length > 0,
+    queryFn: async () => {
+      const out = new Map<string, string>();
+      for (let i = 0; i < paths.length; i += 500) {
+        const chunk = paths.slice(i, i + 500);
+        const { data, error } = await supabase.storage
+          .from(DIAGRAM_BUCKET)
+          .createSignedUrls(chunk.map((p) => `thumbs/${p}`), 3600);
+        if (error) throw error;
+        data?.forEach((d, j) => { if (d.signedUrl) out.set(chunk[j], d.signedUrl); });
+      }
+      return out;
+    },
+    staleTime: 1000 * 60 * 50,
+    gcTime: 1000 * 60 * 60,
+  });
+}
