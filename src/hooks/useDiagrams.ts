@@ -36,13 +36,21 @@ export function useDiagrams() {
   const { data: diagrams = [], isLoading } = useQuery<Diagram[]>({
     queryKey: ["diagrams"],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("diagrams")
-        .select("*")
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Diagram[];
+      const all: Diagram[] = [];
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await db
+          .from("diagrams")
+          .select("*")
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        all.push(...((data ?? []) as Diagram[]));
+        if (!data || data.length < PAGE) break;
+      }
+      return all;
     },
   });
 
