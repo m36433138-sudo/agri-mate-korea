@@ -271,8 +271,10 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
           <button
             key={h.id}
             type="button"
-            className={`absolute rounded-md border-2 transition-colors ${
-              editing
+            className={`absolute rounded-md border-2 transition-colors before:absolute before:-inset-3 before:content-[''] ${
+              !editing && selected?.code === h.part_code && !h.target_diagram_id
+                ? "border-amber-400 bg-amber-400/40 ring-4 ring-amber-400/50 z-20 rounded-full"
+                : editing
                 ? "border-amber-400/80 bg-amber-400/15"
                 : (h as any).callout_no
                   ? "border-primary/70 bg-primary/10 hover:bg-primary/30 active:bg-primary/40 rounded-full"
@@ -291,7 +293,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
           >
             <span
               className={`absolute -top-4 left-0 text-[9px] leading-none px-1 py-0.5 rounded whitespace-nowrap font-mono ${
-                editing ? "bg-amber-400 text-black font-bold" : h.target_diagram_id ? "bg-primary text-primary-foreground font-sans text-[11px]" : "bg-primary text-primary-foreground opacity-0 hover:opacity-100"
+                editing || (selected?.code === h.part_code && !h.target_diagram_id) ? "bg-amber-400 text-black font-bold text-[11px]" : h.target_diagram_id ? "bg-primary text-primary-foreground font-sans text-[11px]" : "bg-primary text-primary-foreground opacity-0 hover:opacity-100"
               }`}
             >
               {h.target_diagram_id ? (byId.get(h.target_diagram_id)?.title ?? h.part_name) : h.part_code}
