@@ -254,6 +254,8 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             className={`absolute rounded-md border-2 transition-colors ${
               editing
                 ? "border-amber-400/80 bg-amber-400/15"
+                : (h as any).callout_no
+                  ? "border-primary/70 bg-primary/10 hover:bg-primary/30 active:bg-primary/40 rounded-full"
                 : h.target_diagram_id
                   ? "border-primary/80 bg-primary/10 hover:bg-primary/25 active:bg-primary/35"
                   : "border-transparent hover:border-primary hover:bg-primary/20 active:bg-primary/30"

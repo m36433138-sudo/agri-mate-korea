@@ -1,0 +1,1 @@
+ALTER TABLE public.diagram_hotspots ADD COLUMN IF NOT EXISTS callout_no text;

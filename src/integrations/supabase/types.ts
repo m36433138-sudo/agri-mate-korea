@@ -631,6 +631,7 @@ export type Database = {
       }
       diagram_hotspots: {
         Row: {
+          callout_no: string | null
           created_at: string
           diagram_id: string
           h: number
@@ -644,6 +645,7 @@ export type Database = {
           y: number
         }
         Insert: {
+          callout_no?: string | null
           created_at?: string
           diagram_id: string
           h: number
@@ -657,6 +659,7 @@ export type Database = {
           y: number
         }
         Update: {
+          callout_no?: string | null
           created_at?: string
           diagram_id?: string
           h?: number
