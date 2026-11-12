@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,12 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useDiagrams, useDiagramImageUrl, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
+import { useDiagrams, useDiagramImageUrl, useDiagramPartSearch, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
 import DiagramViewer from "@/components/diagrams/DiagramViewer";
 import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
-import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp } from "lucide-react";
+import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp, Search, X } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { modelGroup } from "@/lib/diagramModelGroup";
+import { searchDiagrams } from "@/lib/diagramSearch";
 import LabelPhotoDialog from "@/components/diagrams/LabelPhotoDialog";
 import PdfDiagramImportDialog from "@/components/diagrams/PdfDiagramImportDialog";
 
@@ -29,7 +30,12 @@ async function compressImage(file: File): Promise<Blob> {
   );
 }
 
-function DiagramCard({ diagram, onClick, onDelete }: { diagram: Diagram; onClick: () => void; onDelete: () => void }) {
+function DiagramCard({ diagram, match, onClick, onDelete }: {
+  diagram: Diagram;
+  match?: { codes: string[]; count: number };
+  onClick: () => void;
+  onDelete: () => void;
+}) {
   const { data: url } = useDiagramImageUrl(diagram.image_path);
   return (
     <div className="border rounded-xl overflow-hidden bg-card hover:border-primary/60 transition-colors cursor-pointer group relative">
@@ -46,6 +52,12 @@ function DiagramCard({ diagram, onClick, onDelete }: { diagram: Diagram; onClick
           <p className="font-semibold line-clamp-2 min-h-10 text-sm" title={diagram.title}>{diagram.title}</p>
           {diagram.model_name && (
             <p className="text-xs text-muted-foreground truncate">{diagram.model_name}</p>
+          )}
+          {match && match.codes.length > 0 && (
+            <p className="text-xs text-primary truncate" title={match.codes.join(", ")}>
+              부품번호 {match.codes[0]}
+              {match.count > 1 ? ` 외 ${match.count - 1}건` : ""}
+            </p>
           )}
         </div>
       </Button>
@@ -69,13 +81,22 @@ export default function DiagramsPage() {
   const { diagrams, isLoading, addDiagram, deleteDiagram } = useDiagrams();
   const [stack, setStack] = useState<Diagram[]>([]);
   const selected = stack[stack.length - 1] ?? null;
-  const setSelected = (d: Diagram | null) => setStack(d ? [d] : []);
   const [kindTab, setKindTab] = useState<"photo" | "diagram">("photo");
   const [modelFilter, setModelFilter] = useState("전체");
   const [kind, setKind] = useState<"photo" | "diagram">("photo");
   // 트랙터 도면 분류: YT488은 따로, YT490·5101·5113(공용 엔진 포함)은 하나로 묶는다.
   const models = ["전체", ...Array.from(new Set(diagrams.map((d) => modelGroup(d.model_name)).filter(Boolean)))];
-  const shown = diagrams.filter((d) => d.kind === kindTab && (modelFilter === "전체" || modelGroup(d.model_name) === modelFilter));
+  const [term, setTerm] = useState("");
+  const { hits: partHits, pending: partPending } = useDiagramPartSearch(term);
+  const [initialPart, setInitialPart] = useState<string | null>(null);
+  const results = useMemo(
+    () => searchDiagrams(diagrams, term, partHits, { kind: kindTab, model: modelFilter }),
+    [diagrams, term, partHits, kindTab, modelFilter],
+  );
+  const openDiagram = (d: Diagram, code?: string) => {
+    setInitialPart(code ?? null);
+    setStack([d]);
+  };
 
   const { isAdmin } = useUserRole();
   const [labelOpen, setLabelOpen] = useState(false);
@@ -134,8 +155,9 @@ export default function DiagramsPage() {
         key={selected.id}
         diagram={selected}
         allDiagrams={diagrams}
-        onBack={() => setStack((s) => s.slice(0, -1))}
-        onOpenDiagram={(d) => setStack((s) => [...s, d])}
+        initialPartCode={initialPart}
+        onBack={() => { setInitialPart(null); setStack((s) => s.slice(0, -1)); }}
+        onOpenDiagram={(d) => { setInitialPart(null); setStack((s) => [...s, d]); }}
       />
     );
   }
@@ -158,6 +180,36 @@ export default function DiagramsPage() {
           <Plus className="h-4 w-4" /> 도면 등록
         </Button>
       </div>
+
+      <div className="relative mb-3">
+        <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <Input
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          placeholder="부품번호 · 기종 · 도면명으로 검색 (예: 129978-01331, YH1150, 예취부)"
+          aria-label="도면 검색"
+          className="pl-9 pr-9"
+        />
+        {term && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="검색어 지우기"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+            onClick={() => setTerm("")}
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+
+      {term.trim() && (
+        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+          {partPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+          「{term.trim()}」 도면 {results.length}개
+          {partPending ? " · 부품번호 검색 중" : ""}
+        </p>
+      )}
 
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <Tabs value={kindTab} onValueChange={(v) => setKindTab(v as "photo" | "diagram")}>
@@ -184,20 +236,23 @@ export default function DiagramsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="aspect-[3/4] rounded-xl" />)}
         </div>
-      ) : shown.length === 0 ? (
+      ) : results.length === 0 ? (
         <p className="text-sm text-muted-foreground border rounded-xl p-8 text-center">
-          {kindTab === "photo"
-            ? "등록된 기계 사진이 없습니다. 「도면 등록」에서 '기계 사진'을 골라 올려 주세요."
-            : "등록된 도면이 없습니다. 「도면 등록」을 눌러 부품 배치도를 올려 주세요."}
+          {term.trim()
+            ? `「${term.trim()}」에 해당하는 도면이 없습니다. 부품번호는 하이픈을 빼고 적어도 찾습니다.`
+            : kindTab === "photo"
+              ? "등록된 기계 사진이 없습니다. 「도면 등록」에서 '기계 사진'을 골라 올려 주세요."
+              : "등록된 도면이 없습니다. 「도면 등록」을 눌러 부품 배치도를 올려 주세요."}
         </p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {shown.map((d) => (
+          {results.map((r) => (
             <DiagramCard
-              key={d.id}
-              diagram={d}
-              onClick={() => setSelected(d)}
-              onDelete={() => deleteDiagram.mutate(d, {
+              key={r.diagram.id}
+              diagram={r.diagram}
+              match={r.partCount > 0 ? { codes: r.partCodes, count: r.partCount } : undefined}
+              onClick={() => openDiagram(r.diagram, r.partCodes[0])}
+              onDelete={() => deleteDiagram.mutate(r.diagram, {
                 onError: (e: any) => toast({ title: "삭제 실패", description: e.message, variant: "destructive" }),
               })}
             />

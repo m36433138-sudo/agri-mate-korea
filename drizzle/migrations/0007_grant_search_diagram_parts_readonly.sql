@@ -1,0 +1,1 @@
+grant execute on function public.search_diagram_parts(text, integer) to supabase_read_only_user;

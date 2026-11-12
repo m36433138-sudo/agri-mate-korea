@@ -3167,6 +3167,14 @@ export type Database = {
         }[]
       }
       next_quote_number: { Args: never; Returns: string }
+      search_diagram_parts: {
+        Args: { query: string; result_limit?: number }
+        Returns: {
+          diagram_id: string
+          match_count: number
+          part_codes: string[]
+        }[]
+      }
       search_normalize: { Args: { value: string }; Returns: string }
     }
     Enums: {

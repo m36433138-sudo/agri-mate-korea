@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,9 +17,11 @@ type Props = {
   onBack: () => void;
   allDiagrams?: Diagram[];
   onOpenDiagram?: (d: Diagram) => void;
+  /** 검색으로 열었을 때 바로 펼칠 부품번호 */
+  initialPartCode?: string | null;
 };
 
-export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram }: Props) {
+export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram, initialPartCode }: Props) {
   const isPhoto = diagram.kind === "photo";
   const [assignMode, setAssignMode] = useState<"part" | "link">(isPhoto ? "link" : "part");
   const [linkSearch, setLinkSearch] = useState("");
@@ -125,6 +127,19 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   const [drawRect, setDrawRect] = useState<Rect | null>(null);
   const [pendingRect, setPendingRect] = useState<Rect | null>(null);
   const [selected, setSelected] = useState<{ code: string; name: string | null; rect?: Rect } | null>(null);
+
+  // 검색에서 부품번호를 눌러 열면, 영역이 준비되는 대로 그 부품을 바로 펼친다.
+  const openedInitial = useRef(false);
+  useEffect(() => {
+    if (openedInitial.current || !initialPartCode || isLoading) return;
+    openedInitial.current = true;
+    const h = hotspots.find((x) => !x.target_diagram_id && x.part_code === initialPartCode);
+    setSelected(
+      h
+        ? { code: h.part_code, name: h.part_name, rect: { x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) } }
+        : { code: initialPartCode, name: null }
+    );
+  }, [initialPartCode, isLoading, hotspots]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);

@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isSearchTerm, type PartHit } from "@/lib/diagramSearch";
 
 const db = supabase as any;
 
@@ -73,6 +75,52 @@ export function useDiagrams() {
   });
 
   return { diagrams, isLoading, addDiagram, deleteDiagram };
+}
+
+/**
+ * 부품번호·부품명으로 도면 찾기 (서버). 250ms 기다렸다가 한 번만 묻고,
+ * 더 늦게 온 응답이 먼저 온 응답을 덮지 못하게 요청을 취소한다.
+ */
+export function useDiagramPartSearch(term: string) {
+  const q = term.trim();
+  const active = isSearchTerm(q);
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(q), 250);
+    return () => clearTimeout(timer);
+  }, [q]);
+
+  const search = useQuery({
+    queryKey: ["diagram-part-search", debounced],
+    enabled: active && debounced === q,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await db
+        .rpc("search_diagram_parts", { query: debounced, result_limit: 300 })
+        .abortSignal(signal);
+      if (error) throw error;
+      return (data ?? []) as { diagram_id: string; part_codes: string[] | null; match_count: number }[];
+    },
+    staleTime: 120_000,
+    gcTime: 600_000,
+    retry: 1,
+  });
+
+  const current = active && debounced === q;
+  const hits = useMemo(() => {
+    const map = new Map<string, PartHit>();
+    if (!current) return map;
+    for (const row of search.data ?? []) {
+      map.set(row.diagram_id, { codes: row.part_codes ?? [], count: row.match_count });
+    }
+    return map;
+  }, [current, search.data]);
+
+  return {
+    hits,
+    pending: active && (!current || search.isPending),
+    isError: current && search.isError,
+  };
 }
 
 export function useHotspots(diagramId: string | null) {
