@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { planRepairReceivable, type RepairPaymentMode } from "@/lib/repairBilling";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -145,6 +146,8 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [operatingHours, setOperatingHours] = useState("");
   const [notes, setNotes] = useState("");
   const [accountingPosted, setAccountingPosted] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<RepairPaymentMode>("paid");
+  const [partialPaid, setPartialPaid] = useState("");
 
   const { data: employees } = useQuery({
     queryKey: ["employees-list"],
@@ -322,6 +325,8 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setAppliedTemplates([]);
       setDraggedPartIndex(null);
       setAccountingPosted(false);
+      setPaymentMode("paid");
+      setPartialPaid("");
       setSelectedCustomerId("");
       setSelectedCustomerName("");
       setCustomerSearch("");
@@ -635,8 +640,39 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           });
         }
       }
+      // 결제 상태에 따라 미수금 자동 등록
+      const plan = planRepairReceivable(totalCost, paymentMode, parseInt(partialPaid) || 0, repairDate);
+      if (plan) {
+        const { data: mRow } = await supabase.from("machines").select("customer_id").eq("id", selectedMachineId).maybeSingle();
+        const { data: auth } = await supabase.auth.getUser();
+        const { data: fin, error: finErr } = await (supabase as any).from("finance_records").insert({
+          created_by: auth.user?.id,
+          record_type: "receivable",
+          customer_id: mRow?.customer_id ?? null,
+          source_type: "repair",
+          source_id: data.id,
+          amount: plan.amount,
+          paid_amount: plan.paidAmount,
+          is_paid: false,
+          due_date: plan.dueDate,
+          paid_date: plan.paidAmount > 0 ? repairDate : null,
+          notes: `수리비 · ${selectedMachineName || ""} · ${repairContent}`.slice(0, 200),
+        }).select("id").single();
+        if (finErr) {
+          toast({ title: "수리는 저장됐지만 미수금 등록에 실패했어요", description: finErr.message, variant: "destructive" });
+        } else if (plan.paidAmount > 0 && fin) {
+          await (supabase as any).from("finance_payments").insert({
+            finance_id: fin.id, amount: plan.paidAmount, paid_date: repairDate,
+            method: null, notes: "수리 등록 시 일부 입금", created_by: auth.user?.id,
+          });
+        }
+        return { receivable: plan.amount - plan.paidAmount };
+      }
+      return { receivable: 0 };
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ["finance"] });
+      qc.invalidateQueries({ queryKey: ["customer-receivables"] });
       qc.invalidateQueries({ queryKey: ["repairs"] });
       qc.invalidateQueries({ queryKey: ["all-repairs"] });
       qc.invalidateQueries({ queryKey: ["repairs-recent"] });
@@ -645,7 +681,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         onDraftFinalized(draftPrefill.draftId);
       }
 
-      toast({ title: "수리 이력이 저장되었습니다." });
+      toast({
+        title: "수리 이력이 저장되었습니다.",
+        description: res?.receivable > 0 ? `미수금 ${formatPrice(res.receivable)}이 등록됐어요.` : undefined,
+      });
       onOpenChange(false);
     },
     onError: (error: any) => toast({ title: "오류", description: error.message, variant: "destructive" }),
@@ -1089,6 +1128,25 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               )}
             </div>
           </div>
+        </div>
+
+        <div className="rounded-lg border p-3 space-y-2">
+          <Label className="text-sm">결제</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {([["paid","완납"],["unpaid","외상(미수)"],["partial","일부 입금"]] as const).map(([v,l]) => (
+              <Button key={v} type="button" size="sm" variant={paymentMode === v ? "default" : "outline"} onClick={() => setPaymentMode(v)}>
+                {l}
+              </Button>
+            ))}
+          </div>
+          {paymentMode === "partial" && (
+            <Input type="number" min={0} value={partialPaid} onChange={(e) => setPartialPaid(e.target.value)} placeholder="받은 금액" className="h-9" />
+          )}
+          {paymentMode !== "paid" && totalCost > 0 && (
+            <p className="text-xs text-muted-foreground">
+              저장하면 미수금 {formatPrice(Math.max(0, totalCost - (paymentMode === "partial" ? parseInt(partialPaid) || 0 : 0)))}이 고객 미수금에 자동 등록돼요 (만기 30일).
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-2 px-1">
