@@ -40,7 +40,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       if (t && onOpenDiagram) onOpenDiagram(t);
       else toast({ title: "연결된 도면을 찾을 수 없습니다." });
     } else {
-      setSelected({ code: h.part_code, name: h.part_name, rect: { x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) } });
+      setSelected({ code: h.part_code, name: h.part_name, qty: qtyOf(h.notes), rect: { x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) } });
     }
   };
   const handleLink = (target: Diagram) => {
@@ -126,7 +126,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   const [editing, setEditing] = useState(false);
   const [drawRect, setDrawRect] = useState<Rect | null>(null);
   const [pendingRect, setPendingRect] = useState<Rect | null>(null);
-  const [selected, setSelected] = useState<{ code: string; name: string | null; rect?: Rect } | null>(null);
+  const [selected, setSelected] = useState<{ code: string; name: string | null; qty?: string | null; rect?: Rect } | null>(null);
 
   // 검색에서 부품번호를 눌러 열면, 영역이 준비되는 대로 그 부품을 바로 펼친다.
   const openedInitial = useRef(false);
@@ -368,11 +368,12 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             <button
               key={h.id}
               type="button"
-              onClick={() => setSelected({ code: h.part_code, name: h.part_name })}
+              onClick={() => setSelected({ code: h.part_code, name: h.part_name, qty: qtyOf(h.notes) })}
               className="flex w-full sm:w-auto items-baseline gap-2 text-xs px-1 py-2 sm:px-2.5 sm:py-1.5 sm:rounded-lg sm:border sm:bg-card hover:text-primary sm:hover:border-primary transition-colors text-left"
             >
               <span className="font-mono font-semibold shrink-0">{h.part_code}</span>
               {h.part_name && <span className="truncate text-muted-foreground">{h.part_name}</span>}
+              {qtyOf(h.notes) && <span className="shrink-0 text-primary">{qtyOf(h.notes)}</span>}
             </button>
           ))}
         </div>
@@ -428,6 +429,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       <PartDetailSheet
         partCode={selected?.code ?? null}
         partName={selected?.name ?? null}
+        quantityNote={selected?.qty ?? null}
         open={!!selected}
         onOpenChange={(v) => !v && setSelected(null)}
         diagramUrl={imageUrl ?? null}
@@ -438,6 +440,11 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       />
     </div>
   );
+}
+
+/** 로타리 등 부품표의 기종별 소요 수량("소요 수량 · EL2200 3개 / ...") */
+function qtyOf(notes: string | null | undefined) {
+  return notes?.startsWith("소요 수량 · ") ? notes.slice(8) : null;
 }
 
 function ZoomBar({ zoom, setZoom }: { zoom: number; setZoom: (z: number) => void }) {

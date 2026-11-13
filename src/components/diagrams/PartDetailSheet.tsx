@@ -15,6 +15,7 @@ const db = supabase as any;
 type Props = {
   partCode: string | null;
   partName: string | null;
+  quantityNote?: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   diagramUrl?: string | null;
@@ -48,7 +49,7 @@ type UsageRow = {
 
 const won = (n: number | null | undefined) => (n == null ? "—" : `${n.toLocaleString("ko-KR")}원`);
 
-export default function PartDetailSheet({ partCode, partName, open, onOpenChange, diagramUrl, diagramTitle, highlight, currentDiagramId, onOpenDiagram }: Props) {
+export default function PartDetailSheet({ partCode, partName, quantityNote, open, onOpenChange, diagramUrl, diagramTitle, highlight, currentDiagramId, onOpenDiagram }: Props) {
   const [tipsOpen, setTipsOpen] = useState(false);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
 
@@ -177,6 +178,7 @@ export default function PartDetailSheet({ partCode, partName, open, onOpenChange
               {partCode}
             </SheetTitle>
             {partName && <p className="text-sm text-muted-foreground">{partName}</p>}
+            {quantityNote && <p className="text-sm"><span className="text-muted-foreground">소요 수량 </span><span className="font-semibold text-primary">{quantityNote}</span></p>}
             <Button
               variant="outline"
               size="sm"
