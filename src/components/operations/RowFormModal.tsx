@@ -14,6 +14,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
+import { mirrorToSheet, localRowIndex, sheetNameOf } from "@/lib/operationRows";
+
+function rowIndexFrom(data: any): number | undefined {
+  const r = data?.result?.updates?.updatedRange as string | undefined;
+  const m = r?.match(/!(?:[A-Z]+)(\d+):/);
+  return m ? Number(m[1]) : undefined;
+}
 
 const STATUSES: OperationStatus[] = ["입고대기", "수리중", "출고대기", "보류"];
 const MACHINE_TYPES = ["농업용 트랙터", "콤바인", "이앙기", "기타"];
@@ -131,37 +138,58 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
       const sheetName = formBranch === "강진" ? "강진(입출수)" : "장흥(입출수)";
       const values = formToValues(form);
 
-      let savedRowIndex = row?._rowIndex;
+      const record = {
+        branch: formBranch,
+        source_tab: "active" as const,
+        status_label: form.status || null,
+        customer_name: form.name.trim(),
+        machine: form.machine || null,
+        model: form.model || null,
+        phone: form.phone || null,
+        address: form.address || null,
+        location: form.location || null,
+        technician: form.technician || null,
+        requirements: form.request || null,
+        serial_number: form.serial_number.trim() || null,
+        entry_date: form.entryDate || null,
+        repair_start_date: form.repairStart || null,
+        repair_done_date: form.repairDone || null,
+        dispatch_date: form.exitDate || null,
+        contacted: form.contact || null,
+        contact_note: form.contactNote || null,
+        notes: form.note || null,
+        writer: form.writer || null,
+      };
+
+      let backupOk = true;
       if (isEdit && row) {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { action: "updateRowWithoutSerial", sheetName, rowIndex: row._rowIndex, values },
-        });
-        if (error || data?.error) throw new Error(data?.error || error?.message || "작업 수정에 실패했습니다.");
-        toast({ title: "수정 완료" });
+        // 지점이 바뀐 경우: 새 지점 행으로 옮김
+        if (row._branch !== formBranch) {
+          await supabase.from("operation_rows").delete()
+            .eq("branch", row._branch).eq("source_tab", "active").eq("row_index", row._rowIndex);
+          if (row._rowIndex > 0) await mirrorToSheet({ action: "clearRow", sheetName: sheetNameOf(row._branch), rowIndex: row._rowIndex });
+          const add = await mirrorToSheet({ action: "addRow", sheetName, values });
+          const idx = rowIndexFrom(add.data) ?? localRowIndex();
+          backupOk = add.ok;
+          const { error } = await (supabase as any).from("operation_rows").insert({ ...record, row_index: idx });
+          if (error) throw new Error(error.message);
+        } else {
+          const { error } = await (supabase as any).from("operation_rows").update(record)
+            .eq("branch", row._branch).eq("source_tab", "active").eq("row_index", row._rowIndex);
+          if (error) throw new Error(error.message);
+          if (row._rowIndex > 0) {
+            backupOk = (await mirrorToSheet({ action: "updateRowWithoutSerial", sheetName, rowIndex: row._rowIndex, values })).ok;
+          }
+        }
+        toast({ title: "수정 완료", description: backupOk ? undefined : "앱에는 저장됐고, 구글시트 백업만 실패했어요." });
       } else {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { action: "addRow", sheetName, values },
-        });
-        if (error || data?.error) throw new Error(data?.error || error?.message || "작업 추가에 실패했습니다.");
-        const updatedRange = data?.result?.updates?.updatedRange as string | undefined;
-        const rowMatch = updatedRange?.match(/!(?:[A-Z]+)(\d+):/);
-        savedRowIndex = rowMatch ? Number(rowMatch[1]) : undefined;
-      }
-
-      if (!savedRowIndex) {
-        throw new Error("작업 행 번호를 확인할 수 없어 S/N을 저장하지 못했습니다.");
-      }
-
-      const { error: serialError } = await supabase
-        .from("operation_rows")
-        .upsert({
-          branch: formBranch,
-          source_tab: "active",
-          row_index: savedRowIndex,
-          serial_number: form.serial_number.trim() || null,
-        }, { onConflict: "branch,source_tab,row_index" });
-      if (serialError) {
-        throw new Error(`작업은 저장됐지만 S/N 저장에 실패했습니다: ${serialError.message}`);
+        const add = await mirrorToSheet({ action: "addRow", sheetName, values });
+        backupOk = add.ok;
+        const idx = rowIndexFrom(add.data) ?? localRowIndex();
+        const { error } = await (supabase as any).from("operation_rows")
+          .upsert({ ...record, row_index: idx }, { onConflict: "branch,source_tab,row_index" });
+        if (error) throw new Error(error.message);
+        if (!backupOk) toast({ title: "앱에 저장됐어요", description: "구글시트 백업은 실패했어요." });
       }
 
       if (!isEdit) {
@@ -181,9 +209,6 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
     setDeleting(true);
     try {
       const sheetName = row._branch === "강진" ? "강진(입출수)" : "장흥(입출수)";
-      await supabase.functions.invoke("google-sheets", {
-        body: { action: "clearRow", sheetName, rowIndex: row._rowIndex },
-      });
       const { error: operationDeleteError } = await supabase
         .from("operation_rows")
         .delete()
@@ -191,6 +216,7 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
         .eq("source_tab", "active")
         .eq("row_index", row._rowIndex);
       if (operationDeleteError) throw operationDeleteError;
+      if (row._rowIndex > 0) await mirrorToSheet({ action: "clearRow", sheetName, rowIndex: row._rowIndex });
       toast({ title: "삭제 완료" });
       onSuccess();
       onClose();

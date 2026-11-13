@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { useGoogleSheets, markRowComplete, updateRowStatus } from "@/hooks/useGoogleSheets";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { importBranchFromSheet } from "@/lib/operationRows";
 import { SheetRow, getStatus, OperationStatus, getMachineTypeColor, getTechnicianColor, formatSheetDate, isCompleted } from "@/types/operations";
 import { RowFormModal } from "@/components/operations/RowFormModal";
 import { RepairNoteModal } from "@/components/operations/RepairNoteModal";
@@ -56,6 +58,22 @@ function StatusBadge({ status }: { status: OperationStatus }) {
 
 export default function OperationsDashboard() {
   const { allData: rawData, isLoading, error, lastUpdated, refresh } = useGoogleSheets();
+  const { isAdmin } = useUserRole();
+  const [importing, setImporting] = useState(false);
+  const handleImportSheet = async () => {
+    if (!confirm("구글시트 내용을 앱으로 다시 가져올까요? 시트에 있는 값으로 앱 내용이 덮어써져요 (S/N은 유지).")) return;
+    setImporting(true);
+    try {
+      const a = await importBranchFromSheet("장흥");
+      const b = await importBranchFromSheet("강진");
+      toast({ title: "시트 가져오기 완료", description: `장흥 ${a}건 · 강진 ${b}건` });
+      refresh();
+    } catch (e: any) {
+      toast({ title: "시트 가져오기 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
   // 완료된 항목(P열 TRUE)은 작업현황판에서 제외 — 실적현황으로 이동
   const allData = useMemo(() => rawData.filter(r => !isCompleted(r.전체완료)), [rawData]);
   const [branch, setBranch] = useState<Branch>("전체");
@@ -114,7 +132,6 @@ export default function OperationsDashboard() {
       if (newStatus === "완료") {
         // P열 TRUE + A열 status_label도 "완료"로 동기화 → 작업현황판에서 제외, 실적현황에 반영
         await markRowComplete(sheetName, confirmRow._rowIndex, confirmRow._doneCol);
-        try { await updateRowStatus(sheetName, confirmRow._rowIndex, "완료"); } catch { /* 보조 업데이트 실패 무시 */ }
         toast({ title: "출고 완료", description: `${confirmRow.손님성명}님의 작업이 완료 처리되어 실적현황으로 이동했습니다.` });
       } else {
         await updateRowStatus(sheetName, confirmRow._rowIndex, newStatus);
@@ -241,6 +258,11 @@ export default function OperationsDashboard() {
           <Button asChild variant="outline" size="sm" className="h-8 text-xs">
             <a href="/blades">예취 칼날</a>
           </Button>
+          {isAdmin && (
+            <Button onClick={handleImportSheet} variant="outline" size="sm" disabled={importing} className="h-8 text-xs" title="구글시트 내용을 앱으로 가져오기">
+              {importing ? "가져오는 중…" : "시트 가져오기"}
+            </Button>
+          )}
           <Button onClick={refresh} variant="outline" size="sm" disabled={isLoading} className="h-8 text-xs">
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
           </Button>
@@ -250,7 +272,7 @@ export default function OperationsDashboard() {
       {/* 마지막 업데이트 */}
       {lastUpdated && (
         <p className="text-[11px] text-muted-foreground">
-          마지막 갱신: {lastUpdated.toLocaleTimeString("ko-KR")} · 총 {filtered.length}건
+          마지막 갱신: {lastUpdated.toLocaleTimeString("ko-KR")} · 총 {filtered.length}건 · 앱이 원본, 구글시트는 백업
         </p>
       )}
 

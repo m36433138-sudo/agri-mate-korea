@@ -1,47 +1,48 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SheetRow, parseRows } from "@/types/operations";
+import { Branch, fetchBranchRows, importBranchFromSheet, mirrorToSheet, updateOperationRow } from "@/lib/operationRows";
 
-async function fetchTab(tab: string, branch: "장흥" | "강진"): Promise<SheetRow[]> {
-  const { data, error } = await supabase.functions.invoke("google-sheets", {
-    body: { tab },
-  });
-  if (error) throw new Error(error.message || "Failed to fetch sheet data");
-  if (data?.error) throw new Error(data.error);
-  const rows = parseRows(data?.values || [], branch);
-  const { data: operationRows, error: operationError } = await supabase
-    .from("operation_rows")
-    .select("row_index, serial_number")
-    .eq("branch", branch)
-    .eq("source_tab", "active");
-  if (operationError) throw new Error(operationError.message || "Failed to fetch operation S/N data");
+const branchOfSheet = (sheetName: string): Branch => (sheetName.includes("강진") ? "강진" : "장흥");
 
-  const serials = new Map(
-    (operationRows || []).map(item => [item.row_index, item.serial_number || ""]),
-  );
-  return rows.map(row => ({ ...row, 제조번호: serials.get(row._rowIndex) || "" }));
+async function fetchTab(_tab: string, branch: Branch): Promise<SheetRow[]> {
+  const rows = await fetchBranchRows(branch);
+  if (rows.length > 0) return rows;
+  // 처음 한 번: 앱에 아무것도 없으면 시트 내용을 가져와 시작
+  try { await importBranchFromSheet(branch); } catch { return []; }
+  return fetchBranchRows(branch);
 }
 
+/** 완료 처리 — 앱에 먼저 저장하고 시트 백업은 가능할 때만 */
 export async function markRowComplete(sheetName: string, rowIndex: number, col: string = "P"): Promise<void> {
-  const { data, error } = await supabase.functions.invoke("google-sheets", {
-    body: { action: "markComplete", sheetName, rowIndex, col },
-  });
-  if (error) throw new Error(error.message || "Failed to update sheet");
-  if (data?.error) throw new Error(data.error);
+  await updateOperationRow(branchOfSheet(sheetName), rowIndex, { is_completed: true, status_label: "완료" });
+  if (rowIndex > 0) {
+    await mirrorToSheet({ action: "markComplete", sheetName, rowIndex, col });
+    await mirrorToSheet({ action: "updateCell", sheetName, rowIndex, col: "A", value: "완료" });
+  }
 }
 
 export async function updateRowStatus(sheetName: string, rowIndex: number, newStatus: string): Promise<void> {
-  const { data, error } = await supabase.functions.invoke("google-sheets", {
-    body: { action: "updateCell", sheetName, rowIndex, col: "A", value: newStatus },
-  });
-  if (error) throw new Error(error.message || "Failed to update status");
-  if (data?.error) throw new Error(data.error);
+  await updateOperationRow(branchOfSheet(sheetName), rowIndex, { status_label: newStatus });
+  if (rowIndex > 0) await mirrorToSheet({ action: "updateCell", sheetName, rowIndex, col: "A", value: newStatus });
 }
 
 export function useGoogleSheets() {
   const queryClient = useQueryClient();
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // 다른 직원이 바꾸면 바로 반영
+  useEffect(() => {
+    const ch = supabase
+      .channel("operation_rows_live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "operation_rows" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["sheets", "장흥"] });
+        queryClient.invalidateQueries({ queryKey: ["sheets", "강진"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   const { data: jangheungData, isLoading: jLoading, error: jError } = useQuery({
     queryKey: ["sheets", "장흥"],
@@ -50,7 +51,7 @@ export function useGoogleSheets() {
       setLastUpdated(new Date());
       return rows;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
   });
 
   const { data: gangjinData, isLoading: gLoading, error: gError } = useQuery({
