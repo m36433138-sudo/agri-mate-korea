@@ -16,6 +16,9 @@ import { modelGroup } from "@/lib/diagramModelGroup";
 import { searchDiagrams } from "@/lib/diagramSearch";
 import LabelPhotoDialog from "@/components/diagrams/LabelPhotoDialog";
 import PdfDiagramImportDialog from "@/components/diagrams/PdfDiagramImportDialog";
+import PartOrderCartDialog from "@/components/diagrams/PartOrderCartDialog";
+import { useCart } from "@/lib/partOrderCart";
+import { ShoppingCart } from "lucide-react";
 
 async function compressImage(file: File): Promise<Blob> {
   const img = await createImageBitmap(file);
@@ -122,6 +125,8 @@ export default function DiagramsPage() {
   const { isAdmin } = useUserRole();
   const [labelOpen, setLabelOpen] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const cartItems = useCart();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [modelName, setModelName] = useState("");
@@ -185,11 +190,15 @@ export default function DiagramsPage() {
 
   return (
     <div>
+      <PartOrderCartDialog open={cartOpen} onOpenChange={setCartOpen} />
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Map className="h-6 w-6 text-primary" /> 부품 도면
         </h1>
-        <Button variant="outline" className="ml-auto gap-1.5" onClick={() => setLabelOpen(true)}>
+        <Button variant="outline" className="ml-auto gap-1.5" onClick={() => setCartOpen(true)}>
+          <ShoppingCart className="h-4 w-4" /> 주문 목록{cartItems.length > 0 && <span className="ml-0.5 rounded-full bg-primary text-primary-foreground text-xs px-1.5">{cartItems.length}</span>}
+        </Button>
+        <Button variant="outline" className="gap-1.5" onClick={() => setLabelOpen(true)}>
           <Tag className="h-4 w-4" /> 부품 사진(라벨)
         </Button>
         {isAdmin && (

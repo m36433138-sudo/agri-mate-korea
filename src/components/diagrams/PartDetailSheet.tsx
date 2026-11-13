@@ -9,6 +9,9 @@ import { Lightbulb, MapPin, Wrench, Package, Image as ImageIcon, FileImage, GitB
 import { modelsOf } from "@/lib/diagramModelGroup";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
+import { cart } from "@/lib/partOrderCart";
+import { toast } from "sonner";
+import { ShoppingCart } from "lucide-react";
 
 const db = supabase as any;
 
@@ -186,6 +189,18 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
               onClick={() => setTipsOpen(true)}
             >
               <Lightbulb className="h-3.5 w-3.5 text-amber-400" /> 부품 팁 · 사진 보기
+            </Button>
+            <Button
+              size="sm"
+              className="w-fit gap-1.5"
+              onClick={() => {
+                if (!partCode) return;
+                const price = inventory.find((r) => r.sales_price)?.sales_price ?? null;
+                cart.add({ partCode, partName: partName || inventory[0]?.part_name || "", qty: 1, model: diagramTitle?.split(" ")[0], unitPrice: price as any });
+                toast.success(`${partCode} 주문 목록에 담았어요`);
+              }}
+            >
+              <ShoppingCart className="h-3.5 w-3.5" /> 주문 목록에 담기
             </Button>
           </SheetHeader>
 
