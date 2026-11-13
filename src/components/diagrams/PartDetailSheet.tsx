@@ -9,7 +9,10 @@ import { Lightbulb, MapPin, Wrench, Package, Image as ImageIcon, FileImage, GitB
 import { modelsOf } from "@/lib/diagramModelGroup";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
-import { cart } from "@/lib/partOrderCart";
+import { cart, useCart } from "@/lib/partOrderCart";
+import PartOrderCartContents from "./PartOrderCartContents";
+import PartOrderCartDialog from "./PartOrderCartDialog";
+import { fetchDiagramInventory } from "@/lib/diagramInventory";
 import { toast } from "sonner";
 import { ShoppingCart } from "lucide-react";
 
@@ -55,6 +58,9 @@ const won = (n: number | null | undefined) => (n == null ? "—" : `${n.toLocale
 export default function PartDetailSheet({ partCode, partName, quantityNote, open, onOpenChange, diagramUrl, diagramTitle, highlight, currentDiagramId, onOpenDiagram }: Props) {
   const [tipsOpen, setTipsOpen] = useState(false);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const cartItems = useCart();
+  const inCart = cartItems.find((x) => x.partCode === partCode);
 
   const { data: photos = [], isLoading: photoLoading } = useQuery<{ url: string; content: string }[]>({
     queryKey: ["diagram-part-photos", partCode],
@@ -80,16 +86,7 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
   const { data: inventory = [], isLoading: invLoading } = useQuery<InvRow[]>({
     queryKey: ["diagram-part-inventory", partCode],
     enabled: open && !!partCode,
-    queryFn: async () => {
-      const { data, error } = await db
-        .from("inventory")
-        .select("id, branch, part_code, part_name, quantity, location_main, location_sub, purchase_price, sales_price")
-        .or(`part_code.eq."${partCode}",alt_part_code.eq."${partCode}",part_code.like."${partCode}-*",alt_part_code.like."${partCode}-*"`)
-        .order("branch")
-        .order("part_code");
-      if (error) throw error;
-      return data as InvRow[];
-    },
+    queryFn: ({ signal }) => fetchDiagramInventory(partCode ? [partCode] : [], signal),
   });
 
   const { data: usage = [], isLoading: usageLoading } = useQuery<UsageRow[]>({
@@ -200,9 +197,18 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
                 toast.success(`${partCode} 주문 목록에 담았어요`);
               }}
             >
-              <ShoppingCart className="h-3.5 w-3.5" /> 주문 목록에 담기
+              <ShoppingCart className="h-3.5 w-3.5" /> {inCart ? `한 개 더 담기 · 현재 ${inCart.qty}개` : "주문 목록에 담기"}
             </Button>
           </SheetHeader>
+
+          {cartItems.length > 0 && <section aria-label="담은 주문 목록" className="mt-4 border-y py-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">담은 부품 ({cartItems.length})</h3>
+              <Button variant="ghost" size="sm" onClick={() => setCartOpen(true)}>주문 목록 · 엑셀</Button>
+            </div>
+            <PartOrderCartContents compact />
+          </section>}
+          <PartOrderCartDialog open={cartOpen} onOpenChange={setCartOpen} />
 
           {/* 사용 기종 분기 */}
           {usedIn.length > 0 && (

@@ -1,4 +1,5 @@
 # Architecture rules
+- Diagram detail and order dialogs share cart controls and paginated inventory lookup, matching exact/alternate codes and hyphen-delimited suffixes so checked-part locations stay consistent with individual lookup.
 - Diagram catalogue thumbnails use pre-generated JPEGs at thumbs/<image_path> in the diagram bucket, signed in bulk; diagrams without one fall back to client-side cropping. Source images and hotspot coordinates stay unchanged for part lookup.
 - Error-code records retain independent photo paths in a private bucket; batch creation uploads before one atomic insert and cleans up on failure so records can be deleted independently.
 - Machine lists fetch stable range-based pages before filtering so records beyond the Data API row cap remain discoverable.
