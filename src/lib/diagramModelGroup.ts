@@ -1,11 +1,8 @@
 /** 도면 분류: YT488은 따로, YT490·5101·5113(공용 엔진 포함)은 하나로 묶는다. */
 export function modelGroup(name?: string | null): string {
   if (!name) return "";
-  if (name.includes("YT")) {
-    return name.includes("YT490") || name.includes("YT5101") || name.includes("YT5113")
-      ? "YT490 / YT5101 / YT5113"
-      : "YT488";
-  }
+  if (name.includes("YT490") || name.includes("YT5101") || name.includes("YT5113")) return "YT490 / YT5101 / YT5113";
+  if (name.includes("YT488")) return "YT488";
   return name;
 }
 
