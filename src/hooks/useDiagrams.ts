@@ -191,14 +191,18 @@ export function useDiagramThumbUrls(paths: string[]) {
     enabled: paths.length > 0,
     queryFn: async () => {
       const out = new Map<string, string>();
-      for (let i = 0; i < paths.length; i += 500) {
-        const chunk = paths.slice(i, i + 500);
-        const { data, error } = await supabase.storage
-          .from(DIAGRAM_BUCKET)
-          .createSignedUrls(chunk.map((p) => `thumbs/${p}`), 3600);
+      const chunks: string[][] = [];
+      for (let i = 0; i < paths.length; i += 500) chunks.push(paths.slice(i, i + 500));
+      // 500장씩 동시에 서명해 도면이 늘어도 첫 화면이 늦어지지 않게 한다
+      const signed = await Promise.all(
+        chunks.map((chunk) =>
+          supabase.storage.from(DIAGRAM_BUCKET).createSignedUrls(chunk.map((p) => `thumbs/${p}`), 3600),
+        ),
+      );
+      signed.forEach(({ data, error }, k) => {
         if (error) throw error;
-        data?.forEach((d, j) => { if (d.signedUrl) out.set(chunk[j], d.signedUrl); });
-      }
+        data?.forEach((d, j) => { if (d.signedUrl) out.set(chunks[k][j], d.signedUrl); });
+      });
       return out;
     },
     staleTime: 1000 * 60 * 50,

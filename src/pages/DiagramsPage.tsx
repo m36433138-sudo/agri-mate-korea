@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,6 +95,8 @@ function DiagramCard({ diagram, match, thumb, onClick, onDelete }: {
   );
 }
 
+const PAGE_SIZE = 60;
+
 export default function DiagramsPage() {
   const { toast } = useToast();
   const { diagrams, isLoading, addDiagram, deleteDiagram } = useDiagrams();
@@ -117,6 +119,21 @@ export default function DiagramsPage() {
     () => searchDiagrams(diagrams, term, partHits, { kind: kindTab, model: modelFilter }),
     [diagrams, term, partHits, kindTab, modelFilter],
   );
+  // 도면이 수천 장이라 한 번에 다 그리면 핸드폰이 멈춘다 → 60장씩 보여주고 내려가면 더 그린다
+  const [shown, setShown] = useState(PAGE_SIZE);
+  useEffect(() => setShown(PAGE_SIZE), [term, kindTab, modelFilter]);
+  const moreRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = moreRef.current;
+    if (!el || shown >= results.length) return;
+    const io = new IntersectionObserver(
+      (entries) => { if (entries.some((e) => e.isIntersecting)) setShown((n) => n + PAGE_SIZE); },
+      { rootMargin: "600px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [shown, results.length]);
+
   const openDiagram = (d: Diagram, code?: string) => {
     setInitialPart(code ?? null);
     setStack([d]);
@@ -276,7 +293,7 @@ export default function DiagramsPage() {
         </p>
       ) : (
         <div className="grid grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-3">
-          {results.map((r) => (
+          {results.slice(0, shown).map((r) => (
             <DiagramCard
               key={r.diagram.id}
               diagram={r.diagram}
@@ -288,6 +305,7 @@ export default function DiagramsPage() {
               })}
             />
           ))}
+          {shown < results.length && <div ref={moreRef} className="col-span-full h-10" aria-hidden />}
         </div>
       )}
 

@@ -77,6 +77,17 @@ describe("searchDiagrams", () => {
     expect(yt.map((h) => h.diagram.id)).toEqual(["c"]);
   });
 
+  it("기종과 도면명을 띄어 써서 함께 검색할 수 있다", () => {
+    const list = [
+      dg("x", "YH6140 / YH7140 Fig.341. 탱크커버", "YH6140 / YH7140"),
+      dg("y", "YH6115·YH7115 Fig.300 탱크커버", "YH6115 / YH7115"),
+    ];
+    const out = searchDiagrams(list, "YH7140 탱크커버", new Map(), ALL);
+    expect(out.map((h) => h.diagram.id)).toEqual(["x"]);
+    expect(out[0].matchedTitle).toBe(true);
+    expect(out[0].matchedModel).toBe(true);
+  });
+
   it("하나도 안 맞으면 빈 목록", () => {
     expect(searchDiagrams(diagrams, "없음", new Map(), ALL)).toEqual([]);
   });

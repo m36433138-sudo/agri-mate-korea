@@ -38,6 +38,7 @@ export function searchDiagrams<T extends SearchableDiagram>(
   filter: { kind: "photo" | "diagram"; model: string },
 ): DiagramSearchHit<T>[] {
   const q = term.trim().toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
   const hits: DiagramSearchHit<T>[] = [];
 
   for (const d of diagrams) {
@@ -46,11 +47,14 @@ export function searchDiagrams<T extends SearchableDiagram>(
 
     const part = partHits.get(d.id);
     const group = modelGroup(d.model_name).toLowerCase();
-    const matchedTitle = q !== "" && d.title.toLowerCase().includes(q);
-    const matchedModel =
-      q !== "" && ((d.model_name?.toLowerCase().includes(q) ?? false) || group.includes(q));
+    // 「YH7140 탱크커버」처럼 기종과 도면명을 띄어 써도 찾도록 낱말마다 확인한다
+    const title = d.title.toLowerCase();
+    const model = `${d.model_name?.toLowerCase() ?? ""} ${group}`;
+    const allWords = words.length > 0 && words.every((w) => title.includes(w) || model.includes(w));
+    const matchedTitle = allWords && words.some((w) => title.includes(w));
+    const matchedModel = allWords && words.some((w) => model.includes(w));
 
-    if (q !== "" && !part && !matchedTitle && !matchedModel) continue;
+    if (q !== "" && !part && !allWords) continue;
 
     hits.push({
       diagram: d,
