@@ -1,4 +1,4 @@
-import { modelGroup } from "./diagramModelGroup";
+import { modelGroup, modelsOf } from "./diagramModelGroup";
 
 export type SearchableDiagram = {
   id: string;
@@ -43,7 +43,7 @@ export function searchDiagrams<T extends SearchableDiagram>(
 
   for (const d of diagrams) {
     if (d.kind !== filter.kind) continue;
-    if (filter.model !== "전체" && modelGroup(d.model_name) !== filter.model) continue;
+    if (filter.model !== "전체" && !modelsOf(d.model_name).includes(filter.model)) continue;
 
     const part = partHits.get(d.id);
     const group = modelGroup(d.model_name).toLowerCase();

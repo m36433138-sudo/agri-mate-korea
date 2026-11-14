@@ -1,6 +1,7 @@
 # Architecture rules
 - Diagram detail and order dialogs share cart controls and paginated inventory lookup, matching exact/alternate codes and hyphen-delimited suffixes so checked-part locations stay consistent with individual lookup.
 - Diagram catalogue thumbnails use pre-generated JPEGs at thumbs/<image_path> in the diagram bucket, signed in parallel 500-path chunks, and the list renders cards in 60-card scroll increments so thousands of diagrams stay responsive on phones; diagrams without a thumb fall back to client-side cropping. Source images and hotspot coordinates stay unchanged for part lookup.
+- A parts book shared by several models keeps one combined model_name, and modelsOf (SHARED_BOOKS) maps it to every model button so model filters show it under each model without duplicating diagrams.
 - Error-code records retain independent photo paths in a private bucket; batch creation uploads before one atomic insert and cleans up on failure so records can be deleted independently.
 - Machine lists fetch stable range-based pages before filtering so records beyond the Data API row cap remain discoverable.
 - Global search uses a paginated SECURITY INVOKER RPC with normalized indexed fields and abortable query-keyed requests so RLS remains authoritative and stale responses cannot replace current results.- PDF diagram import runs in the browser (pdfjs text layer → part-number hotspots); label-photo linking reads codes server-side via the read-part-label function and only links after a staff pick, so AI never writes data directly.

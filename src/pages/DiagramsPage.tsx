@@ -12,7 +12,7 @@ import DiagramViewer from "@/components/diagrams/DiagramViewer";
 import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
 import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp, Search, X } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
-import { modelGroup } from "@/lib/diagramModelGroup";
+import { modelsOf } from "@/lib/diagramModelGroup";
 import { searchDiagrams } from "@/lib/diagramSearch";
 import LabelPhotoDialog from "@/components/diagrams/LabelPhotoDialog";
 import PdfDiagramImportDialog from "@/components/diagrams/PdfDiagramImportDialog";
@@ -105,8 +105,8 @@ export default function DiagramsPage() {
   const [kindTab, setKindTab] = useState<"photo" | "diagram">("photo");
   const [modelFilter, setModelFilter] = useState("전체");
   const [kind, setKind] = useState<"photo" | "diagram">("photo");
-  // 트랙터 도면 분류: YT488은 따로, YT490·5101·5113(공용 엔진 포함)은 하나로 묶는다.
-  const models = ["전체", ...Array.from(new Set(diagrams.map((d) => modelGroup(d.model_name)).filter(Boolean)))];
+  // 기종 버튼: YT490·5101·5113은 하나로 묶고, 공용 책(엔진·커터)은 해당 기종 버튼마다 보인다.
+  const models = ["전체", ...Array.from(new Set(diagrams.flatMap((d) => modelsOf(d.model_name)).filter(Boolean)))];
   const [term, setTerm] = useState("");
   const { hits: partHits, pending: partPending } = useDiagramPartSearch(term);
   const [initialPart, setInitialPart] = useState<string | null>(null);

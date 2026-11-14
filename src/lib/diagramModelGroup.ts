@@ -6,9 +6,15 @@ export function modelGroup(name?: string | null): string {
   return name;
 }
 
+/** 여러 기종이 함께 쓰는 공용 책(예: YH470·570·5101 커터): 각 기종 버튼에 모두 보이게 한다 */
+const SHARED_BOOKS: Record<string, string[]> = {
+  "YH470 / YH570 / YH5101": ["YH470 / YH570", "YH5101"],
+};
+
 /** 공용 엔진(YT488·490·5101·5113)처럼 여러 기종에 걸친 도면이면 해당 기종들을 펼쳐 반환 */
 export function modelsOf(name?: string | null): string[] {
   if (!name) return [];
+  if (SHARED_BOOKS[name]) return SHARED_BOOKS[name];
   const yt = name.match(/YT\d{3,4}/g);
   if (yt && yt.length > 1) {
     const set = new Set<string>();

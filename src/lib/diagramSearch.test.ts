@@ -91,4 +91,15 @@ describe("searchDiagrams", () => {
   it("하나도 안 맞으면 빈 목록", () => {
     expect(searchDiagrams(diagrams, "없음", new Map(), ALL)).toEqual([]);
   });
+
+  it("공용 커터 도면은 YH470/570 버튼과 YH5101 버튼 양쪽에 보인다", () => {
+    const books = [
+      dg("cut", "YH470 / YH570 / YH5101 커터 Fig.2. 구동", "YH470 / YH570 / YH5101"),
+      dg("p5101", "YH5101 Fig.1. 엔진관련", "YH5101"),
+      dg("p470", "YH470 / YH570 Fig.1. 엔진관련", "YH470 / YH570"),
+    ];
+    const ids = (model: string) => searchDiagrams(books, "", new Map(), { kind: "diagram", model }).map((h) => h.diagram.id);
+    expect(ids("YH5101")).toEqual(["cut", "p5101"]);
+    expect(ids("YH470 / YH570")).toEqual(["cut", "p470"]);
+  });
 });
