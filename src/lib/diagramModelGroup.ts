@@ -16,11 +16,32 @@ const SHARED_BOOKS: Record<string, string[]> = {
 export function modelsOf(name?: string | null): string[] {
   if (!name) return [];
   if (SHARED_BOOKS[name]) return SHARED_BOOKS[name];
+  // YT488·490 묶음이 들어간 공용 책만 펼친다. 「YT6135 / YT6145」 같은 한 권짜리 책은 버튼 하나로 둔다.
   const yt = name.match(/YT\d{3,4}/g);
-  if (yt && yt.length > 1) {
+  if (yt && yt.length > 1 && yt.some((m) => m === "YT488" || modelGroup(m) !== m)) {
     const set = new Set<string>();
     yt.forEach((m) => set.add(modelGroup(m)));
     return Array.from(set);
   }
   return [modelGroup(name)];
+}
+
+/** 도면 분류 탭 순서 */
+export const DIAGRAM_CATEGORIES = ["이앙기", "콤바인", "트랙터", "부속장치"] as const;
+export type DiagramCategory = (typeof DIAGRAM_CATEGORIES)[number];
+
+/**
+ * 기종명 앞글자로 분류: YH·AW 콤바인, YT·EG 트랙터, VP·YR 이앙기.
+ * 앞글자로 모르면 등록된 기계 종류를 따르고, 그 외(로타리·방제기 등)는 부속장치.
+ */
+export function categoryOf(modelName?: string | null, machineType?: string | null): DiagramCategory {
+  const m = (modelName ?? "").trim().toUpperCase();
+  if (/^(YH|AW)/.test(m)) return "콤바인";
+  if (/^(YT|EG)/.test(m)) return "트랙터";
+  if (/^(VP|YR)/.test(m)) return "이앙기";
+  const t = machineType ?? "";
+  if (t.includes("이앙기")) return "이앙기";
+  if (t.includes("콤바인")) return "콤바인";
+  if (t.includes("트랙터")) return "트랙터";
+  return "부속장치";
 }

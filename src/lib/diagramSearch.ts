@@ -1,9 +1,10 @@
-import { modelGroup, modelsOf } from "./diagramModelGroup";
+import { categoryOf, modelGroup, modelsOf, type DiagramCategory } from "./diagramModelGroup";
 
 export type SearchableDiagram = {
   id: string;
   title: string;
   model_name: string | null;
+  machine_type?: string | null;
   kind: "photo" | "diagram";
 };
 
@@ -35,7 +36,7 @@ export function searchDiagrams<T extends SearchableDiagram>(
   diagrams: T[],
   term: string,
   partHits: Map<string, PartHit>,
-  filter: { kind: "photo" | "diagram"; model: string },
+  filter: { kind: "photo" | "diagram"; model: string; category?: DiagramCategory | "전체" },
 ): DiagramSearchHit<T>[] {
   const q = term.trim().toLowerCase();
   const words = q.split(/\s+/).filter(Boolean);
@@ -43,6 +44,7 @@ export function searchDiagrams<T extends SearchableDiagram>(
 
   for (const d of diagrams) {
     if (d.kind !== filter.kind) continue;
+    if (filter.category && filter.category !== "전체" && categoryOf(d.model_name, d.machine_type) !== filter.category) continue;
     if (filter.model !== "전체" && !modelsOf(d.model_name).includes(filter.model)) continue;
 
     const part = partHits.get(d.id);

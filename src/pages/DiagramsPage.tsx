@@ -12,7 +12,7 @@ import DiagramViewer from "@/components/diagrams/DiagramViewer";
 import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
 import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp, Search, X } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
-import { modelsOf } from "@/lib/diagramModelGroup";
+import { categoryOf, modelsOf, DIAGRAM_CATEGORIES, type DiagramCategory } from "@/lib/diagramModelGroup";
 import { searchDiagrams } from "@/lib/diagramSearch";
 import LabelPhotoDialog from "@/components/diagrams/LabelPhotoDialog";
 import PdfDiagramImportDialog from "@/components/diagrams/PdfDiagramImportDialog";
@@ -104,9 +104,25 @@ export default function DiagramsPage() {
   const selected = stack[stack.length - 1] ?? null;
   const [kindTab, setKindTab] = useState<"photo" | "diagram">("photo");
   const [modelFilter, setModelFilter] = useState("전체");
+  const [category, setCategory] = useState<DiagramCategory | "전체">("전체");
   const [kind, setKind] = useState<"photo" | "diagram">("photo");
-  // 기종 버튼: YT490·5101·5113은 하나로 묶고, 공용 책(엔진·커터)은 해당 기종 버튼마다 보인다.
-  const models = ["전체", ...Array.from(new Set(diagrams.flatMap((d) => modelsOf(d.model_name)).filter(Boolean)))];
+  // 분류(이앙기·콤바인·트랙터·부속장치)별 개수 — 지금 보고 있는 사진/도면 탭 기준
+  const categoryCounts = useMemo(() => {
+    const c = new globalThis.Map<string, number>();
+    for (const d of diagrams) if (d.kind === kindTab) c.set(categoryOf(d.model_name, d.machine_type), (c.get(categoryOf(d.model_name, d.machine_type)) ?? 0) + 1);
+    return c;
+  }, [diagrams, kindTab]);
+  // 기종 버튼: 고른 분류 안의 기종만. YT490·5101·5113은 하나로 묶고, 공용 책(엔진·커터)은 해당 기종 버튼마다 보인다.
+  const models = useMemo(() => [
+    "전체",
+    ...Array.from(new Set(
+      diagrams
+        .filter((d) => category === "전체" || categoryOf(d.model_name, d.machine_type) === category)
+        .flatMap((d) => modelsOf(d.model_name))
+        .filter(Boolean),
+    )),
+  ], [diagrams, category]);
+  const pickCategory = (c: DiagramCategory | "전체") => { setCategory(c); setModelFilter("전체"); };
   const [term, setTerm] = useState("");
   const { hits: partHits, pending: partPending } = useDiagramPartSearch(term);
   const [initialPart, setInitialPart] = useState<string | null>(null);
@@ -116,12 +132,12 @@ export default function DiagramsPage() {
   );
   const { data: thumbs, isError: thumbsFailed } = useDiagramThumbUrls(thumbPaths);
   const results = useMemo(
-    () => searchDiagrams(diagrams, term, partHits, { kind: kindTab, model: modelFilter }),
-    [diagrams, term, partHits, kindTab, modelFilter],
+    () => searchDiagrams(diagrams, term, partHits, { kind: kindTab, model: modelFilter, category }),
+    [diagrams, term, partHits, kindTab, modelFilter, category],
   );
   // 도면이 수천 장이라 한 번에 다 그리면 핸드폰이 멈춘다 → 60장씩 보여주고 내려가면 더 그린다
   const [shown, setShown] = useState(PAGE_SIZE);
-  useEffect(() => setShown(PAGE_SIZE), [term, kindTab, modelFilter]);
+  useEffect(() => setShown(PAGE_SIZE), [term, kindTab, modelFilter, category]);
   const moreRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = moreRef.current;
@@ -265,8 +281,31 @@ export default function DiagramsPage() {
             <TabsTrigger value="diagram">부품 도면</TabsTrigger>
           </TabsList>
         </Tabs>
+      </div>
+
+      <div className="grid grid-cols-5 gap-1 mb-2 rounded-xl border bg-card p-1" role="tablist" aria-label="분류">
+        {(["전체", ...DIAGRAM_CATEGORIES] as const).map((c) => {
+          const n = c === "전체" ? diagrams.filter((d) => d.kind === kindTab).length : (categoryCounts.get(c) ?? 0);
+          const on = category === c;
+          return (
+            <button
+              key={c}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => pickCategory(c)}
+              className={`rounded-lg px-0.5 py-2 text-[13px] sm:text-sm font-medium whitespace-nowrap transition-colors ${on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+            >
+              {c}
+              <span className={`block text-[11px] font-normal ${on ? "opacity-90" : "opacity-70"}`}>{n.toLocaleString()}장</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mb-3">
         <div className="flex gap-1 flex-wrap">
-          {models.map((m) => (
+          {models.length > 1 && models.map((m) => (
             <button
               key={m}
               type="button"
@@ -287,6 +326,8 @@ export default function DiagramsPage() {
         <p className="text-sm text-muted-foreground border rounded-xl p-8 text-center">
           {term.trim()
             ? `「${term.trim()}」에 해당하는 도면이 없습니다. 부품번호는 하이픈을 빼고 적어도 찾습니다.`
+            : category !== "전체"
+              ? `${category} ${kindTab === "photo" ? "사진" : "도면"}은 아직 등록되지 않았습니다.`
             : kindTab === "photo"
               ? "등록된 기계 사진이 없습니다. 「도면 등록」에서 '기계 사진'을 골라 올려 주세요."
               : "등록된 도면이 없습니다. 「도면 등록」을 눌러 부품 배치도를 올려 주세요."}

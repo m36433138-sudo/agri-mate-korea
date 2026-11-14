@@ -103,3 +103,20 @@ describe("searchDiagrams", () => {
     expect(ids("YH470 / YH570")).toEqual(["cut", "p470"]);
   });
 });
+
+describe("searchDiagrams 분류 필터", () => {
+  const list: SearchableDiagram[] = [
+    { id: "c", title: "AW473 Fig.1", model_name: "AW473", machine_type: "콤바인", kind: "diagram" },
+    { id: "t", title: "YT488 Fig.1", model_name: "YT488", machine_type: "트랙터", kind: "diagram" },
+    { id: "r", title: "EL 로타리 Fig.1", model_name: "EL 로타리", machine_type: "로타리", kind: "diagram" },
+  ];
+  const ids = (category: "전체" | "콤바인" | "트랙터" | "이앙기" | "부속장치") =>
+    searchDiagrams(list, "", new Map(), { kind: "diagram", model: "전체", category }).map((h) => h.diagram.id);
+  it("분류를 고르면 그 분류 도면만 보인다", () => {
+    expect(ids("콤바인")).toEqual(["c"]);
+    expect(ids("트랙터")).toEqual(["t"]);
+    expect(ids("부속장치")).toEqual(["r"]);
+    expect(ids("이앙기")).toEqual([]);
+    expect(ids("전체")).toEqual(["c", "t", "r"]);
+  });
+});
