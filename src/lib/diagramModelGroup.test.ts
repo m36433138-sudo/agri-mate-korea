@@ -11,5 +11,7 @@ describe("modelsOf", () => {
     expect(modelsOf("YH470 / YH570 / YH5101")).toEqual(["YH470 / YH570", "YH5101"]));
   it("YT488·490·5101·5113 공용 엔진은 YT488과 YT490 묶음 모두에 속한다", () =>
     expect(modelsOf("YT488 / YT490 / YT5101 / YT5113")).toEqual(["YT488", "YT490 / YT5101 / YT5113"]));
+  it("AW465·473·573 공용 커터는 AW465/AW573과 AW473 모두에 속한다", () =>
+    expect(modelsOf("AW465 / AW473 / AW573")).toEqual(["AW465 / AW573", "AW473"]));
   it("한 기종 책은 그 기종에만 속한다", () => expect(modelsOf("YH5101")).toEqual(["YH5101"]));
 });

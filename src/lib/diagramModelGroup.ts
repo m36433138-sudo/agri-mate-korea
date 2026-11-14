@@ -6,9 +6,10 @@ export function modelGroup(name?: string | null): string {
   return name;
 }
 
-/** 여러 기종이 함께 쓰는 공용 책(예: YH470·570·5101 커터): 각 기종 버튼에 모두 보이게 한다 */
+/** 여러 기종이 함께 쓰는 공용 책(예: YH470·570·5101 커터, AW465·473·573 커터): 각 기종 버튼에 모두 보이게 한다 */
 const SHARED_BOOKS: Record<string, string[]> = {
   "YH470 / YH570 / YH5101": ["YH470 / YH570", "YH5101"],
+  "AW465 / AW473 / AW573": ["AW465 / AW573", "AW473"],
 };
 
 /** 공용 엔진(YT488·490·5101·5113)처럼 여러 기종에 걸친 도면이면 해당 기종들을 펼쳐 반환 */
