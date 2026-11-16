@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,14 +98,43 @@ function DiagramCard({ diagram, match, thumb, onClick, onDelete }: {
 
 const PAGE_SIZE = 60;
 
+/** 탭·기종·검색어를 이 창에서 기억해 다른 메뉴에 다녀와도 그대로 */
+function useSessionState<T>(key: string, init: T) {
+  const [v, setV] = useState<T>(() => {
+    try { const raw = sessionStorage.getItem(key); return raw == null ? init : (JSON.parse(raw) as T); } catch { return init; }
+  });
+  useEffect(() => { try { sessionStorage.setItem(key, JSON.stringify(v)); } catch { /* 저장 공간 없음 */ } }, [key, v]);
+  return [v, setV] as const;
+}
+
+function scrollers(): (HTMLElement | Window)[] {
+  const main = document.querySelector("main");
+  return main ? [main, window] : [window];
+}
+function readScroll() {
+  return scrollers().map((el) => (el === window ? window.scrollY : (el as HTMLElement).scrollTop));
+}
+function writeScroll(pos: number[]) {
+  scrollers().forEach((el, i) => el.scrollTo({ top: pos[i] ?? 0 }));
+}
+
 export default function DiagramsPage() {
   const { toast } = useToast();
   const { diagrams, isLoading, addDiagram, deleteDiagram } = useDiagrams();
-  const [stack, setStack] = useState<Diagram[]>([]);
+  // 열린 도면은 주소(?d=)에 남겨 핸드폰 뒤로가기로 닫히고, 목록은 그대로 둔 채 보던 자리로 돌아온다
+  const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const diagramById = useMemo(() => new globalThis.Map(diagrams.map((d) => [d.id, d])), [diagrams]);
+  const openIds = (params.get("d") ?? "").split(",").filter(Boolean);
+  const stack = openIds.map((id) => diagramById.get(id)).filter(Boolean) as Diagram[];
   const selected = stack[stack.length - 1] ?? null;
-  const [kindTab, setKindTab] = useState<"photo" | "diagram">("photo");
-  const [modelFilter, setModelFilter] = useState("전체");
-  const [category, setCategory] = useState<DiagramCategory | "전체">("전체");
+  const initialPart = params.get("p");
+  const checkedParam = params.get("check");
+  const listScroll = useRef<number[] | null>(null);
+  const [kindTab, setKindTab] = useSessionState<"photo" | "diagram">("diagrams.kind", "photo");
+  const [modelFilter, setModelFilter] = useSessionState("diagrams.model", "전체");
+  const [category, setCategory] = useSessionState<DiagramCategory | "전체">("diagrams.category", "전체");
   const [kind, setKind] = useState<"photo" | "diagram">("photo");
   // 분류(이앙기·콤바인·트랙터·부속장치)별 개수 — 지금 보고 있는 사진/도면 탭 기준
   const categoryCounts = useMemo(() => {
@@ -123,9 +153,8 @@ export default function DiagramsPage() {
     )),
   ], [diagrams, category]);
   const pickCategory = (c: DiagramCategory | "전체") => { setCategory(c); setModelFilter("전체"); };
-  const [term, setTerm] = useState("");
+  const [term, setTerm] = useSessionState("diagrams.term", "");
   const { hits: partHits, pending: partPending } = useDiagramPartSearch(term);
-  const [initialPart, setInitialPart] = useState<string | null>(null);
   const thumbPaths = useMemo(
     () => (diagrams ?? []).filter((d: Diagram) => d.kind !== "photo" && d.image_path).map((d: Diagram) => d.image_path as string),
     [diagrams],
@@ -136,8 +165,12 @@ export default function DiagramsPage() {
     [diagrams, term, partHits, kindTab, modelFilter, category],
   );
   // 도면이 수천 장이라 한 번에 다 그리면 핸드폰이 멈춘다 → 60장씩 보여주고 내려가면 더 그린다
-  const [shown, setShown] = useState(PAGE_SIZE);
-  useEffect(() => setShown(PAGE_SIZE), [term, kindTab, modelFilter, category]);
+  const [shown, setShown] = useSessionState("diagrams.shown", PAGE_SIZE);
+  const filterKey = `${term}|${kindTab}|${modelFilter}|${category}`;
+  const prevFilter = useRef(filterKey);
+  useEffect(() => {
+    if (prevFilter.current !== filterKey) { prevFilter.current = filterKey; setShown(PAGE_SIZE); }
+  }, [filterKey, setShown]);
   const moreRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = moreRef.current;
@@ -151,9 +184,40 @@ export default function DiagramsPage() {
   }, [shown, results.length]);
 
   const openDiagram = (d: Diagram, code?: string) => {
-    setInitialPart(code ?? null);
-    setStack([d]);
+    listScroll.current = readScroll();
+    const next = new URLSearchParams(params);
+    next.set("d", d.id);
+    if (code) next.set("p", code); else next.delete("p");
+    next.delete("check");
+    setParams(next);
   };
+  const pushDiagram = (d: Diagram) => {
+    const next = new URLSearchParams(params);
+    next.set("d", [...openIds, d.id].join(","));
+    next.delete("p");
+    next.delete("check");
+    setParams(next);
+  };
+  const closeDiagram = () => {
+    // 앱 안에서 연 경우엔 진짜 뒤로가기(수리이력에서 왔으면 수리이력으로), 주소로 바로 들어온 경우엔 목록으로
+    if (location.key !== "default") { navigate(-1); return; }
+    const next = new URLSearchParams(params);
+    const rest = openIds.slice(0, -1);
+    if (rest.length) next.set("d", rest.join(",")); else next.delete("d");
+    next.delete("p");
+    next.delete("check");
+    setParams(next, { replace: true });
+  };
+  const selectedId = selected?.id ?? null;
+  useLayoutEffect(() => {
+    if (selectedId) { writeScroll([0, 0]); return; }
+    if (listScroll.current) {
+      const pos = listScroll.current;
+      // 목록이 다시 보이는 즉시, 그리고 한 박자 뒤(썸네일 자리 잡은 뒤) 한 번 더 맞춘다
+      writeScroll(pos);
+      requestAnimationFrame(() => writeScroll(pos));
+    }
+  }, [selectedId]);
 
   const { isAdmin } = useUserRole();
   const [labelOpen, setLabelOpen] = useState(false);
@@ -208,21 +272,24 @@ export default function DiagramsPage() {
     }
   };
 
-  if (selected) {
-    return (
-      <DiagramViewer
-        key={selected.id}
-        diagram={selected}
-        allDiagrams={diagrams}
-        initialPartCode={initialPart}
-        onBack={() => { setInitialPart(null); setStack((s) => s.slice(0, -1)); }}
-        onOpenDiagram={(d) => { setInitialPart(null); setStack((s) => [...s, d]); }}
-      />
-    );
-  }
+  const viewer = selected ? (
+    <DiagramViewer
+      key={selected.id}
+      diagram={selected}
+      allDiagrams={diagrams}
+      initialPartCode={initialPart}
+      checkedCodes={checkedParam ? checkedParam.split(",").filter(Boolean) : undefined}
+      onBack={closeDiagram}
+      onOpenDiagram={pushDiagram}
+    />
+  ) : openIds.length > 0 && isLoading ? (
+    <div className="space-y-3"><Skeleton className="h-8 w-48" /><Skeleton className="w-full aspect-[4/3] rounded-xl" /></div>
+  ) : null;
 
   return (
-    <div>
+    <>
+    {viewer}
+    <div className={viewer ? "hidden" : undefined}>
       <PartOrderCartDialog open={cartOpen} onOpenChange={setCartOpen} />
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -421,5 +488,6 @@ export default function DiagramsPage() {
       <LabelPhotoDialog open={labelOpen} onOpenChange={setLabelOpen} />
       {isAdmin && <PdfDiagramImportDialog open={pdfOpen} onOpenChange={setPdfOpen} />}
     </div>
+    </>
   );
 }
