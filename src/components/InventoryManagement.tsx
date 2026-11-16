@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes, Lightbulb } from "lucide-react";
+import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes, Lightbulb, MapPin } from "lucide-react";
+import { inventorySearchFilter } from "@/lib/partSearch";
 import * as XLSX from "xlsx";
 import PartTipsDialog from "@/components/parts/PartTipsDialog";
 import { useSearchParams } from "react-router-dom";
@@ -94,7 +95,7 @@ export default function InventoryManagement() {
         .from("inventory")
         .select("*")
         .eq("branch", branch)
-        .or(`part_code.ilike.%${debouncedSearch}%,part_name.ilike.%${debouncedSearch}%`)
+        .or(inventorySearchFilter(debouncedSearch))
         .order("part_code")
         .limit(50);
       if (error) throw error;
@@ -275,7 +276,43 @@ export default function InventoryManagement() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
+        <>
+        {/* 핸드폰: 위치를 크게 보이는 카드 목록 */}
+        <div className="sm:hidden space-y-2">
+          {searchResults.map((item) => {
+            const isLow = (item.quantity ?? 0) < (item.min_stock ?? 1);
+            const loc = [item.location_main, item.location_sub].filter(Boolean);
+            return (
+              <Card key={item.id} className={`shadow-card border-0 ${isLow ? "bg-destructive/5" : ""}`}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-xs text-muted-foreground">{item.part_code}{item.alt_part_code ? ` · ${item.alt_part_code}` : ""}</p>
+                      <p className="font-medium leading-snug">{item.part_name}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-xl font-bold tabular-nums leading-none ${isLow ? "text-destructive" : ""}`}>{item.quantity ?? 0}<span className="text-xs font-normal text-muted-foreground ml-0.5">개</span></p>
+                      {item.sales_price != null && <p className="text-xs text-muted-foreground tabular-nums mt-1">{item.sales_price.toLocaleString()}원</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`flex-1 min-w-0 flex items-center gap-1.5 rounded-lg px-2.5 py-2 ${loc.length ? "bg-primary/10 text-primary" : "bg-muted/40 text-muted-foreground"}`}>
+                      <MapPin className="h-4 w-4 shrink-0" />
+                      <span className="text-sm font-semibold truncate">{loc.length ? loc.join(" · ") : "위치 미지정"}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 relative shrink-0" onClick={() => setTipsItem(item)} aria-label="부품 팁·사진">
+                      <Lightbulb className={`h-4 w-4 ${tipCounts[item.part_code] ? "text-amber-400" : "text-muted-foreground"}`} />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setEditItem(item)} aria-label="수정">
+                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        <Card className="shadow-card border-0 overflow-hidden hidden sm:block">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -286,7 +323,7 @@ export default function InventoryManagement() {
                   <th className="text-right p-3 font-medium text-muted-foreground text-xs">수량</th>
                   <th className="text-right p-3 font-medium text-muted-foreground text-xs hidden sm:table-cell">적정재고</th>
                   <th className="text-right p-3 font-medium text-muted-foreground text-xs hidden sm:table-cell">매출가</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs hidden md:table-cell">위치</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground text-xs">위치</th>
                   <th className="w-20"></th>
                 </tr>
               </thead>
@@ -317,8 +354,8 @@ export default function InventoryManagement() {
                       <td className="p-3 text-right text-muted-foreground hidden sm:table-cell tabular-nums">
                         {item.sales_price?.toLocaleString() ?? "-"}
                       </td>
-                      <td className="p-3 text-muted-foreground hidden md:table-cell text-xs">
-                        {[item.location_main, item.location_sub].filter(Boolean).join(" / ") || "-"}
+                      <td className="p-3 text-xs font-medium text-primary whitespace-nowrap">
+                        {[item.location_main, item.location_sub].filter(Boolean).join(" / ") || <span className="text-muted-foreground">-</span>}
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1">
@@ -345,6 +382,7 @@ export default function InventoryManagement() {
             </table>
           </div>
         </Card>
+        </>
       )}
 
       <AddInventoryDialog open={addOpen} onOpenChange={setAddOpen} branch={branch} />

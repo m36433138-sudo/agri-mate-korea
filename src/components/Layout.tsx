@@ -4,6 +4,7 @@ import GlobalSearch from "@/components/GlobalSearch";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import CursorGlow from "@/components/CursorGlow";
 import { useLocation, Link } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import { ChevronRight } from "lucide-react";
 import { useMessengerNotifications } from "@/hooks/useMessengerNotifications";
 import { useReceivablesAlert } from "@/hooks/useReceivablesAlert";
@@ -26,6 +27,15 @@ const PAGE_LABELS: Record<string, string> = {
   "/vendors": "업체관리",
   "/assets": "자산관리",
   "/receivables": "미수금 관리",
+  "/workspace": "내 업무",
+  "/messenger": "사내 메신저",
+  "/attachments": "작업기 관리",
+  "/error-codes": "에러코드 기록",
+  "/diagrams": "부품 도면",
+  "/insurance-repairs": "보험수리 관리",
+  "/quotes": "견적서 관리",
+  "/knowledge": "지식베이스",
+  "/location-history": "위치 이력",
 };
 
 function Breadcrumb() {
@@ -65,9 +75,20 @@ function Breadcrumb() {
   );
 }
 
+/** 메뉴를 누를 때마다 위쪽에 진행 막대가 지나가고 새 화면이 아래에서 올라오게 해 페이지가 바뀐 걸 바로 알 수 있게 한다 */
+function RouteProgress({ path }: { path: string }) {
+  return <div key={path} className="route-progress" aria-hidden />;
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   useMessengerNotifications();
   useReceivablesAlert();
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
+  }, [location.pathname]);
   return (
     <SidebarProvider>
       <CursorGlow />
@@ -75,7 +96,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* 헤더 */}
-          <header className="h-13 flex items-center px-4 gap-3 sticky top-0 z-30 glass-header" style={{ height: 52 }}>
+          <header className="h-13 flex items-center px-4 gap-3 sticky top-0 z-30 glass-header relative" style={{ height: 52 }}>
+            <RouteProgress path={location.pathname} />
             <SidebarTrigger className="shrink-0" />
             <div className="w-px h-5 bg-border shrink-0" />
             <Breadcrumb />
@@ -85,8 +107,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* 메인 콘텐츠 */}
-          <main className="flex-1 overflow-auto">
-            <div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-6 sm:py-8 page-enter">
+          <main ref={mainRef} className="flex-1 overflow-auto">
+            <div key={location.pathname} className="max-w-[1280px] mx-auto px-4 sm:px-8 py-6 sm:py-8 page-enter">
               {children}
             </div>
           </main>

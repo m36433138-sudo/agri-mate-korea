@@ -150,6 +150,8 @@ function LogoHeader({ collapsed }: { collapsed: boolean }) {
 
 // 네비게이션 그룹
 function NavGroup({ label, items, collapsed }: { label: string; items: NavItem[]; collapsed: boolean }) {
+  // 핸드폰에서는 메뉴를 고르면 서랍을 닫아 바뀐 화면이 바로 보이게 한다
+  const { isMobile, setOpenMobile } = useSidebar();
   return (
     <SidebarGroup className="py-1">
       {!collapsed && (
@@ -165,8 +167,9 @@ function NavGroup({ label, items, collapsed }: { label: string; items: NavItem[]
                 <NavLink
                   to={item.url}
                   end={item.url === "/" || item.url === "/my-page"}
+                  onClick={() => { if (isMobile) setOpenMobile(false); }}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg mx-1 hover:bg-sidebar-accent transition-colors duration-150 text-sidebar-foreground/85 hover:text-sidebar-foreground"
-                  activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
+                  activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold shadow-[inset_3px_0_0_hsl(var(--sidebar-primary))]"
                 >
                   <item.icon className="h-[17px] w-[17px] shrink-0" style={{ strokeWidth: 1.8 }} />
                   {!collapsed && <span className="text-sm leading-none flex-1">{item.title}</span>}
