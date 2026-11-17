@@ -225,8 +225,20 @@ export default function DiagramsPage() {
     if (listScroll.current) {
       const pos = listScroll.current;
       // 목록이 다시 보이는 즉시, 그리고 한 박자 뒤(썸네일 자리 잡은 뒤) 한 번 더 맞춘다
-      writeScroll(pos);
-      requestAnimationFrame(() => writeScroll(pos));
+      // 썸네일·카드가 다 그려질 때까지 키가 모자라 덜 내려갈 수 있어, 맞을 때까지 잠깐(최대 1.5초) 다시 맞춘다
+      let tries = 0;
+      let raf = 0;
+      const fix = () => {
+        writeScroll(pos);
+        const now = readScroll();
+        const ok = pos.every((v, i) => Math.abs((now[i] ?? 0) - v) < 4);
+        if (!ok && tries++ < 90) raf = requestAnimationFrame(fix);
+      };
+      fix();
+      const stop = () => { tries = 999; };
+      window.addEventListener("wheel", stop, { once: true, passive: true });
+      window.addEventListener("touchstart", stop, { once: true, passive: true });
+      return () => { cancelAnimationFrame(raf); window.removeEventListener("wheel", stop); window.removeEventListener("touchstart", stop); };
     }
   }, [selectedId]);
 
