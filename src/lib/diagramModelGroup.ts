@@ -45,3 +45,10 @@ export function categoryOf(modelName?: string | null, machineType?: string | nul
   if (t.includes("트랙터")) return "트랙터";
   return "부속장치";
 }
+
+/** 제조사: 얀마가 기본이고 LS·TYM·대동·구보다 등 타사 도면은 따로 고른다 */
+export const DIAGRAM_BRANDS = ["얀마", "LS", "TYM", "대동", "구보다", "기타"] as const;
+export function brandOf(manufacturer?: string | null): string {
+  const m = (manufacturer ?? "").trim();
+  return m || "얀마";
+}

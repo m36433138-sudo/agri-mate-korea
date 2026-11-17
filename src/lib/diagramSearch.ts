@@ -1,4 +1,4 @@
-import { categoryOf, modelGroup, modelsOf, type DiagramCategory } from "./diagramModelGroup";
+import { brandOf, categoryOf, modelGroup, modelsOf, type DiagramCategory } from "./diagramModelGroup";
 
 export type SearchableDiagram = {
   id: string;
@@ -6,6 +6,7 @@ export type SearchableDiagram = {
   model_name: string | null;
   machine_type?: string | null;
   kind: "photo" | "diagram";
+  manufacturer?: string | null;
 };
 
 /** 부품번호 검색(RPC)이 돌려주는 도면 1건어 대한_hit_ */
@@ -36,7 +37,7 @@ export function searchDiagrams<T extends SearchableDiagram>(
   diagrams: T[],
   term: string,
   partHits: Map<string, PartHit>,
-  filter: { kind: "photo" | "diagram"; model: string; category?: DiagramCategory | "전체" },
+  filter: { kind: "photo" | "diagram"; model: string; category?: DiagramCategory | "전체"; brand?: string },
 ): DiagramSearchHit<T>[] {
   const q = term.trim().toLowerCase();
   const words = q.split(/\s+/).filter(Boolean);
@@ -44,6 +45,7 @@ export function searchDiagrams<T extends SearchableDiagram>(
 
   for (const d of diagrams) {
     if (d.kind !== filter.kind) continue;
+    if (filter.brand && filter.brand !== "전체" && brandOf(d.manufacturer) !== filter.brand) continue;
     if (filter.category && filter.category !== "전체" && categoryOf(d.model_name, d.machine_type) !== filter.category) continue;
     if (filter.model !== "전체" && !modelsOf(d.model_name).includes(filter.model)) continue;
 

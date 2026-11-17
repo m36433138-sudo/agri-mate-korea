@@ -697,6 +697,7 @@ export type Database = {
           image_path: string
           kind: string
           machine_type: string | null
+          manufacturer: string
           model_name: string | null
           notes: string | null
           sort_order: number
@@ -711,6 +712,7 @@ export type Database = {
           image_path: string
           kind?: string
           machine_type?: string | null
+          manufacturer?: string
           model_name?: string | null
           notes?: string | null
           sort_order?: number
@@ -725,6 +727,7 @@ export type Database = {
           image_path?: string
           kind?: string
           machine_type?: string | null
+          manufacturer?: string
           model_name?: string | null
           notes?: string | null
           sort_order?: number

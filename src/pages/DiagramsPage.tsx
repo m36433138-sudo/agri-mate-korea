@@ -13,7 +13,7 @@ import DiagramViewer from "@/components/diagrams/DiagramViewer";
 import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
 import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp, Search, X } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
-import { categoryOf, modelsOf, DIAGRAM_CATEGORIES, type DiagramCategory } from "@/lib/diagramModelGroup";
+import { brandOf, categoryOf, modelsOf, DIAGRAM_BRANDS, DIAGRAM_CATEGORIES, type DiagramCategory } from "@/lib/diagramModelGroup";
 import { searchDiagrams } from "@/lib/diagramSearch";
 import LabelPhotoDialog from "@/components/diagrams/LabelPhotoDialog";
 import PdfDiagramImportDialog from "@/components/diagrams/PdfDiagramImportDialog";
@@ -58,7 +58,7 @@ function DiagramCard({ diagram, match, thumb, onClick, onDelete }: {
 }) {
   const { data: url } = useDiagramImageUrl(diagram.kind === "photo" ? diagram.image_path : null);
   return (
-    <div className="rounded-lg sm:rounded-xl overflow-hidden bg-card/60 sm:bg-card sm:border hover:border-primary/60 transition-colors cursor-pointer group relative">
+    <div className="diagram-card rounded-lg sm:rounded-xl overflow-hidden bg-card/60 sm:bg-card sm:border hover:border-primary/60 transition-colors cursor-pointer group relative">
       <Button variant="ghost" onClick={onClick} aria-label={`${diagram.title} 열기`}
         className="block h-auto w-full rounded-none p-0 text-left whitespace-normal hover:bg-transparent">
         {diagram.kind !== "photo" ? (
@@ -135,23 +135,34 @@ export default function DiagramsPage() {
   const [kindTab, setKindTab] = useSessionState<"photo" | "diagram">("diagrams.kind", "photo");
   const [modelFilter, setModelFilter] = useSessionState("diagrams.model", "전체");
   const [category, setCategory] = useSessionState<DiagramCategory | "전체">("diagrams.category", "전체");
+  const [brand, setBrand] = useSessionState("diagrams.brand", "전체");
+  // 등록된 제조사만 버튼으로 (얀마 먼저)
+  const brands = useMemo(() => {
+    const c = new globalThis.Map<string, number>();
+    for (const d of diagrams) if (d.kind === kindTab) c.set(brandOf(d.manufacturer), (c.get(brandOf(d.manufacturer)) ?? 0) + 1);
+    const order = (b: string) => { const i = (DIAGRAM_BRANDS as readonly string[]).indexOf(b); return i < 0 ? 99 : i; };
+    return [...c.entries()].sort((a, b) => order(a[0]) - order(b[0]) || a[0].localeCompare(b[0], "ko"));
+  }, [diagrams, kindTab]);
+  const inBrand = (d: Diagram) => brand === "전체" || brandOf(d.manufacturer) === brand;
   const [kind, setKind] = useState<"photo" | "diagram">("photo");
   // 분류(이앙기·콤바인·트랙터·부속장치)별 개수 — 지금 보고 있는 사진/도면 탭 기준
   const categoryCounts = useMemo(() => {
     const c = new globalThis.Map<string, number>();
-    for (const d of diagrams) if (d.kind === kindTab) c.set(categoryOf(d.model_name, d.machine_type), (c.get(categoryOf(d.model_name, d.machine_type)) ?? 0) + 1);
+    for (const d of diagrams) if (d.kind === kindTab && inBrand(d)) c.set(categoryOf(d.model_name, d.machine_type), (c.get(categoryOf(d.model_name, d.machine_type)) ?? 0) + 1);
     return c;
-  }, [diagrams, kindTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diagrams, kindTab, brand]);
   // 기종 버튼: 고른 분류 안의 기종만. YT490·5101·5113은 하나로 묶고, 공용 책(엔진·커터)은 해당 기종 버튼마다 보인다.
   const models = useMemo(() => [
     "전체",
     ...Array.from(new Set(
       diagrams
+        .filter((d) => d.kind === kindTab && inBrand(d))
         .filter((d) => category === "전체" || categoryOf(d.model_name, d.machine_type) === category)
         .flatMap((d) => modelsOf(d.model_name))
         .filter(Boolean),
     )),
-  ], [diagrams, category]);
+  ], [diagrams, category, kindTab, brand]);
   const pickCategory = (c: DiagramCategory | "전체") => { setCategory(c); setModelFilter("전체"); };
   const [term, setTerm] = useSessionState("diagrams.term", "");
   const { hits: partHits, pending: partPending } = useDiagramPartSearch(term);
@@ -161,12 +172,12 @@ export default function DiagramsPage() {
   );
   const { data: thumbs, isError: thumbsFailed } = useDiagramThumbUrls(thumbPaths);
   const results = useMemo(
-    () => searchDiagrams(diagrams, term, partHits, { kind: kindTab, model: modelFilter, category }),
-    [diagrams, term, partHits, kindTab, modelFilter, category],
+    () => searchDiagrams(diagrams, term, partHits, { kind: kindTab, model: modelFilter, category, brand }),
+    [diagrams, term, partHits, kindTab, modelFilter, category, brand],
   );
   // 도면이 수천 장이라 한 번에 다 그리면 핸드폰이 멈춘다 → 60장씩 보여주고 내려가면 더 그린다
   const [shown, setShown] = useSessionState("diagrams.shown", PAGE_SIZE);
-  const filterKey = `${term}|${kindTab}|${modelFilter}|${category}`;
+  const filterKey = `${term}|${kindTab}|${modelFilter}|${category}|${brand}`;
   const prevFilter = useRef(filterKey);
   useEffect(() => {
     if (prevFilter.current !== filterKey) { prevFilter.current = filterKey; setShown(PAGE_SIZE); }
@@ -227,6 +238,7 @@ export default function DiagramsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [modelName, setModelName] = useState("");
+  const [maker, setMaker] = useState("얀마");
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -260,6 +272,7 @@ export default function DiagramsPage() {
         notes: notes.trim() || undefined,
         image_path: path,
         kind,
+        manufacturer: maker.trim() || "얀마",
       });
       toast({ title: "도면이 등록되었습니다." });
       setUploadOpen(false);
@@ -350,9 +363,26 @@ export default function DiagramsPage() {
         </Tabs>
       </div>
 
+      {brands.length > 1 && (
+        <div className="flex gap-1 mb-2 overflow-x-auto pb-0.5" role="tablist" aria-label="제조사">
+          {[["전체", brands.reduce((a, [, n]) => a + n, 0)] as [string, number], ...brands].map(([b, n]) => (
+            <button
+              key={b}
+              type="button"
+              role="tab"
+              aria-selected={brand === b}
+              onClick={() => { setBrand(b); setModelFilter("전체"); }}
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${brand === b ? "border-primary bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+            >
+              {b} <span className="text-[11px] opacity-70">{n.toLocaleString()}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-5 gap-1 mb-2 rounded-xl border bg-card p-1" role="tablist" aria-label="분류">
         {(["전체", ...DIAGRAM_CATEGORIES] as const).map((c) => {
-          const n = c === "전체" ? diagrams.filter((d) => d.kind === kindTab).length : (categoryCounts.get(c) ?? 0);
+          const n = c === "전체" ? [...categoryCounts.values()].reduce((a, b) => a + b, 0) : (categoryCounts.get(c) ?? 0);
           const on = category === c;
           return (
             <button
@@ -389,6 +419,10 @@ export default function DiagramsPage() {
         <div className="grid grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="aspect-[3/4] rounded-xl" />)}
         </div>
+      ) : results.length === 0 && partPending ? (
+        <p className="text-sm text-muted-foreground border rounded-xl p-8 text-center flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> 부품번호를 찾는 중…
+        </p>
       ) : results.length === 0 ? (
         <p className="text-sm text-muted-foreground border rounded-xl p-8 text-center">
           {term.trim()
@@ -432,6 +466,12 @@ export default function DiagramsPage() {
             </Tabs>
             <Input placeholder={kind === "photo" ? "사진 이름 (예: YH1150 좌측면)" : "도면 이름 (예: HV2200 헤머 벨트 배치도)"} value={title} onChange={(e) => setTitle(e.target.value)} />
             <Input placeholder="기종 (선택, 예: HV2200)" value={modelName} onChange={(e) => setModelName(e.target.value)} />
+            <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="제조사">
+              {DIAGRAM_BRANDS.map((b) => (
+                <button key={b} type="button" role="radio" aria-checked={maker === b} onClick={() => setMaker(b)}
+                  className={`text-xs px-2.5 py-1 rounded-full border ${maker === b ? "border-primary text-primary bg-primary/10" : "text-muted-foreground"}`}>{b}</button>
+              ))}
+            </div>
             <Textarea placeholder="메모 (선택)" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
 
             {preview ? (

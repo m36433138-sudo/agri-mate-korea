@@ -17,7 +17,25 @@ export type Diagram = {
   kind: "diagram" | "photo";
   sort_order: number;
   created_at: string;
+  /** 제조사 (기본 얀마) */
+  manufacturer?: string | null;
 };
+
+// 목록에 필요한 칸만 받는다 (1만 장이어도 가볍게)
+const LIST_COLUMNS = "id,title,model_name,machine_type,image_path,kind,sort_order,created_at,manufacturer";
+const CACHE_KEY = "diagrams.list.v2";
+
+function readCachedList(): { at: number; rows: Diagram[] } | undefined {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return undefined;
+    const v = JSON.parse(raw);
+    return Array.isArray(v?.rows) ? v : undefined;
+  } catch { return undefined; }
+}
+function writeCachedList(rows: Diagram[]) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), rows })); } catch { /* 저장 공간 부족 시 다음에 다시 받음 */ }
+}
 
 export type DiagramHotspot = {
   id: string;
@@ -35,29 +53,49 @@ export type DiagramHotspot = {
 export function useDiagrams() {
   const qc = useQueryClient();
 
+  // 지난번 목록을 기기에 저장해 두고 바로 보여준 뒤, 뒤에서 새로 받아 바꾼다
+  const [cached] = useState(readCachedList);
   const { data: diagrams = [], isLoading } = useQuery<Diagram[]>({
     queryKey: ["diagrams"],
+    initialData: cached?.rows,
+    initialDataUpdatedAt: cached?.at,
+    staleTime: 5 * 60_000,
+    gcTime: 60 * 60_000,
     queryFn: async () => {
-      const all: Diagram[] = [];
       const PAGE = 1000;
-      for (let from = 0; ; from += PAGE) {
-        const { data, error } = await db
-          .from("diagrams")
-          .select("*")
+      const page = (from: number) =>
+        db.from("diagrams")
+          .select(LIST_COLUMNS)
           .order("sort_order", { ascending: true })
           .order("created_at", { ascending: false })
           .order("id", { ascending: true })
           .range(from, from + PAGE - 1);
+      // 전체 개수를 먼저 알고 1000장씩 동시에 받는다 (순서대로 받으면 10번 기다림)
+      const { count, error: cErr } = await db.from("diagrams").select("id", { count: "exact", head: true });
+      if (cErr) throw cErr;
+      const pages = Math.max(1, Math.ceil((count ?? 0) / PAGE));
+      const results = await Promise.all(Array.from({ length: pages }, (_, i) => page(i * PAGE)));
+      const all: Diagram[] = [];
+      for (const { data, error } of results) {
+        if (error) throw error;
+        all.push(...((data ?? []) as Diagram[]));
+      }
+      // 받는 사이 새 도면이 늘었으면 끝 페이지를 한 번 더 이어 받는다
+      for (let from = pages * PAGE; ; from += PAGE) {
+        const { data, error } = await page(from);
         if (error) throw error;
         all.push(...((data ?? []) as Diagram[]));
         if (!data || data.length < PAGE) break;
       }
-      return all;
+      const seen = new Set<string>();
+      const rows = all.filter((d) => (seen.has(d.id) ? false : (seen.add(d.id), true)));
+      writeCachedList(rows);
+      return rows;
     },
   });
 
   const addDiagram = useMutation({
-    mutationFn: async (d: { title: string; model_name?: string; machine_type?: string; notes?: string; image_path: string; kind?: "diagram" | "photo" }) => {
+    mutationFn: async (d: { title: string; model_name?: string; machine_type?: string; notes?: string; image_path: string; kind?: "diagram" | "photo"; manufacturer?: string }) => {
       const { data, error } = await db.from("diagrams").insert(d).select("id").single();
       if (error) throw error;
       return data.id as string;
@@ -184,15 +222,29 @@ export function useDiagramImageUrl(imagePath: string | null) {
 }
 
 /** Pre-made small previews live at thumbs/<image_path>; signed in bulk so the list shows instantly. */
+const THUMB_CACHE = "diagrams.thumbs.v1";
+const THUMB_TTL = 45 * 60_000; // 서명은 1시간 유효 → 45분 안이면 다시 서명하지 않는다
+
+function readThumbCache(): Map<string, string> | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(THUMB_CACHE) ?? "null");
+    if (!v || Date.now() - v.at > THUMB_TTL) return null;
+    return new Map(Object.entries(v.urls as Record<string, string>));
+  } catch { return null; }
+}
+
 export function useDiagramThumbUrls(paths: string[]) {
-  const key = paths.join("|");
+  const key = useMemo(() => `${paths.length}:${paths[0] ?? ""}:${paths[paths.length - 1] ?? ""}`, [paths]);
   return useQuery({
     queryKey: ["diagram-thumb-urls", key],
     enabled: paths.length > 0,
     queryFn: async () => {
-      const out = new Map<string, string>();
+      const cached = readThumbCache();
+      const missing = cached ? paths.filter((p) => !cached.has(p)) : paths;
+      const out = cached ?? new Map<string, string>();
+      if (missing.length === 0) return out;
       const chunks: string[][] = [];
-      for (let i = 0; i < paths.length; i += 500) chunks.push(paths.slice(i, i + 500));
+      for (let i = 0; i < missing.length; i += 500) chunks.push(missing.slice(i, i + 500));
       // 500장씩 동시에 서명해 도면이 늘어도 첫 화면이 늦어지지 않게 한다
       const signed = await Promise.all(
         chunks.map((chunk) =>
@@ -203,6 +255,10 @@ export function useDiagramThumbUrls(paths: string[]) {
         if (error) throw error;
         data?.forEach((d, j) => { if (d.signedUrl) out.set(chunks[k][j], d.signedUrl); });
       });
+      try {
+        const prevAt = cached ? JSON.parse(sessionStorage.getItem(THUMB_CACHE) ?? "{}").at : Date.now();
+        sessionStorage.setItem(THUMB_CACHE, JSON.stringify({ at: prevAt ?? Date.now(), urls: Object.fromEntries(out) }));
+      } catch { /* 저장 공간 부족 */ }
       return out;
     },
     staleTime: 1000 * 60 * 50,

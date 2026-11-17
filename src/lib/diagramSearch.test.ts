@@ -119,4 +119,13 @@ describe("searchDiagrams 분류 필터", () => {
     expect(ids("이앙기")).toEqual([]);
     expect(ids("전체")).toEqual(["c", "t", "r"]);
   });
+
+  it("제조사를 고르면 그 회사 도면만 (비어 있으면 얀마)", () => {
+    const list = [
+      { id: "y", title: "Fig.1", model_name: "YT488", kind: "diagram" as const, manufacturer: null },
+      { id: "l", title: "Fig.1", model_name: "MT4", kind: "diagram" as const, manufacturer: "LS" },
+    ];
+    expect(searchDiagrams(list, "", new Map(), { kind: "diagram", model: "전체", brand: "얀마" }).map((h) => h.diagram.id)).toEqual(["y"]);
+    expect(searchDiagrams(list, "", new Map(), { kind: "diagram", model: "전체", brand: "LS" }).map((h) => h.diagram.id)).toEqual(["l"]);
+  });
 });

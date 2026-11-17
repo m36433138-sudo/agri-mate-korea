@@ -284,3 +284,9 @@
   main { padding: 0 !important; }
   .min-h-screen { min-height: auto !important; }
 }
+
+/* 도면 카드: 화면 밖 카드는 그리지 않아 느린 컴퓨터에서도 스크롤이 부드럽다 */
+.diagram-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
+}
