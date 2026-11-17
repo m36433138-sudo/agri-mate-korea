@@ -6,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useDiagramImageUrl, useHotspots, type Diagram, type DiagramHotspot } from "@/hooks/useDiagrams";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
 import PartDetailSheet from "@/components/diagrams/PartDetailSheet";
-import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick, Link2, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick, Link2, ZoomIn, ZoomOut, CheckSquare, Printer, Copy } from "lucide-react";
+import { printCheckedDiagram } from "@/lib/printDiagram";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -19,9 +20,15 @@ type Props = {
   onOpenDiagram?: (d: Diagram) => void;
   /** 검색으로 열었을 때 바로 펼칠 부품번호 */
   initialPartCode?: string | null;
+  /** 수리이력에서 열었을 때 미리 체크해 둘 부품번호(수리에 들어간 부품) */
+  checkedCodes?: string[];
 };
 
-export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram, initialPartCode }: Props) {
+export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram, initialPartCode, checkedCodes }: Props) {
+  // 체크한 부품: 수리에 들어간 부품을 표시하고 그 도면만 체크된 채로 인쇄한다
+  const [checked, setChecked] = useState<Set<string>>(() => new Set(checkedCodes ?? []));
+  const [checkMode, setCheckMode] = useState(() => (checkedCodes?.length ?? 0) > 0);
+  const toggleCheck = (code: string) => setChecked((s) => { const n = new Set(s); if (n.has(code)) n.delete(code); else n.add(code); return n; });
   const isPhoto = diagram.kind === "photo";
   const [assignMode, setAssignMode] = useState<"part" | "link">(isPhoto ? "link" : "part");
   const [linkSearch, setLinkSearch] = useState("");
@@ -217,6 +224,9 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   const [zoom, setZoom] = useState(() => (typeof window !== "undefined" && window.innerWidth < 640 ? 2 : 1));
 
   const uniqueCodes = Array.from(new Map(hotspots.filter((h) => !h.target_diagram_id).map((h) => [h.part_code, h])).values());
+  // 부품표 줄에는 그림 번호가 없으니, 같은 부품번호의 그림 번호를 찾아 붙인다
+  const calloutOf = new Map<string, string>();
+  for (const h of hotspots) { const no = (h as any).callout_no as string | null; if (no && !h.target_diagram_id && !calloutOf.has(h.part_code)) calloutOf.set(h.part_code, no); }
   const links = hotspots.filter((h) => h.target_diagram_id);
 
   return (
@@ -233,11 +243,39 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             <p className="text-xs text-muted-foreground">{diagram.model_name}</p>
           )}
         </div>
+        {!isPhoto && (
+          <Button
+            variant={checkMode ? "default" : "outline"}
+            size="sm"
+            className="ml-auto gap-1.5 shrink-0"
+            onClick={() => { setCheckMode((v) => !v); setEditing(false); }}
+            aria-pressed={checkMode}
+          >
+            <CheckSquare className="h-4 w-4" /> 체크{checked.size > 0 ? ` ${checked.size}` : ""}
+          </Button>
+        )}
+        {!isPhoto && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 shrink-0"
+            disabled={!imageUrl}
+            onClick={() => imageUrl && printCheckedDiagram({
+              title: diagram.title,
+              model: diagram.model_name,
+              imageUrl,
+              boxes: hotspots.filter((h) => !h.target_diagram_id && checked.has(h.part_code)).map((h) => ({ x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h), round: !!(h as any).callout_no })),
+              parts: uniqueCodes.filter((h) => checked.has(h.part_code)).map((h) => ({ code: h.part_code, name: h.part_name, no: (h as any).callout_no ?? calloutOf.get(h.part_code) ?? null })),
+            })}
+          >
+            <Printer className="h-4 w-4" /> 인쇄
+          </Button>
+        )}
         <Button
           variant={editing ? "default" : "outline"}
           size="sm"
-          className="ml-auto gap-1.5 shrink-0"
-          onClick={() => setEditing((v) => !v)}
+          className={`${isPhoto ? "ml-auto " : ""}gap-1.5 shrink-0`}
+          onClick={() => { setEditing((v) => !v); setCheckMode(false); }}
         >
           {editing ? <Check className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
           {editing ? "편집 완료" : "영역 편집"}
@@ -272,7 +310,9 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             key={h.id}
             type="button"
             className={`absolute rounded-md border-2 transition-colors before:absolute before:-inset-3 before:content-[''] ${
-              !editing && selected?.code === h.part_code && !h.target_diagram_id
+              !editing && !h.target_diagram_id && checked.has(h.part_code)
+                ? "border-success bg-success/35 ring-4 ring-success/40 z-20 rounded-full"
+                : !editing && selected?.code === h.part_code && !h.target_diagram_id
                 ? "border-amber-400 bg-amber-400/40 ring-4 ring-amber-400/50 z-20 rounded-full"
                 : editing
                 ? "border-amber-400/80 bg-amber-400/15"
@@ -288,7 +328,9 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             onPointerUp={(e) => endDrag(e, h)}
             onClick={(e) => {
               e.stopPropagation();
-              if (!editing) openHotspot(h);
+              if (editing) return;
+              if (checkMode && !h.target_diagram_id) toggleCheck(h.part_code);
+              else openHotspot(h);
             }}
           >
             <span
@@ -335,7 +377,25 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       </div>
       </div>
 
-      {!editing && (
+      {checkMode && (
+        <div className="flex items-center gap-2 flex-wrap text-xs rounded-lg bg-success/10 text-success px-3 py-2">
+          <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1 min-w-[12rem]">번호나 아래 목록을 누르면 체크/해제됩니다. 체크한 {checked.size}개가 초록색으로 인쇄됩니다.</span>
+          {checked.size > 0 && (
+            <>
+              <Button variant="ghost" size="sm" className="h-7 gap-1 text-success" onClick={async () => {
+                const lines = uniqueCodes.filter((h) => checked.has(h.part_code)).map((h) => `${h.part_code}${h.part_name ? ` ${h.part_name}` : ""}`);
+                try { await navigator.clipboard.writeText(`${diagram.title}\n${lines.join("\n")}`); toast({ title: "체크한 부품을 복사했습니다." }); }
+                catch { toast({ title: "복사하지 못했습니다.", variant: "destructive" }); }
+              }}>
+                <Copy className="h-3.5 w-3.5" /> 목록 복사
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-muted-foreground" onClick={() => setChecked(new Set())}>모두 해제</Button>
+            </>
+          )}
+        </div>
+      )}
+      {!editing && !checkMode && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <MousePointerClick className="h-3.5 w-3.5" />
           {isPhoto
@@ -368,9 +428,16 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             <button
               key={h.id}
               type="button"
-              onClick={() => setSelected({ code: h.part_code, name: h.part_name, qty: qtyOf(h.notes) })}
-              className="flex w-full sm:w-auto items-baseline gap-2 text-xs px-1 py-2 sm:px-2.5 sm:py-1.5 sm:rounded-lg sm:border sm:bg-card hover:text-primary sm:hover:border-primary transition-colors text-left"
+              onClick={() => checkMode ? toggleCheck(h.part_code) : setSelected({ code: h.part_code, name: h.part_name, qty: qtyOf(h.notes) })}
+              aria-pressed={checkMode ? checked.has(h.part_code) : undefined}
+              className={`flex w-full sm:w-auto items-baseline gap-2 text-xs px-1 py-2 sm:px-2.5 sm:py-1.5 sm:rounded-lg sm:border sm:bg-card hover:text-primary sm:hover:border-primary transition-colors text-left ${checked.has(h.part_code) ? "text-success sm:border-success bg-success/10" : ""}`}
             >
+              {(checkMode || checked.has(h.part_code)) && (
+                <span className={`shrink-0 self-center h-4 w-4 rounded border flex items-center justify-center ${checked.has(h.part_code) ? "bg-success border-success text-success-foreground" : "border-muted-foreground/50"}`}>
+                  {checked.has(h.part_code) && <Check className="h-3 w-3" />}
+                </span>
+              )}
+              {calloutOf.get(h.part_code) && <span className="shrink-0 w-7 text-right tabular-nums text-muted-foreground">{calloutOf.get(h.part_code)}</span>}
               <span className="font-mono font-semibold shrink-0">{h.part_code}</span>
               {h.part_name && <span className="truncate text-muted-foreground">{h.part_name}</span>}
               {qtyOf(h.notes) && <span className="shrink-0 text-primary">{qtyOf(h.notes)}</span>}

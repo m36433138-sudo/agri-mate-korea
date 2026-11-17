@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp, AlertTriangle } from "lucide-react";
+import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp, AlertTriangle, Map as MapIcon } from "lucide-react";
+import RepairDiagramDialog from "@/components/diagrams/RepairDiagramDialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import RepairInputModal from "@/components/RepairInputModal";
@@ -38,6 +39,7 @@ export default function RepairsList() {
 
   const [editRepair, setEditRepair] = useState<any | null>(null);
   const [errorCodeRepair, setErrorCodeRepair] = useState<any | null>(null);
+  const [diagramRepair, setDiagramRepair] = useState<any | null>(null);
   const [technicianFilter, setTechnicianFilter] = useState("");
   const [accountingFilter, setAccountingFilter] = useState<"all" | "posted" | "unposted">("all");
   const [techOpen, setTechOpen] = useState(false);
@@ -288,6 +290,16 @@ export default function RepairsList() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={() => setDiagramRepair(r)}
+                              title="도면에서 사용 부품 보기"
+                              aria-label="도면에서 사용 부품 보기"
+                            >
+                              <MapIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-7 w-7 text-muted-foreground hover:text-amber-400"
                               onClick={() => setErrorCodeRepair(r)}
                               title="에러코드 기록"
@@ -341,6 +353,12 @@ export default function RepairsList() {
         open={!!editRepair}
         onOpenChange={(v) => !v && setEditRepair(null)}
         repair={editRepair}
+      />
+
+      <RepairDiagramDialog
+        open={!!diagramRepair}
+        onOpenChange={(v) => !v && setDiagramRepair(null)}
+        repair={diagramRepair}
       />
 
       <RepairErrorCodeDialog
