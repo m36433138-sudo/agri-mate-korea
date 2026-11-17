@@ -881,6 +881,72 @@ export type Database = {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          amount: number
+          branch: string | null
+          business_number: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          expense_date: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          quantity: number | null
+          receipt_group: string | null
+          receipt_path: string | null
+          source: string
+          unit_price: number | null
+          updated_at: string
+          vat: number | null
+          vendor: string | null
+        }
+        Insert: {
+          amount?: number
+          branch?: string | null
+          business_number?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          quantity?: number | null
+          receipt_group?: string | null
+          receipt_path?: string | null
+          source?: string
+          unit_price?: number | null
+          updated_at?: string
+          vat?: number | null
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          branch?: string | null
+          business_number?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          quantity?: number | null
+          receipt_group?: string | null
+          receipt_path?: string | null
+          source?: string
+          unit_price?: number | null
+          updated_at?: string
+          vat?: number | null
+          vendor?: string | null
+        }
+        Relationships: []
+      }
       finance_payments: {
         Row: {
           amount: number

@@ -27,6 +27,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/vendors": "업체관리",
   "/assets": "자산관리",
   "/receivables": "미수금 관리",
+  "/expenses": "지출 관리",
   "/workspace": "내 업무",
   "/messenger": "사내 메신저",
   "/attachments": "작업기 관리",

@@ -93,6 +93,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     items: [
       { key: "view_receivables", label: "미수금 조회" },
       { key: "manage_receivables", label: "미수금 등록·입금 처리", requires: "view_receivables" },
+      { key: "view_expenses", label: "지출 조회" },
+      { key: "manage_expenses", label: "지출 등록 (영수증 AI 판독)", requires: "view_expenses" },
     ],
   },
   {
