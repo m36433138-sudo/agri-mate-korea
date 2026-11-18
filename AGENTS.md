@@ -9,3 +9,4 @@
 - The operations board (작업현황판) reads and writes operation_rows as the source of truth; Google Sheets is a best-effort backup mirror and is imported only on first load or by the admin 「시트 가져오기」 button, so sheet outages never block work.
 - Saving a repair with an unpaid/partial payment creates a finance_records receivable (source_type repair) in the same flow so billing never depends on staff remembering a second step.
 - Receipts/invoices are read by the read-receipt function (staff with manage_expenses only) and land in a review dialog; rows are inserted into expenses only after the user confirms, with the original kept in the private receipts bucket.
+- Photo part finding (find-part-by-photo) narrows by figure titles first, then compares only the top figures with their parts lists, and drops any AI-returned code not in that figure so suggestions can never point to nonexistent parts.

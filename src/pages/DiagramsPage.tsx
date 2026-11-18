@@ -11,11 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDiagrams, useDiagramImageUrl, useDiagramPartSearch, useDiagramThumbUrls, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
 import DiagramViewer from "@/components/diagrams/DiagramViewer";
 import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
-import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp, Search, X } from "lucide-react";
+import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp, Search, X, Sparkles } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { brandOf, categoryOf, modelsOf, DIAGRAM_BRANDS, DIAGRAM_CATEGORIES, type DiagramCategory } from "@/lib/diagramModelGroup";
 import { searchDiagrams } from "@/lib/diagramSearch";
 import LabelPhotoDialog from "@/components/diagrams/LabelPhotoDialog";
+import PhotoPartFinderDialog from "@/components/diagrams/PhotoPartFinderDialog";
 import PdfDiagramImportDialog from "@/components/diagrams/PdfDiagramImportDialog";
 import PartOrderCartDialog from "@/components/diagrams/PartOrderCartDialog";
 import { useCart } from "@/lib/partOrderCart";
@@ -244,6 +245,7 @@ export default function DiagramsPage() {
 
   const { isAdmin } = useUserRole();
   const [labelOpen, setLabelOpen] = useState(false);
+  const [finderOpen, setFinderOpen] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const cartItems = useCart();
@@ -322,6 +324,9 @@ export default function DiagramsPage() {
         </h1>
         <Button variant="outline" className="ml-auto gap-1.5" onClick={() => setCartOpen(true)}>
           <ShoppingCart className="h-4 w-4" /> 주문 목록{cartItems.length > 0 && <span className="ml-0.5 rounded-full bg-primary text-primary-foreground text-xs px-1.5">{cartItems.length}</span>}
+        </Button>
+        <Button variant="outline" className="gap-1.5" onClick={() => setFinderOpen(true)}>
+          <Sparkles className="h-4 w-4" /> 사진으로 찾기
         </Button>
         <Button variant="outline" className="gap-1.5" onClick={() => setLabelOpen(true)}>
           <Tag className="h-4 w-4" /> 부품 사진(라벨)
@@ -538,6 +543,7 @@ export default function DiagramsPage() {
         </DialogContent>
       </Dialog>
       <LabelPhotoDialog open={labelOpen} onOpenChange={setLabelOpen} />
+      <PhotoPartFinderDialog open={finderOpen} onOpenChange={setFinderOpen} diagrams={diagrams} defaultModel={modelFilter} onOpen={openDiagram} />
       {isAdmin && <PdfDiagramImportDialog open={pdfOpen} onOpenChange={setPdfOpen} />}
     </div>
     </>
