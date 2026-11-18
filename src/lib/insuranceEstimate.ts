@@ -103,3 +103,20 @@ export function resolveDiagramQty(note: string | null | undefined, machineModel:
   if (used.length === 0) return { ...base, notUsed: true };
   return { ...base, ambiguous: true };
 }
+
+/** 부품가 비율로 계산하는 자동 공임 줄의 품명 (이 이름의 공임 줄은 자동으로 다시 계산된다) */
+export const AUTO_LABOR_NAME = "부품 공임 (자동)";
+
+/** 부품 합계 × 비율(%)로 자동 공임 줄을 맞춘다. 부품이 없으면 자동 공임 줄을 뺀다. 10원 단위 반올림 */
+export function syncAutoLabor(items: EstimateItem[], ratePct: number): EstimateItem[] {
+  const parts = items.filter((i) => i.item_type === "부품").reduce((s, i) => s + lineAmount(i), 0);
+  const price = Math.round((parts * ratePct) / 100 / 10) * 10;
+  const idx = items.findIndex((i) => i.item_type === "공임" && i.part_name === AUTO_LABOR_NAME);
+  if (parts === 0 || ratePct <= 0) return idx < 0 ? items : items.filter((_, i) => i !== idx);
+  if (idx >= 0) {
+    const cur = items[idx];
+    if (cur.unit_price === price && cur.quantity === 1) return items;
+    return items.map((it, i) => (i === idx ? { ...it, quantity: 1, unit_price: price } : it));
+  }
+  return [...items, { key: newKey(), item_type: "공임", part_code: "", part_name: AUTO_LABOR_NAME, quantity: 1, unit_price: price }];
+}

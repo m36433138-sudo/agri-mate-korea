@@ -50,3 +50,21 @@ describe("보험 견적 합계", () => {
     expect(a).toHaveLength(2);
   });
 });
+
+import { syncAutoLabor, AUTO_LABOR_NAME } from "./insuranceEstimate";
+describe("syncAutoLabor", () => {
+  const p = (q: number, u: number) => ({ key: Math.random().toString(), item_type: "부품" as const, part_code: "A" + u, part_name: "x", quantity: q, unit_price: u });
+  it("부품 합계의 20%를 공임으로 넣는다", () => {
+    const r = syncAutoLabor([p(2, 50000)], 20);
+    expect(r.find((i) => i.part_name === AUTO_LABOR_NAME)?.unit_price).toBe(20000);
+  });
+  it("부품이 바뀌면 공임도 다시 계산한다", () => {
+    const r = syncAutoLabor(syncAutoLabor([p(1, 100000)], 20).concat(p(1, 50000)), 20);
+    expect(r.filter((i) => i.item_type === "공임")).toHaveLength(1);
+    expect(r.find((i) => i.part_name === AUTO_LABOR_NAME)?.unit_price).toBe(30000);
+  });
+  it("부품이 없으면 자동 공임을 뺀다", () => {
+    const r = syncAutoLabor(syncAutoLabor([p(1, 1000)], 20).filter((i) => i.item_type !== "부품"), 20);
+    expect(r).toHaveLength(0);
+  });
+});

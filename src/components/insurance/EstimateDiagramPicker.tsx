@@ -6,13 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { ChevronRight, FilePlus2, Loader2, Map as MapIcon, Search } from "lucide-react";
+import { Trash2, ChevronRight, FilePlus2, Loader2, Map as MapIcon, Search } from "lucide-react";
 import { useDiagrams, useDiagramPartSearch, type Diagram } from "@/hooks/useDiagrams";
 import DiagramViewer, { type PickedPart } from "@/components/diagrams/DiagramViewer";
 import { searchDiagrams } from "@/lib/diagramSearch";
 import { bookMatchesMachine } from "@/lib/repairDiagrams";
 import { fetchDiagramInventory } from "@/lib/diagramInventory";
-import { newKey, resolveDiagramQty, type EstimateItem } from "@/lib/insuranceEstimate";
+import { estimateTotals, lineAmount, newKey, resolveDiagramQty, type EstimateItem } from "@/lib/insuranceEstimate";
 import { salesPriceOf, usePartsStock } from "@/components/diagrams/PartsStockList";
 import { inventoryBranchName, matchesInventory } from "@/lib/diagramInventory";
 
@@ -28,9 +28,12 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   machineModel: string | null;
   onAdd: (items: EstimateItem[]) => void;
+  items?: EstimateItem[];
+  onUpdate?: (key: string, patch: Partial<EstimateItem>) => void;
+  onRemove?: (key: string) => void;
 };
 
-export default function EstimateDiagramPicker({ open, onOpenChange, machineModel, onAdd }: Props) {
+export default function EstimateDiagramPicker({ open, onOpenChange, machineModel, onAdd, items = [], onUpdate, onRemove }: Props) {
   const { diagrams, isLoading } = useDiagrams();
   const [diagram, setDiagram] = useState<Diagram | null>(null);
   const [term, setTerm] = useState("");
@@ -90,7 +93,9 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-w-6xl w-[calc(100vw-1rem)] max-h-[94vh] overflow-y-auto p-3 sm:p-5">
+      <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}
+        className="max-w-none w-screen h-[100dvh] sm:rounded-none p-0 gap-0 flex flex-col lg:flex-row overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-5">
         <DialogHeader className="space-y-2 pr-8">
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <MapIcon className="h-5 w-5 text-primary" /> 도면에서 견적 담기
@@ -155,6 +160,8 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
           </div>
         )}
 
+        </div>
+        <EstimateSidePanel items={items} onUpdate={onUpdate} onRemove={onRemove} />
         <QtyPrompt
           parts={pending}
           machineModel={machineModel}
@@ -249,5 +256,33 @@ function QtyPrompt({ parts, machineModel, onCancel, onConfirm }: {
         </label>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** 도면 옆에 항상 보이는 현재 견적 목록 */
+function EstimateSidePanel({ items, onUpdate, onRemove }: { items: EstimateItem[]; onUpdate?: (k: string, p: Partial<EstimateItem>) => void; onRemove?: (k: string) => void }) {
+  const t = estimateTotals(items);
+  const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
+  return (
+    <aside className="lg:w-[380px] shrink-0 border-t lg:border-t-0 lg:border-l bg-muted/20 flex flex-col max-h-[40dvh] lg:max-h-none">
+      <div className="px-3 py-2 border-b text-sm font-semibold flex items-center justify-between">
+        <span>현재 견적 {items.length}줄</span><span className="text-primary">{won(t.total)}</span>
+      </div>
+      <div className="flex-1 overflow-y-auto divide-y">
+        {items.length === 0 && <p className="p-4 text-xs text-center text-muted-foreground">왼쪽 도면에서 부품 번호를 누르면 여기에 쌓여요.</p>}
+        {items.map((it) => (
+          <div key={it.key} className="px-3 py-2 text-xs flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate"><span className="text-muted-foreground">{it.item_type}</span> {it.part_code && <span className="font-mono">{it.part_code}</span>} {it.part_name}</p>
+              <p className="text-muted-foreground">{it.unit_price ? won(it.unit_price) : <span className="text-amber-400">단가 미입력</span>}</p>
+            </div>
+            <Input aria-label="수량" inputMode="decimal" value={String(it.quantity)} onChange={(e) => onUpdate?.(it.key, { quantity: Number(e.target.value.replace(/[^0-9.]/g, "")) || 1 })} className="h-7 w-12 px-1 text-right text-xs" />
+            <span className="w-20 text-right tabular-nums font-medium">{won(lineAmount(it))}</span>
+            <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="삭제" onClick={() => onRemove?.(it.key)}><Trash2 className="h-3.5 w-3.5" /></Button>
+          </div>
+        ))}
+      </div>
+      <div className="px-3 py-2 border-t text-xs text-muted-foreground flex justify-between"><span>부품 {won(t.parts)}</span><span>공임 {won(t.labor)}</span></div>
+    </aside>
   );
 }

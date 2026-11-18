@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,7 @@ import PartsStockList from "@/components/diagrams/PartsStockList";
 import { salesPriceOf } from "@/components/diagrams/PartsStockList";
 import EstimateDiagramPicker from "./EstimateDiagramPicker";
 import { fetchDiagramInventory } from "@/lib/diagramInventory";
-import { addEstimateItem, estimateTotals, lineAmount, newKey, type EstimateItem, type EstimateItemType } from "@/lib/insuranceEstimate";
+import { AUTO_LABOR_NAME, syncAutoLabor, addEstimateItem, estimateTotals, lineAmount, newKey, type EstimateItem, type EstimateItemType } from "@/lib/insuranceEstimate";
 import { FileText, Map as MapIcon, MapPin, Plus, Printer, Trash2, Wrench } from "lucide-react";
 
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
@@ -27,6 +27,15 @@ export default function InsuranceEstimateEditor({ items, setItems, machineModel,
   const [pickerOpen, setPickerOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
   const totals = estimateTotals(items);
+  const [autoLabor, setAutoLabor] = useState(() => localStorage.getItem("insuranceEstimate.autoLabor") !== "off");
+  const [laborRate, setLaborRate] = useState(() => Number(localStorage.getItem("insuranceEstimate.laborRate")) || 20);
+  useEffect(() => { localStorage.setItem("insuranceEstimate.autoLabor", autoLabor ? "on" : "off"); localStorage.setItem("insuranceEstimate.laborRate", String(laborRate)); }, [autoLabor, laborRate]);
+  // 부품이 바뀔 때마다 자동 공임 줄(부품가 × 비율)을 다시 맞춘다
+  const partsSig = items.filter((i) => i.item_type === "부품").map((i) => `${i.quantity}x${i.unit_price}`).join(",");
+  useEffect(() => {
+    if (!autoLabor) return;
+    setItems((prev) => syncAutoLabor(prev, laborRate));
+  }, [partsSig, autoLabor, laborRate, setItems]);
   const partCodes = items.filter((i) => i.item_type === "부품" && i.part_code.trim()).map((i) => ({ code: i.part_code.trim(), name: i.part_name }));
 
   const addMany = (list: EstimateItem[]) => setItems((prev) => list.reduce(addEstimateItem, prev));
@@ -55,10 +64,15 @@ export default function InsuranceEstimateEditor({ items, setItems, machineModel,
         <Button size="sm" className="gap-1.5" onClick={() => setPickerOpen(true)}><MapIcon className="h-4 w-4" /> 부품 도면에서 담기</Button>
         <PartCodeAutocomplete branch={null} onSelect={(p) => void addFromInventory(p)} placeholder="부품번호·이름으로 추가 (3자 이상)" />
       </div>
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="flex gap-1.5 flex-wrap items-center">
         <Button size="sm" variant="outline" className="gap-1" onClick={() => blank("부품")}><Plus className="h-3.5 w-3.5" /> 부품 직접 입력</Button>
         <Button size="sm" variant="outline" className="gap-1" onClick={() => blank("공임")}><Wrench className="h-3.5 w-3.5" /> 공임 추가</Button>
         <Button size="sm" variant="outline" className="gap-1" onClick={() => blank("기타")}><Plus className="h-3.5 w-3.5" /> 기타</Button>
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <input type="checkbox" checked={autoLabor} onChange={(e) => setAutoLabor(e.target.checked)} className="h-4 w-4 accent-primary" />
+          공임 자동 = 부품가 ×
+          <Input aria-label="공임 비율" inputMode="numeric" value={String(laborRate)} onChange={(e) => setLaborRate(Math.min(100, toNum(e.target.value)))} className="h-7 w-12 px-1 text-right text-xs" />%
+        </label>
       </div>
 
       {items.length === 0 ? (
@@ -100,7 +114,7 @@ export default function InsuranceEstimateEditor({ items, setItems, machineModel,
         </div>
       )}
 
-      <EstimateDiagramPicker open={pickerOpen} onOpenChange={setPickerOpen} machineModel={machineModel} onAdd={addMany} />
+      <EstimateDiagramPicker open={pickerOpen} onOpenChange={setPickerOpen} machineModel={machineModel} onAdd={addMany} items={items} onUpdate={update} onRemove={remove} />
       <Dialog open={stockOpen} onOpenChange={setStockOpen}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> 견적 부품 재고·위치·가격</DialogTitle></DialogHeader>
