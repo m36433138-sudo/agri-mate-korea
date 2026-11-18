@@ -3299,6 +3299,30 @@ export type Database = {
         }
         Relationships: []
       }
+      yanmar_supply_prices: {
+        Row: {
+          created_at: string
+          effective_date: string
+          part_code: string
+          part_name: string | null
+          supply_price: number
+        }
+        Insert: {
+          created_at?: string
+          effective_date: string
+          part_code: string
+          part_name?: string | null
+          supply_price: number
+        }
+        Update: {
+          created_at?: string
+          effective_date?: string
+          part_code?: string
+          part_name?: string | null
+          supply_price?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

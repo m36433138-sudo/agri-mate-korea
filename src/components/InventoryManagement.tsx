@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes, Lightbulb, MapPin } from "lucide-react";
 import { inventorySearchFilter } from "@/lib/partSearch";
+import { yanmarSalesPrice, normalizePartCode, missingPriceFields, type PartOrigin } from "@/lib/partPricing";
 import * as XLSX from "xlsx";
 import PartTipsDialog from "@/components/parts/PartTipsDialog";
 import { useSearchParams } from "react-router-dom";
@@ -423,16 +424,79 @@ export default function InventoryManagement() {
 function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onOpenChange: (v: boolean) => void; branch: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [form, setForm] = useState({
+  const emptyForm = {
     part_code: "", part_name: "", part_name_en: "", quantity: "0", min_stock: "1",
     purchase_price: "", sales_price: "", location_main: "", location_sub: "",
+  };
+  const [form, setForm] = useState(emptyForm);
+  const [origin, setOrigin] = useState<PartOrigin>("yanmar");
+  // 사용자가 매출가를 직접 고치면 자동 입력이 덮어쓰지 않음
+  const [priceTouched, setPriceTouched] = useState(false);
+  // 자동으로 채운 값 기억 → 부품코드를 바꾸면 자동 값만 지움(직접 쓴 값은 유지)
+  const [autoFilled, setAutoFilled] = useState({ part_name: "", part_name_en: "", sales_price: "" });
+  const clearAutoFilled = (f: typeof emptyForm) => ({
+    ...f,
+    part_name: f.part_name === autoFilled.part_name ? "" : f.part_name,
+    part_name_en: f.part_name_en === autoFilled.part_name_en ? "" : f.part_name_en,
+    sales_price: f.sales_price === autoFilled.sales_price ? "" : f.sales_price,
   });
+
+  const code = useDebounce(normalizePartCode(form.part_code), 400);
+
+  const { data: lookup, isFetching: lookingUp } = useQuery({
+    queryKey: ["part-price-lookup", code, branch],
+    enabled: open && code.length >= 4,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const [supplyRes, invRes] = await Promise.all([
+        supabase.from("yanmar_supply_prices").select("part_name, supply_price, effective_date").eq("part_code", code).maybeSingle(),
+        supabase.from("inventory").select("branch, part_name, part_name_en, sales_price").eq("part_code", code).limit(5),
+      ]);
+      if (supplyRes.error) throw supplyRes.error;
+      if (invRes.error) throw invRes.error;
+      const existing = (invRes.data ?? []).find((r) => r.sales_price != null) ?? (invRes.data ?? [])[0] ?? null;
+      const sameBranch = (invRes.data ?? []).some((r) => r.branch === branch);
+      return { supply: supplyRes.data, existing, sameBranch };
+    },
+  });
+
+  const supplyPrice = lookup?.supply?.supply_price ?? null;
+  const calcPrice = yanmarSalesPrice(supplyPrice);
+  // 다른 지점에 이미 있는 부품이면 그 매출가 우선(두 지점 매출가는 항상 같게 유지됨)
+  const autoPrice = lookup?.existing?.sales_price ?? calcPrice;
+
+  useEffect(() => {
+    if (!lookup || origin !== "yanmar") return;
+    setForm((f) => {
+      const next = {
+        ...f,
+        sales_price: !priceTouched && autoPrice != null ? String(autoPrice) : f.sales_price,
+        part_name: f.part_name || lookup.existing?.part_name || lookup.supply?.part_name || "",
+        part_name_en: f.part_name_en || lookup.existing?.part_name_en || lookup.supply?.part_name || "",
+      };
+      setAutoFilled({
+        part_name: next.part_name !== f.part_name ? next.part_name : autoFilled.part_name,
+        part_name_en: next.part_name_en !== f.part_name_en ? next.part_name_en : autoFilled.part_name_en,
+        sales_price: next.sales_price !== f.sales_price ? next.sales_price : autoFilled.sales_price,
+      });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookup, origin]);
+
+  const reset = () => { setForm(emptyForm); setOrigin("yanmar"); setPriceTouched(false); setAutoFilled({ part_name: "", part_name_en: "", sales_price: "" }); };
+  const chooseOrigin = (value: PartOrigin) => {
+    setOrigin(value);
+    if (value === "other") setForm((f) => clearAutoFilled(f));
+  };
+
+  const missing = missingPriceFields(origin, form.purchase_price, form.sales_price);
 
   const mutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("inventory").insert({
         branch,
-        part_code: form.part_code,
+        part_code: form.part_code.trim(),
         part_name: form.part_name,
         part_name_en: form.part_name_en.trim() || null,
         quantity: parseInt(form.quantity) || 0,
@@ -449,21 +513,47 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
       qc.invalidateQueries({ queryKey: ["inventory-search"] });
       toast({ title: "재고가 등록되었습니다." });
       onOpenChange(false);
-      setForm({ part_code: "", part_name: "", part_name_en: "", quantity: "0", min_stock: "1", purchase_price: "", sales_price: "", location_main: "", location_sub: "" });
+      reset();
     },
     onError: (e: any) => toast({ title: "오류", description: e.message, variant: "destructive" }),
   });
 
+  const codeReady = code.length >= 4 && code === normalizePartCode(form.part_code);
+  let priceHint: React.ReactNode = null;
+  if (origin === "yanmar" && codeReady) {
+    if (lookingUp) priceHint = "얀마 공급가 찾는 중…";
+    else if (lookup?.existing?.sales_price != null)
+      priceHint = `${lookup.existing.branch}에 이미 있는 부품이라 같은 매출가를 넣었어요.`;
+    else if (calcPrice != null && lookup?.supply)
+      priceHint = `얀마 공급가 ${supplyPrice!.toLocaleString()}원(부가세 별도, ${lookup.supply.effective_date} 기준) × 1.1 × 1.35`;
+    else if (lookup && !lookup.supply)
+      priceHint = "얀마 공급가 표에 없는 번호예요. 타사 부품이면 위에서 「타사 부품」을 골라 주세요.";
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>재고 등록 ({branch})</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="radiogroup" aria-label="부품 종류">
+            {([["yanmar", "얀마 부품"], ["other", "타사 부품"]] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={origin === value}
+                onClick={() => chooseOrigin(value)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${origin === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div>
             <Label>부품코드 *</Label>
-            <Input value={form.part_code} onChange={(e) => setForm((f) => ({ ...f, part_code: e.target.value }))} placeholder="22217-160000" />
+            <Input value={form.part_code} onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...clearAutoFilled(f), part_code: v })); setPriceTouched(false); }} placeholder="22217-160000" />
           </div>
           <div>
             <Label>부품명(한글) *</Label>
@@ -485,14 +575,19 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>매입가</Label>
+              <Label>매입가{origin === "other" ? " *" : ""}</Label>
               <Input type="number" value={form.purchase_price} onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))} />
             </div>
             <div>
-              <Label>매출가</Label>
-              <Input type="number" value={form.sales_price} onChange={(e) => setForm((f) => ({ ...f, sales_price: e.target.value }))} />
+              <Label>매출가{origin === "other" ? " *" : " (자동, 수정 가능)"}</Label>
+              <Input type="number" value={form.sales_price} onChange={(e) => { setForm((f) => ({ ...f, sales_price: e.target.value })); setPriceTouched(true); }} />
             </div>
           </div>
+          {codeReady && lookup?.sameBranch && (
+            <p className="text-xs text-destructive -mt-1">이미 {branch}에 등록된 부품이에요. 목록에서 찾아 수량을 고쳐 주세요.</p>
+          )}
+          {priceHint && <p className="text-xs text-muted-foreground -mt-1">{priceHint}</p>}
+          {origin === "other" && <p className="text-xs text-muted-foreground -mt-1">타사 부품은 매입가와 매출가를 직접 적어 주세요(부가세 포함).</p>}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>위치(메인)</Label>
@@ -505,8 +600,8 @@ function AddInventoryDialog({ open, onOpenChange, branch }: { open: boolean; onO
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!(form.part_code && form.part_name) || mutation.isPending}>
+          <Button variant="outline" onClick={() => { onOpenChange(false); reset(); }}>취소</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!(form.part_code && form.part_name) || missing.length > 0 || (codeReady && !!lookup?.sameBranch) || mutation.isPending}>
             {mutation.isPending ? "등록 중..." : "등록"}
           </Button>
         </DialogFooter>
