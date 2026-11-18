@@ -14,13 +14,13 @@ export function partQueryVariants(term: string): string[] {
   return [...out];
 }
 
-/** PostgREST .or() 문자열 (부품코드·부품명·설계변경코드 부분 일치) */
+/** PostgREST .or() 문자열 (부품코드·한글/영문 부품명·설계변경코드 부분 일치) */
 export function inventorySearchFilter(term: string): string {
   const parts: string[] = [];
   for (const v of partQueryVariants(term)) {
     parts.push(`part_code.ilike.%${v}%`, `alt_part_code.ilike.%${v}%`);
   }
   const name = term.trim().replace(/[,()*%\\]/g, "");
-  if (name) parts.push(`part_name.ilike.%${name}%`);
+  if (name) parts.push(`part_name.ilike.%${name}%`, `part_name_en.ilike.%${name}%`);
   return parts.join(",");
 }

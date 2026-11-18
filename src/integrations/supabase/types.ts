@@ -1387,6 +1387,7 @@ export type Database = {
           min_stock: number | null
           part_code: string
           part_name: string
+          part_name_en: string | null
           purchase_price: number | null
           quantity: number | null
           sales_price: number | null
@@ -1403,6 +1404,7 @@ export type Database = {
           min_stock?: number | null
           part_code: string
           part_name: string
+          part_name_en?: string | null
           purchase_price?: number | null
           quantity?: number | null
           sales_price?: number | null
@@ -1419,6 +1421,7 @@ export type Database = {
           min_stock?: number | null
           part_code?: string
           part_name?: string
+          part_name_en?: string | null
           purchase_price?: number | null
           quantity?: number | null
           sales_price?: number | null

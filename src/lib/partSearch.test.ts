@@ -12,6 +12,9 @@ describe("부품번호 검색", () => {
     expect(inventorySearchFilter("77200")).toContain("alt_part_code.ilike.%77200%");
   });
   it("쉼표·괄호는 지워 조회 조건이 깨지지 않는다", () => {
-    expect(inventorySearchFilter("볼트(M6,16)")).toBe("part_code.ilike.%볼트M616%,alt_part_code.ilike.%볼트M616%,part_name.ilike.%볼트M616%");
+    expect(inventorySearchFilter("볼트(M6,16)")).toBe("part_code.ilike.%볼트M616%,alt_part_code.ilike.%볼트M616%,part_name.ilike.%볼트M616%,part_name_en.ilike.%볼트M616%");
+  });
+  it("영문 부품명으로도 찾는다", () => {
+    expect(inventorySearchFilter("OIL FILTER")).toContain("part_name_en.ilike.%OIL FILTER%");
   });
 });

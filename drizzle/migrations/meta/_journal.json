@@ -99,6 +99,13 @@
       "when": 1795005470998,
       "tag": "0013_insurance_estimate_items",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795007656153,
+      "tag": "0014_inventory_part_name_en",
+      "breakpoints": true
     }
   ]
 }
