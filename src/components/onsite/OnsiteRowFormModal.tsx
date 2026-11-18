@@ -12,20 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
+import { ONSITE_TAB, buildOnsiteValues, onsiteLayout, type OnsiteLayout, type OnsiteRow } from "@/lib/onsiteSheet";
 
-const STATUSES = ["진행중", "완료", "보류"];
-const MACHINE_TYPES = ["농업용 트랙터", "콤바인", "이앙기", "기타"];
-
-interface OnsiteRow {
-  진행사항: string;
-  손님성함: string;
-  기계: string;
-  품목: string;
-  전화번호: string;
-  주소: string;
-  내역: string;
-  _rowIndex?: number;
-}
+const STATUSES = ["출장", "50시간 A/S", "진행중", "완료", "보류"];
+const BRANCHES = ["장흥", "강진"];
+const MACHINE_TYPES = ["트랙터", "콤바인", "이앙기", "기타"];
 
 interface FormData {
   status: string;
@@ -36,12 +27,14 @@ interface FormData {
   phone: string;
   address: string;
   detail: string;
+  branch: string;
+  technician: string;
 }
 
 function rowToForm(row?: OnsiteRow): FormData {
   if (!row) return {
     status: "", name: "", machine: "", model: "", serial_number: "",
-    phone: "", address: "", detail: "",
+    phone: "", address: "", detail: "", branch: "", technician: "",
   };
   return {
     status: row.진행사항,
@@ -52,13 +45,27 @@ function rowToForm(row?: OnsiteRow): FormData {
     phone: row.전화번호,
     address: row.주소,
     detail: row.내역,
+    branch: row.지점,
+    technician: row.출장기사,
   };
 }
 
-function formToValues(f: FormData): string[] {
-  // 방문수리 시트 컬럼: 진행사항, 손님성함, 기계, 품목, 전화번호, 주소, 내역
+function formToFields(f: FormData) {
   const modelWithSerial = f.model + (f.serial_number ? ` (${f.serial_number})` : "");
-  return [f.status, f.name, f.machine, modelWithSerial, f.phone, f.address, f.detail];
+  return {
+    status: f.status, branch: f.branch, name: f.name, phone: f.phone, address: f.address,
+    detail: f.detail, machine: f.machine, model: modelWithSerial, technician: f.technician,
+  };
+}
+
+async function callSheet(body: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke("google-sheets", { body: { ...body, sheetName: ONSITE_TAB } });
+  if (error) {
+    const ctx = (error as any).context;
+    const msg = ctx?.json ? (await ctx.json().catch(() => null))?.error : null;
+    throw new Error(msg || error.message);
+  }
+  if (data?.error) throw new Error(data.error);
 }
 
 interface Props {
@@ -66,9 +73,10 @@ interface Props {
   onClose: () => void;
   onSuccess: () => void;
   row?: OnsiteRow | null;
+  layout?: OnsiteLayout;
 }
 
-export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
+export function OnsiteRowFormModal({ open, onClose, onSuccess, row, layout }: Props) {
   const [form, setForm] = useState<FormData>(rowToForm(row || undefined));
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -94,17 +102,14 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
     }
     setSaving(true);
     try {
-      const values = formToValues(form);
+      const lay = layout ?? onsiteLayout(undefined);
+      const values = buildOnsiteValues(lay, formToFields(form), isEdit ? row?._raw : []);
 
       if (isEdit && row?._rowIndex) {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "updateRow", sheetName: "방문수리", rowIndex: row._rowIndex, values },
-        });
+        await callSheet({ action: "updateRow", rowIndex: row._rowIndex, values });
         toast({ title: "수정 완료" });
       } else {
-        await supabase.functions.invoke("google-sheets", {
-          body: { action: "addRow", sheetName: "방문수리", values },
-        });
+        await callSheet({ action: "addRow", values });
         toast({ title: "추가 완료" });
       }
       onSuccess();
@@ -120,9 +125,7 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
     if (!row?._rowIndex) return;
     setDeleting(true);
     try {
-      await supabase.functions.invoke("google-sheets", {
-        body: { action: "clearRow", sheetName: "방문수리", rowIndex: row._rowIndex },
-      });
+      await callSheet({ action: "clearRow", rowIndex: row._rowIndex });
       toast({ title: "삭제 완료" });
       onSuccess();
       onClose();
@@ -148,9 +151,26 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
             <Select value={form.status} onValueChange={v => set("status", v)}>
               <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
               <SelectContent>
-                {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {Array.from(new Set([...STATUSES, form.status].filter(Boolean))).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* 지점 */}
+          <div>
+            <Label>지점</Label>
+            <Select value={form.branch} onValueChange={v => set("branch", v)}>
+              <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+              <SelectContent>
+                {Array.from(new Set([...BRANCHES, form.branch].filter(Boolean))).map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 출장기사 */}
+          <div>
+            <Label>출장기사</Label>
+            <Input value={form.technician} onChange={e => set("technician", e.target.value)} />
           </div>
 
           {/* 손님 성함 */}
@@ -182,7 +202,7 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
                 <SelectValue placeholder="기계 선택" />
               </SelectTrigger>
               <SelectContent>
-                {MACHINE_TYPES.map(t => (
+                {Array.from(new Set([...MACHINE_TYPES, form.machine].filter(Boolean))).map(t => (
                   <SelectItem key={t} value={t}>{t}</SelectItem>
                 ))}
               </SelectContent>
@@ -223,7 +243,7 @@ export function OnsiteRowFormModal({ open, onClose, onSuccess, row }: Props) {
 
           {/* 내역 */}
           <div className="col-span-2">
-            <Label>내역</Label>
+            <Label>요구사항 · 내역</Label>
             <Textarea value={form.detail} onChange={e => set("detail", e.target.value)} rows={3} />
           </div>
         </div>
