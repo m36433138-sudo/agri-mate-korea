@@ -25,11 +25,13 @@ type Props = {
   checkedCodes?: string[];
   /** 견적 작성처럼 부품을 골라 담을 때: 부품을 누르면 상세 대신 이 함수로 넘긴다 */
   onPickParts?: (parts: PickedPart[]) => void;
+  /** 담는 곳 이름 (예: 견적, 수리 부품) */
+  pickTarget?: string;
 };
 
 export type PickedPart = { code: string; name: string | null; qtyNote: string | null };
 
-export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram, initialPartCode, checkedCodes, onPickParts }: Props) {
+export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram, initialPartCode, checkedCodes, onPickParts, pickTarget = "견적" }: Props) {
   const [stockOpen, setStockOpen] = useState(false);
   // 체크한 부품: 수리에 들어간 부품을 표시하고 그 도면만 체크된 채로 인쇄한다
   const [checked, setChecked] = useState<Set<string>>(() => new Set(checkedCodes ?? []));
@@ -396,7 +398,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
                   onPickParts(uniqueCodes.filter((h) => checked.has(h.part_code)).map((h) => ({ code: h.part_code, name: h.part_name, qtyNote: qtyOf(h.notes) })));
                   setChecked(new Set());
                 }}>
-                  <FilePlus2 className="h-3.5 w-3.5" /> 체크한 {checked.size}개 견적에 담기
+                  <FilePlus2 className="h-3.5 w-3.5" /> 체크한 {checked.size}개 {pickTarget}에 담기
                 </Button>
               )}
               <Button variant="outline" size="sm" className="h-7 gap-1" onClick={() => setStockOpen(true)}>
@@ -420,7 +422,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
           {isPhoto
             ? "사진의 파란 상자를 누르면 해당 부위의 부품 도면으로 이동합니다."
             : onPickParts
-            ? "도면 위 부품이나 아래 목록을 누르면 견적에 담습니다. 여러 개는 「체크」로 고른 뒤 한 번에 담으세요."
+            ? `도면 위 부품이나 아래 목록을 누르면 ${pickTarget}에 담습니다. 여러 개는 「체크」로 고른 뒤 한 번에 담으세요.`
             : "도면 위 부품 영역을 누르면 재고 위치·가격과 수리 이력을 볼 수 있습니다. 아래 부품 목록을 눌러도 됩니다."}
         </p>
       )}

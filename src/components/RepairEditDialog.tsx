@@ -8,7 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Trash2, Search, Map as MapIcon } from "lucide-react";
+import EstimateDiagramPicker from "@/components/insurance/EstimateDiagramPicker";
+import { mergeDiagramParts, rowsToPanelItems } from "@/lib/repairDiagramParts";
 import LastModifiedInfo from "@/components/LastModifiedInfo";
 import { formatPrice } from "@/lib/formatters";
 import {
@@ -56,6 +58,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
   const [manualName, setManualName] = useState("");
   const [manualNumber, setManualNumber] = useState("");
   const [manualQty, setManualQty] = useState("1");
+  const [diagramOpen, setDiagramOpen] = useState(false);
 
   const { data: employees } = useQuery({
     queryKey: ["employees-list"],
@@ -394,6 +397,35 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
               <h3 className="text-sm font-semibold">사용 부품</h3>
               <span className="text-xs text-muted-foreground">{partRows.length}개</span>
             </div>
+
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={() => setDiagramOpen(true)}>
+              <MapIcon className="h-4 w-4 text-primary" /> 부품 도면 보면서 담기
+            </Button>
+            <EstimateDiagramPicker
+              open={diagramOpen}
+              onOpenChange={setDiagramOpen}
+              target="수리 부품"
+              machineModel={repair?.machines?.model_name ?? null}
+              items={rowsToPanelItems(partRows)}
+              onAdd={(picked) =>
+                setPartRows((prev) =>
+                  mergeDiagramParts(prev, picked, (it) => ({
+                    key: `diag-${it.key}`,
+                    part_id: "",
+                    part_name: it.part_name || it.part_code,
+                    part_number: it.part_code,
+                    unit: "개",
+                    quantity: it.quantity,
+                    unit_price: it.unit_price,
+                    branch: defaultBranch,
+                  })),
+                )
+              }
+              onUpdate={(key, patch) =>
+                setPartRows((prev) => prev.map((r, i) => (String(i) === key && patch.quantity != null ? { ...r, quantity: patch.quantity } : r)))
+              }
+              onRemove={(key) => setPartRows((prev) => prev.filter((_, i) => String(i) !== key))}
+            />
 
             {/* Search from parts */}
             <Popover open={partOpen} onOpenChange={setPartOpen}>

@@ -31,9 +31,11 @@ type Props = {
   items?: EstimateItem[];
   onUpdate?: (key: string, patch: Partial<EstimateItem>) => void;
   onRemove?: (key: string) => void;
+  /** 담는 곳 이름. 기본은 보험 견적 */
+  target?: string;
 };
 
-export default function EstimateDiagramPicker({ open, onOpenChange, machineModel, onAdd, items = [], onUpdate, onRemove }: Props) {
+export default function EstimateDiagramPicker({ open, onOpenChange, machineModel, onAdd, items = [], onUpdate, onRemove, target = "견적" }: Props) {
   const { diagrams, isLoading } = useDiagrams();
   const [diagram, setDiagram] = useState<Diagram | null>(null);
   const [term, setTerm] = useState("");
@@ -73,7 +75,7 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
     onAdd(items);
     setAdded((n) => n + items.length);
     const noPrice = items.filter((i) => !i.unit_price).length;
-    toast.success(`${items.length}개 견적에 담았어요`, { description: noPrice ? `가격 미등록 ${noPrice}개는 단가를 직접 넣어 주세요.` : undefined });
+    toast.success(`${items.length}개 ${target}에 담았어요`, { description: noPrice ? `가격 미등록 ${noPrice}개는 단가를 직접 넣어 주세요.` : undefined });
   };
 
   const pick = (parts: PickedPart[]) => {
@@ -98,11 +100,11 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
         <div className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-5">
         <DialogHeader className="space-y-2 pr-8">
           <DialogTitle className="flex items-center gap-2 flex-wrap">
-            <MapIcon className="h-5 w-5 text-primary" /> 도면에서 견적 담기
+            <MapIcon className="h-5 w-5 text-primary" /> 도면에서 {target} 담기
             {machineModel && <Badge variant="outline">{machineModel}</Badge>}
             {added > 0 && <Badge className="bg-primary/20 text-primary border-primary/40">이번에 {added}개 담음</Badge>}
           </DialogTitle>
-          <DialogDescription className="sr-only">부품 도면에서 부품을 눌러 보험 견적서에 담습니다.</DialogDescription>
+          <DialogDescription className="sr-only">부품 도면에서 부품을 눌러 {target}에 담습니다.</DialogDescription>
           <div className="flex items-center gap-2 flex-wrap text-xs">
             <span className="text-muted-foreground">누를 때 수량</span>
             {([["ask", "매번 묻기"], ["one", "항상 1개"], ["diagram", "도면 소요 수량"]] as const).map(([m, label]) => (
@@ -120,6 +122,7 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
             allDiagrams={diagrams}
             onOpenDiagram={setDiagram}
             onPickParts={pick}
+            pickTarget={target}
           />
         ) : (
           <div className="space-y-2">
@@ -161,8 +164,9 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
         )}
 
         </div>
-        <EstimateSidePanel items={items} onUpdate={onUpdate} onRemove={onRemove} />
+        <EstimateSidePanel items={items} onUpdate={onUpdate} onRemove={onRemove} target={target} />
         <QtyPrompt
+          target={target}
           parts={pending}
           machineModel={machineModel}
           onCancel={() => setPending(null)}
@@ -179,7 +183,8 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
 }
 
 /** 부품을 누르면: 1개로 담을지, 도면 소요 수량만큼 담을지 묻고 재고·가격도 함께 보여준다 */
-function QtyPrompt({ parts, machineModel, onCancel, onConfirm }: {
+function QtyPrompt({ target, parts, machineModel, onCancel, onConfirm }: {
+  target: string;
   parts: PickedPart[] | null;
   machineModel: string | null;
   onCancel: () => void;
@@ -206,7 +211,7 @@ function QtyPrompt({ parts, machineModel, onCancel, onConfirm }: {
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onCancel(); setChosen({}); } }}>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><FilePlus2 className="h-4 w-4 text-primary" /> 견적에 몇 개 담을까요?</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><FilePlus2 className="h-4 w-4 text-primary" /> {target}에 몇 개 담을까요?</DialogTitle>
           <DialogDescription>
             {list.length === 1 ? "이 부품을" : `부품 ${list.length}개를`} 1개씩 담거나, 도면에 적힌 소요 수량만큼 담을 수 있어요.
           </DialogDescription>
@@ -260,13 +265,14 @@ function QtyPrompt({ parts, machineModel, onCancel, onConfirm }: {
 }
 
 /** 도면 옆에 항상 보이는 현재 견적 목록 */
-function EstimateSidePanel({ items, onUpdate, onRemove }: { items: EstimateItem[]; onUpdate?: (k: string, p: Partial<EstimateItem>) => void; onRemove?: (k: string) => void }) {
+function EstimateSidePanel({ items, onUpdate, onRemove, target }: { items: EstimateItem[]; onUpdate?: (k: string, p: Partial<EstimateItem>) => void; onRemove?: (k: string) => void; target: string }) {
+  const isEstimate = target === "견적";
   const t = estimateTotals(items);
   const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
   return (
     <aside className="lg:w-[380px] shrink-0 border-t lg:border-t-0 lg:border-l bg-muted/20 flex flex-col max-h-[40dvh] lg:max-h-none">
-      <div className="px-3 py-2 border-b text-sm font-semibold flex items-center justify-between">
-        <span>현재 견적 {items.length}줄</span><span className="text-primary">{won(t.total)}</span>
+      <div className="px-3 py-2 pr-12 border-b text-sm font-semibold flex items-center justify-between">
+        <span>현재 {target} {items.length}줄</span><span className="text-primary">{won(t.total)}</span>
       </div>
       <div className="flex-1 overflow-y-auto divide-y">
         {items.length === 0 && <p className="p-4 text-xs text-center text-muted-foreground">왼쪽 도면에서 부품 번호를 누르면 여기에 쌓여요.</p>}
@@ -282,7 +288,7 @@ function EstimateSidePanel({ items, onUpdate, onRemove }: { items: EstimateItem[
           </div>
         ))}
       </div>
-      <div className="px-3 py-2 border-t text-xs text-muted-foreground flex justify-between"><span>부품 {won(t.parts)}</span><span>공임 {won(t.labor)}</span></div>
+      <div className="px-3 py-2 border-t text-xs text-muted-foreground flex justify-between"><span>부품 {won(t.parts)}</span>{isEstimate && <span>공임 {won(t.labor)}</span>}</div>
     </aside>
   );
 }

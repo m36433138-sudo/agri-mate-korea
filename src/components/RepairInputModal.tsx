@@ -10,7 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as MapIcon } from "lucide-react";
+import EstimateDiagramPicker from "@/components/insurance/EstimateDiagramPicker";
+import { mergeDiagramParts, modelFromMachineLabel, rowsToPanelItems } from "@/lib/repairDiagramParts";
 import { formatPrice } from "@/lib/formatters";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -181,6 +183,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [customPartName, setCustomPartName] = useState("");
   const [customPartNumber, setCustomPartNumber] = useState("");
   const [customPartQty, setCustomPartQty] = useState("1");
+  const [diagramOpen, setDiagramOpen] = useState(false);
 
   const addCustomPart = () => {
     const name = customPartName.trim();
@@ -922,6 +925,34 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                   ))}
                 </div>
               )}
+
+              <Button type="button" variant="outline" className="w-full gap-2" onClick={() => setDiagramOpen(true)}>
+                <MapIcon className="h-4 w-4 text-primary" /> 부품 도면 보면서 담기
+              </Button>
+              <EstimateDiagramPicker
+                open={diagramOpen}
+                onOpenChange={setDiagramOpen}
+                target="수리 부품"
+                machineModel={modelFromMachineLabel(selectedMachineName)}
+                items={rowsToPanelItems(partRows)}
+                onAdd={(picked) =>
+                  setPartRows((prev) =>
+                    mergeDiagramParts(prev, picked, (it) => ({
+                      part_id: `custom-diag-${it.key}`,
+                      part_name: it.part_name || it.part_code,
+                      part_number: it.part_code,
+                      unit: "개",
+                      quantity: it.quantity,
+                      unit_price: it.unit_price,
+                      branch: defaultBranch,
+                    })),
+                  )
+                }
+                onUpdate={(key, patch) =>
+                  setPartRows((prev) => prev.map((r, i) => (String(i) === key && patch.quantity != null ? { ...r, quantity: patch.quantity } : r)))
+                }
+                onRemove={(key) => setPartRows((prev) => prev.filter((_, i) => String(i) !== key))}
+              />
 
               <Tabs defaultValue="template">
                 <TabsList className="w-full">
