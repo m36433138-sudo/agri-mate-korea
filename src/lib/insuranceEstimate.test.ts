@@ -1,0 +1,52 @@
+import { describe, expect, it } from "vitest";
+import { addEstimateItem, estimateTotals, parseQtyNote, resolveDiagramQty, type EstimateItem } from "./insuranceEstimate";
+
+const item = (p: Partial<EstimateItem>): EstimateItem => ({ key: "k", item_type: "부품", part_code: "", part_name: "", quantity: 1, unit_price: 0, ...p });
+
+describe("보험 견적 수량", () => {
+  it("한 가지 수량(2개)은 그대로 쓴다", () => {
+    expect(resolveDiagramQty("소요 수량 · 2개", "YH7140").qty).toBe(2);
+  });
+  it("기계 기종에 맞는 수량을 고른다 (YH7140-X → YH7140 3)", () => {
+    const r = resolveDiagramQty("YH6140 2 / YH7140 3", "YH7140-X");
+    expect(r.qty).toBe(3);
+    expect(r.matchedModel).toBe("YH7140");
+  });
+  it("그 기종에 「-」면 안 쓰이는 부품으로 표시한다", () => {
+    const r = resolveDiagramQty("AW6114 - / AW7114 1", "AW6114");
+    expect(r.qty).toBeNull();
+    expect(r.notUsed).toBe(true);
+  });
+  it("기종을 모르는데 기종마다 수량이 다르면 골라야 한다", () => {
+    const r = resolveDiagramQty("EL2200 3개 / EL2400 2개", null);
+    expect(r.ambiguous).toBe(true);
+    expect(r.options).toEqual([{ model: "EL2200", qty: 3 }, { model: "EL2400", qty: 2 }]);
+  });
+  it("기종을 몰라도 수량이 모두 같으면 그 수량", () => {
+    expect(resolveDiagramQty("AW695 2 / AW695K-C 2", "").qty).toBe(2);
+  });
+  it("소요 수량 접두어가 붙어 있어도 읽는다", () => {
+    expect(parseQtyNote("소요 수량 · 4개")).toEqual([{ model: null, qty: 4 }]);
+  });
+});
+
+describe("보험 견적 합계", () => {
+  it("부품·공임·기타를 나눠 더한다", () => {
+    const t = estimateTotals([
+      item({ quantity: 2, unit_price: 15000 }),
+      item({ item_type: "공임", quantity: 1, unit_price: 50000 }),
+      item({ item_type: "기타", quantity: 1, unit_price: 3000 }),
+    ]);
+    expect(t).toEqual({ parts: 30000, labor: 50000, other: 3000, total: 83000 });
+  });
+  it("같은 부품번호를 또 담으면 수량만 더한다", () => {
+    const a = addEstimateItem([item({ part_code: "1E8080-81650", quantity: 1, unit_price: 9000 })], item({ part_code: "1e8080-81650", quantity: 2 }));
+    expect(a).toHaveLength(1);
+    expect(a[0].quantity).toBe(3);
+    expect(a[0].unit_price).toBe(9000);
+  });
+  it("공임 줄은 합치지 않는다", () => {
+    const a = addEstimateItem([item({ item_type: "공임", part_name: "탈착" })], item({ item_type: "공임", part_name: "탈착" }));
+    expect(a).toHaveLength(2);
+  });
+});

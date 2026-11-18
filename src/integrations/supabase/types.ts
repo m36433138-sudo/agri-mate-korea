@@ -1159,6 +1159,69 @@ export type Database = {
         }
         Relationships: []
       }
+      insurance_estimate_items: {
+        Row: {
+          created_at: string
+          diagram_id: string | null
+          diagram_title: string | null
+          id: string
+          insurance_repair_id: string
+          item_type: string
+          notes: string | null
+          part_code: string | null
+          part_name: string
+          quantity: number
+          sort_order: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          diagram_id?: string | null
+          diagram_title?: string | null
+          id?: string
+          insurance_repair_id: string
+          item_type?: string
+          notes?: string | null
+          part_code?: string | null
+          part_name?: string
+          quantity?: number
+          sort_order?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          diagram_id?: string | null
+          diagram_title?: string | null
+          id?: string
+          insurance_repair_id?: string
+          item_type?: string
+          notes?: string | null
+          part_code?: string | null
+          part_name?: string
+          quantity?: number
+          sort_order?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_estimate_items_diagram_id_fkey"
+            columns: ["diagram_id"]
+            isOneToOne: false
+            referencedRelation: "diagrams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_estimate_items_insurance_repair_id_fkey"
+            columns: ["insurance_repair_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_repairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insurance_repair_photos: {
         Row: {
           caption: string | null
@@ -3290,6 +3353,10 @@ export type Database = {
         }[]
       }
       next_quote_number: { Args: never; Returns: string }
+      replace_insurance_estimate_items: {
+        Args: { _items: Json; _repair_id: string }
+        Returns: number
+      }
       search_diagram_parts: {
         Args: { query: string; result_limit?: number }
         Returns: {

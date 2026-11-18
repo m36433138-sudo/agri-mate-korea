@@ -13,6 +13,9 @@ import { CustomerSearchInput } from "@/components/CustomerSearchInput";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
 import { useTechnicians } from "@/hooks/useTechnicians";
 import InsurancePhotoManager from "./InsurancePhotoManager";
+import InsuranceEstimateEditor from "./InsuranceEstimateEditor";
+import { estimateTotals, newKey, type EstimateItem } from "@/lib/insuranceEstimate";
+import { printInsuranceEstimate } from "@/lib/printInsuranceEstimate";
 import {
   INSURANCE_STATUSES,
   useInsuranceCompanies,
@@ -60,6 +63,21 @@ export default function InsuranceRepairModal({
   const [deductible, setDeductible] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [machineModel, setMachineModel] = useState<string | null>(null);
+  const [items, setItems] = useState<EstimateItem[]>([]);
+  // 기존 건의 견적 항목을 다 불러온 뒤에만 저장 때 덮어쓴다 (못 불러왔는데 빈 목록으로 지우지 않게)
+  const [itemsReady, setItemsReady] = useState(false);
+  const total = estimateTotals(items).total;
+
+  const { data: defaultCompany } = useQuery({
+    queryKey: ["quote-companies-default"],
+    enabled: open,
+    staleTime: 1000 * 60 * 10,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("companies").select("*").order("is_default", { ascending: false }).order("sort_order").limit(1);
+      return (data?.[0] ?? null) as any;
+    },
+  });
 
   const { data: quotes = [] } = useQuery({
     queryKey: ["quotes-picker"],
@@ -96,14 +114,34 @@ export default function InsuranceRepairModal({
       setDeductible(repair.deductible?.toString() || "");
       setPaidAmount(repair.paid_amount?.toString() || "");
       setSavedId(repair.id);
+      setMachineModel(repair.machines?.model_name || null);
+      setItems([]); setItemsReady(false);
+      let cancelled = false;
+      (supabase as any)
+        .from("insurance_estimate_items")
+        .select("*")
+        .eq("insurance_repair_id", repair.id)
+        .order("sort_order")
+        .then(({ data, error }: any) => {
+          if (cancelled) return;
+          if (error) { toast({ title: "견적 항목을 불러오지 못했습니다", description: error.message, variant: "destructive" }); return; }
+          setItems((data || []).map((r: any) => ({
+            key: newKey(), item_type: r.item_type, part_code: r.part_code || "", part_name: r.part_name || "",
+            quantity: Number(r.quantity) || 1, unit_price: r.unit_price || 0,
+            diagram_id: r.diagram_id, diagram_title: r.diagram_title, notes: r.notes,
+          })));
+          setItemsReady(true);
+        });
+      return () => { cancelled = true; };
     } else {
       setCustomerId(null); setCustomerName(""); setMachineId(null); setMachineName("");
       setCompanyId(""); setBranch("장흥"); setTechnician(""); setStatus("수리대기");
       setAccidentDate(""); setClaimNumber(""); setDescription(""); setNotes("");
       setQuoteId(""); setEstimateAmount(""); setClaimAmount(""); setDeductible(""); setPaidAmount("");
       setSavedId(null);
+      setMachineModel(null); setItems([]); setItemsReady(true);
     }
-  }, [open, repair]);
+  }, [open, repair]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 견적서를 선택하면 견적금액을 자동으로 채운다
   useEffect(() => {
@@ -132,13 +170,24 @@ export default function InsuranceRepairModal({
         description: description || null,
         notes: notes || null,
         quote_id: quoteId || null,
-        estimate_amount: num(estimateAmount),
+        estimate_amount: items.length > 0 ? total : num(estimateAmount),
         claim_amount: num(claimAmount),
         deductible: num(deductible),
         paid_amount: num(paidAmount),
         ...(status !== prevStatus ? statusSideEffects(status) : {}),
       });
       setSavedId(id);
+      if (itemsReady) {
+        const { error: itemErr } = await (supabase as any).rpc("replace_insurance_estimate_items", {
+          _repair_id: id,
+          _items: items.map(({ key: _k, ...it }) => it),
+        });
+        if (itemErr) {
+          toast({ title: "보험수리는 저장했지만 견적 항목 저장에 실패했습니다", description: itemErr.message, variant: "destructive" });
+          return;
+        }
+      }
+      if (items.length > 0) setEstimateAmount(String(total));
       toast({
         title: savedId ? "보험수리 건을 수정했습니다." : "보험수리 건을 등록했습니다.",
         description: savedId ? undefined : "이제 수리사진을 첨부할 수 있습니다.",
@@ -154,7 +203,7 @@ export default function InsuranceRepairModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
@@ -171,7 +220,7 @@ export default function InsuranceRepairModal({
               <CustomerSearchInput
                 value={customerName}
                 onChange={(v) => { setCustomerName(v); if (!v) { setCustomerId(null); setMachineId(null); setMachineName(""); } }}
-                onSelect={(c) => { setCustomerId(c.id); setMachineId(null); setMachineName(""); }}
+                onSelect={(c) => { setCustomerId(c.id); setMachineId(null); setMachineName(""); setMachineModel(null); }}
               />
             </div>
             <div>
@@ -179,8 +228,8 @@ export default function InsuranceRepairModal({
               <MachineSearchInput
                 value={machineName}
                 customerId={customerId}
-                onChange={(v) => { setMachineName(v); if (!v) setMachineId(null); }}
-                onSelect={(m) => { setMachineId(m.id); setMachineName(`${m.model_name} (${m.serial_number})`); }}
+                onChange={(v) => { setMachineName(v); if (!v) { setMachineId(null); setMachineModel(null); } }}
+                onSelect={(m) => { setMachineId(m.id); setMachineModel(m.model_name); setMachineName(`${m.model_name} (${m.serial_number})`); }}
                 placeholder={customerId ? "보유 기계 선택" : "고객을 먼저 선택하세요"}
               />
             </div>
@@ -255,9 +304,24 @@ export default function InsuranceRepairModal({
               placeholder="파손 부위, 수리 내용 등" />
           </div>
 
-          {/* 견적서 연결 */}
+          {/* 보험 견적서 (도면 클릭 · 직접 입력) */}
+          <InsuranceEstimateEditor
+            items={items}
+            setItems={setItems}
+            machineModel={machineModel}
+            onPrint={() => printInsuranceEstimate(items, {
+              customerName: customerName || "-",
+              customerPhone: repair?.customers?.phone,
+              machine: machineName || null,
+              insuranceCompany: selectedCompany?.name,
+              claimNumber, accidentDate, technician, branch, description,
+              company: defaultCompany,
+            })}
+          />
+
+          {/* 판매 견적서 연결 (선택) */}
           <div className="rounded-xl border p-3 space-y-2 bg-muted/20">
-            <Label className="text-xs flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> 견적서 연결</Label>
+            <Label className="text-xs flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> 소비자 판매 견적서 연결 (선택)</Label>
             <div className="flex flex-col sm:flex-row gap-2">
               <select className={selectCls} value={quoteId} onChange={(e) => setQuoteId(e.target.value)}>
                 <option value="">견적서 없음</option>
@@ -286,8 +350,8 @@ export default function InsuranceRepairModal({
           {/* 금액 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <Label className="text-xs">견적금액</Label>
-              <Input value={estimateAmount} onChange={(e) => setEstimateAmount(e.target.value)} placeholder="0" />
+              <Label className="text-xs">견적금액{items.length > 0 && <span className="text-muted-foreground"> · 견적서 합계</span>}</Label>
+              <Input value={items.length > 0 ? total.toLocaleString("ko-KR") : estimateAmount} readOnly={items.length > 0} onChange={(e) => setEstimateAmount(e.target.value)} placeholder="0" />
             </div>
             <div>
               <Label className="text-xs">청구금액</Label>

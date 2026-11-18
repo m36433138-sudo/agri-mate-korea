@@ -201,6 +201,38 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
             </Button>
           </SheetHeader>
 
+          {/* 재고 정보 */}
+          <section className="mt-4 space-y-2">
+            <h3 className="text-sm font-semibold flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-emerald-400" /> 재고 · 위치 · 가격
+            </h3>
+            {invLoading ? (
+              <Skeleton className="h-24 w-full rounded-lg" />
+            ) : inventory.length === 0 ? (
+              <p className="text-sm text-muted-foreground border rounded-lg p-3">
+                재고 목록에 이 부품번호가 없습니다.
+              </p>
+            ) : (
+              inventory.map((inv) => (
+                <div key={inv.id} className="border rounded-lg p-3 space-y-1.5">
+                  <p className="text-xs font-mono">{inv.part_code}{inv.part_name ? ` · ${inv.part_name}` : ""}</p>
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline">{inv.branch}</Badge>
+                    <span className={`text-sm font-bold ${(inv.quantity ?? 0) > 0 ? "" : "text-destructive"}`}>
+                      재고 {inv.quantity ?? 0}개
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span>위치: {inv.location_main || "—"}{inv.location_sub ? ` / ${inv.location_sub}` : ""}</span>
+                    <span>매입가: {won(inv.purchase_price)}</span>
+                    <span className="col-span-2">매출가: {won(inv.sales_price)}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
+
+
           {cartItems.length > 0 && <section aria-label="담은 주문 목록" className="mt-4 border-y py-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">담은 부품 ({cartItems.length})</h3>
@@ -209,34 +241,6 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
             <PartOrderCartContents compact />
           </section>}
           <PartOrderCartDialog open={cartOpen} onOpenChange={setCartOpen} />
-
-          {/* 사용 기종 분기 */}
-          {usedIn.length > 0 && (
-            <section className="mt-4 space-y-2">
-              <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                <GitBranch className="h-3.5 w-3.5 text-primary" /> 사용 기종
-                {usedIn.length > 1 && <span className="text-xs font-normal text-muted-foreground">({usedIn.length}개 기종 공용)</span>}
-              </h3>
-              {usedIn.map((g) => (
-                <div key={g.model} className="border rounded-lg p-2.5 space-y-1.5">
-                  <Badge variant="outline">{g.model}</Badge>
-                  <div className="flex flex-col gap-1">
-                    {g.diagrams.map((d) => (
-                      <button
-                        key={d.id}
-                        type="button"
-                        disabled={!onOpenDiagram || d.id === currentDiagramId}
-                        onClick={() => { onOpenDiagram?.(d.id); onOpenChange(false); }}
-                        className="text-left text-xs text-muted-foreground hover:text-primary disabled:hover:text-muted-foreground truncate"
-                      >
-                        {d.id === currentDiagramId ? "• (현재) " : "→ "}{d.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </section>
-          )}
 
           {/* 부품 사진 */}
           <section className="mt-4 space-y-2">
@@ -278,39 +282,8 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
             </section>
           )}
 
-          {/* 재고 정보 */}
-          <section className="mt-5 space-y-2">
-            <h3 className="text-sm font-semibold flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-emerald-400" /> 재고 · 위치 · 가격
-            </h3>
-            {invLoading ? (
-              <Skeleton className="h-24 w-full rounded-lg" />
-            ) : inventory.length === 0 ? (
-              <p className="text-sm text-muted-foreground border rounded-lg p-3">
-                재고 목록에 이 부품번호가 없습니다.
-              </p>
-            ) : (
-              inventory.map((inv) => (
-                <div key={inv.id} className="border rounded-lg p-3 space-y-1.5">
-                  <p className="text-xs font-mono">{inv.part_code}{inv.part_name ? ` · ${inv.part_name}` : ""}</p>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline">{inv.branch}</Badge>
-                    <span className={`text-sm font-bold ${(inv.quantity ?? 0) > 0 ? "" : "text-destructive"}`}>
-                      재고 {inv.quantity ?? 0}개
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span>위치: {inv.location_main || "—"}{inv.location_sub ? ` / ${inv.location_sub}` : ""}</span>
-                    <span>매입가: {won(inv.purchase_price)}</span>
-                    <span className="col-span-2">매출가: {won(inv.sales_price)}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </section>
-
           {/* 수리 사용 이력 */}
-          <section className="mt-5 space-y-2 pb-6">
+          <section className="mt-5 space-y-2">
             <h3 className="text-sm font-semibold flex items-center gap-1.5">
               <Wrench className="h-3.5 w-3.5 text-sky-400" /> 수리 사용 이력
               {totalUsed > 0 && (
@@ -347,6 +320,34 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
               ))
             )}
           </section>
+          {/* 사용 기종 분기 */}
+          {usedIn.length > 0 && (
+            <section className="mt-5 space-y-2 pb-6">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                <GitBranch className="h-3.5 w-3.5 text-primary" /> 사용 기종
+                {usedIn.length > 1 && <span className="text-xs font-normal text-muted-foreground">({usedIn.length}개 기종 공용)</span>}
+              </h3>
+              {usedIn.map((g) => (
+                <div key={g.model} className="border rounded-lg p-2.5 space-y-1.5">
+                  <Badge variant="outline">{g.model}</Badge>
+                  <div className="flex flex-col gap-1">
+                    {g.diagrams.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        disabled={!onOpenDiagram || d.id === currentDiagramId}
+                        onClick={() => { onOpenDiagram?.(d.id); onOpenChange(false); }}
+                        className="text-left text-xs text-muted-foreground hover:text-primary disabled:hover:text-muted-foreground truncate"
+                      >
+                        {d.id === currentDiagramId ? "• (현재) " : "→ "}{d.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+
         </SheetContent>
       </Sheet>
 

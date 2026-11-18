@@ -6,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useDiagramImageUrl, useHotspots, type Diagram, type DiagramHotspot } from "@/hooks/useDiagrams";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
 import PartDetailSheet from "@/components/diagrams/PartDetailSheet";
-import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick, Link2, ZoomIn, ZoomOut, CheckSquare, Printer, Copy } from "lucide-react";
+import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick, Link2, ZoomIn, ZoomOut, CheckSquare, Printer, Copy, MapPin, FilePlus2 } from "lucide-react";
+import PartsStockList from "@/components/diagrams/PartsStockList";
 import { printCheckedDiagram } from "@/lib/printDiagram";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,9 +23,14 @@ type Props = {
   initialPartCode?: string | null;
   /** 수리이력에서 열었을 때 미리 체크해 둘 부품번호(수리에 들어간 부품) */
   checkedCodes?: string[];
+  /** 견적 작성처럼 부품을 골라 담을 때: 부품을 누르면 상세 대신 이 함수로 넘긴다 */
+  onPickParts?: (parts: PickedPart[]) => void;
 };
 
-export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram, initialPartCode, checkedCodes }: Props) {
+export type PickedPart = { code: string; name: string | null; qtyNote: string | null };
+
+export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpenDiagram, initialPartCode, checkedCodes, onPickParts }: Props) {
+  const [stockOpen, setStockOpen] = useState(false);
   // 체크한 부품: 수리에 들어간 부품을 표시하고 그 도면만 체크된 채로 인쇄한다
   const [checked, setChecked] = useState<Set<string>>(() => new Set(checkedCodes ?? []));
   const [checkMode, setCheckMode] = useState(() => (checkedCodes?.length ?? 0) > 0);
@@ -46,6 +52,8 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
       const t = byId.get(h.target_diagram_id);
       if (t && onOpenDiagram) onOpenDiagram(t);
       else toast({ title: "연결된 도면을 찾을 수 없습니다." });
+    } else if (onPickParts) {
+      onPickParts([{ code: h.part_code, name: h.part_name, qtyNote: qtyOf(h.notes) }]);
     } else {
       setSelected({ code: h.part_code, name: h.part_name, qty: qtyOf(h.notes), rect: { x: Number(h.x), y: Number(h.y), w: Number(h.w), h: Number(h.h) } });
     }
@@ -383,6 +391,17 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
           <span className="flex-1 min-w-[12rem]">번호나 아래 목록을 누르면 체크/해제됩니다. 체크한 {checked.size}개가 초록색으로 인쇄됩니다.</span>
           {checked.size > 0 && (
             <>
+              {onPickParts && (
+                <Button size="sm" className="h-7 gap-1" onClick={() => {
+                  onPickParts(uniqueCodes.filter((h) => checked.has(h.part_code)).map((h) => ({ code: h.part_code, name: h.part_name, qtyNote: qtyOf(h.notes) })));
+                  setChecked(new Set());
+                }}>
+                  <FilePlus2 className="h-3.5 w-3.5" /> 체크한 {checked.size}개 견적에 담기
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="h-7 gap-1" onClick={() => setStockOpen(true)}>
+                <MapPin className="h-3.5 w-3.5" /> 재고·위치·가격 보기
+              </Button>
               <Button variant="ghost" size="sm" className="h-7 gap-1 text-success" onClick={async () => {
                 const lines = uniqueCodes.filter((h) => checked.has(h.part_code)).map((h) => `${h.part_code}${h.part_name ? ` ${h.part_name}` : ""}`);
                 try { await navigator.clipboard.writeText(`${diagram.title}\n${lines.join("\n")}`); toast({ title: "체크한 부품을 복사했습니다." }); }
@@ -400,6 +419,8 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
           <MousePointerClick className="h-3.5 w-3.5" />
           {isPhoto
             ? "사진의 파란 상자를 누르면 해당 부위의 부품 도면으로 이동합니다."
+            : onPickParts
+            ? "도면 위 부품이나 아래 목록을 누르면 견적에 담습니다. 여러 개는 「체크」로 고른 뒤 한 번에 담으세요."
             : "도면 위 부품 영역을 누르면 재고 위치·가격과 수리 이력을 볼 수 있습니다. 아래 부품 목록을 눌러도 됩니다."}
         </p>
       )}
@@ -428,7 +449,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             <button
               key={h.id}
               type="button"
-              onClick={() => checkMode ? toggleCheck(h.part_code) : setSelected({ code: h.part_code, name: h.part_name, qty: qtyOf(h.notes) })}
+              onClick={() => checkMode ? toggleCheck(h.part_code) : onPickParts ? onPickParts([{ code: h.part_code, name: h.part_name, qtyNote: qtyOf(h.notes) }]) : setSelected({ code: h.part_code, name: h.part_name, qty: qtyOf(h.notes) })}
               aria-pressed={checkMode ? checked.has(h.part_code) : undefined}
               className={`flex w-full sm:w-auto items-baseline gap-2 text-xs px-1 py-2 sm:px-2.5 sm:py-1.5 sm:rounded-lg sm:border sm:bg-card hover:text-primary sm:hover:border-primary transition-colors text-left ${checked.has(h.part_code) ? "text-success sm:border-success bg-success/10" : ""}`}
             >
@@ -489,6 +510,16 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 체크한 부품 재고 · 위치 · 가격 */}
+      <Dialog open={stockOpen} onOpenChange={setStockOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> 체크한 부품 {checked.size}개 재고·위치·가격</DialogTitle>
+          </DialogHeader>
+          {stockOpen && <PartsStockList parts={uniqueCodes.filter((h) => checked.has(h.part_code)).map((h) => ({ code: h.part_code, name: h.part_name }))} />}
         </DialogContent>
       </Dialog>
 
