@@ -31,11 +31,13 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   repair: any | null;
+  /** 전체 에러코드에서 고른 코드를 미리 채워 둔다 */
+  initialCode?: string;
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export default function RepairErrorCodeDialog({ open, onOpenChange, repair }: Props) {
+export default function RepairErrorCodeDialog({ open, onOpenChange, repair, initialCode }: Props) {
   const qc = useQueryClient();
   const repairId = repair?.id as string | undefined;
 
@@ -56,10 +58,10 @@ export default function RepairErrorCodeDialog({ open, onOpenChange, repair }: Pr
   };
   useEffect(() => () => photoRef.current.forEach((photo) => URL.revokeObjectURL(photo.url)), []);
   useEffect(() => {
-    setCode(""); setSymptom(""); setAction(""); setResolved(false); setNotes("");
+    setCode(initialCode ?? ""); setSymptom(""); setAction(""); setResolved(false); setNotes("");
     photoRef.current.forEach((photo) => URL.revokeObjectURL(photo.url));
     setPhotos([]);
-  }, [repairId]);
+  }, [repairId, initialCode]);
   const addPhotos = (files: FileList | null) => {
     if (!files) return;
     const images = Array.from(files).filter((file) => file.type.startsWith("image/"));
@@ -196,7 +198,7 @@ export default function RepairErrorCodeDialog({ open, onOpenChange, repair }: Pr
                 id="error-codes"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder={"E-102, P0217\nE-103"}
+                placeholder={"03 02000 03, C1-220\n84 04610.12"}
                 className="font-mono"
                 rows={2}
               />

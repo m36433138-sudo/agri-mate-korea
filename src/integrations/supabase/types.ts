@@ -881,6 +881,60 @@ export type Database = {
         }
         Relationships: []
       }
+      error_code_catalog: {
+        Row: {
+          cause: string | null
+          code: string
+          controller: string | null
+          created_at: string
+          id: string
+          machine_types: string[]
+          part: string | null
+          recovery: string | null
+          remedy: string | null
+          series: string
+          sort_order: number
+          source: string
+          source_url: string | null
+          symptom: string | null
+          updated_at: string
+        }
+        Insert: {
+          cause?: string | null
+          code: string
+          controller?: string | null
+          created_at?: string
+          id?: string
+          machine_types?: string[]
+          part?: string | null
+          recovery?: string | null
+          remedy?: string | null
+          series: string
+          sort_order?: number
+          source: string
+          source_url?: string | null
+          symptom?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cause?: string | null
+          code?: string
+          controller?: string | null
+          created_at?: string
+          id?: string
+          machine_types?: string[]
+          part?: string | null
+          recovery?: string | null
+          remedy?: string | null
+          series?: string
+          sort_order?: number
+          source?: string
+          source_url?: string | null
+          symptom?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
