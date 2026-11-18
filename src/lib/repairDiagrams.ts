@@ -42,3 +42,13 @@ export function rankRepairDiagrams(
   out.sort((a, b) => Number(b.sameModel) - Number(a.sameModel) || b.codes.length - a.codes.length || a.title.localeCompare(b.title, "ko"));
   return out;
 }
+
+/**
+ * 도면 고르기 창의 기종 버튼 중 수리 기계와 같은 기종을 고른다.
+ * 「YH7140DXK」면 「YH6140 / YH7140」 버튼처럼 가장 짧은(가장 딱 맞는) 버튼을 우선한다.
+ */
+export function machineModelChip(chips: string[], machineModel: string | null): string | null {
+  const hits = chips.filter((c) => bookMatchesMachine(c, machineModel));
+  if (hits.length === 0) return null;
+  return [...hits].sort((a, b) => a.length - b.length)[0];
+}

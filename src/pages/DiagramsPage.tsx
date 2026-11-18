@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useDiagrams, useDiagramImageUrl, useDiagramPartSearch, useDiagramThumbUrls, DIAGRAM_BUCKET, type Diagram } from "@/hooks/useDiagrams";
 import DiagramViewer from "@/components/diagrams/DiagramViewer";
-import DiagramThumbnail from "@/components/diagrams/DiagramThumbnail";
+import { FastThumb, SlowThumb } from "@/components/diagrams/DiagramThumb";
 import { Map, Plus, Camera, ImagePlus, Trash2, Loader2, Tag, FileUp, Search, X, Sparkles } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { brandOf, categoryOf, modelsOf, DIAGRAM_BRANDS, DIAGRAM_CATEGORIES, type DiagramCategory } from "@/lib/diagramModelGroup";
@@ -33,21 +33,6 @@ async function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("이미지 변환 실패"))), "image/jpeg", 0.85)
   );
-}
-
-function FastThumb({ thumb, diagram }: { thumb: string; diagram: Diagram }) {
-  const [bad, setBad] = useState(false);
-  if (bad) return <SlowThumb diagram={diagram} />;
-  return (
-    <div className="aspect-square w-full overflow-hidden bg-[hsl(var(--diagram-paper))] p-1.5">
-      <img src={thumb} alt={diagram.title} loading="lazy" decoding="async" onError={() => setBad(true)} className="h-full w-full object-contain" />
-    </div>
-  );
-}
-
-function SlowThumb({ diagram }: { diagram: Diagram }) {
-  const { data: url } = useDiagramImageUrl(diagram.image_path);
-  return url ? <DiagramThumbnail key={url} src={url} title={diagram.title} /> : <Skeleton className="w-full aspect-square" />;
 }
 
 function DiagramCard({ diagram, match, thumb, onClick, onDelete }: {

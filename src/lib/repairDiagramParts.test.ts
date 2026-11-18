@@ -34,3 +34,12 @@ it("오른쪽 목록 줄은 수리 부품 순서대로 번호 key를 갖는다",
   expect(items.map((i) => i.key)).toEqual(["0", "1"]);
   expect(items[0].quantity).toBe(2);
 });
+
+import { machineModelChip } from "./repairDiagrams";
+it("수리 기계 모델에 맞는 도면 기종 버튼을 자동으로 고른다", () => {
+  const chips = ["YH6140 / YH7140", "YH5101", "YT490 / YT5101 / YT5113", "EG83"];
+  expect(machineModelChip(chips, "YH7140DXK")).toBe("YH6140 / YH7140");
+  expect(machineModelChip(chips, "YT5113")).toBe("YT490 / YT5101 / YT5113");
+  expect(machineModelChip(chips, "SRF5000")).toBeNull();
+  expect(machineModelChip(chips, null)).toBeNull();
+});

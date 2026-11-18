@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Trash2, ChevronRight, FilePlus2, Loader2, Map as MapIcon, Search } from "lucide-react";
-import { useDiagrams, useDiagramPartSearch, type Diagram } from "@/hooks/useDiagrams";
+import { Trash2, FilePlus2, Loader2, Map as MapIcon, Search } from "lucide-react";
+import { useDiagrams, useDiagramPartSearch, useDiagramThumbUrls, type Diagram } from "@/hooks/useDiagrams";
+import DiagramThumb from "@/components/diagrams/DiagramThumb";
+import { categoryOf, modelsOf, DIAGRAM_CATEGORIES, type DiagramCategory } from "@/lib/diagramModelGroup";
 import DiagramViewer, { type PickedPart } from "@/components/diagrams/DiagramViewer";
 import { searchDiagrams } from "@/lib/diagramSearch";
-import { bookMatchesMachine } from "@/lib/repairDiagrams";
+import { machineModelChip } from "@/lib/repairDiagrams";
 import { fetchDiagramInventory } from "@/lib/diagramInventory";
 import { estimateTotals, lineAmount, newKey, resolveDiagramQty, type EstimateItem } from "@/lib/insuranceEstimate";
 import { salesPriceOf, usePartsStock } from "@/components/diagrams/PartsStockList";
@@ -18,6 +20,7 @@ import { inventoryBranchName, matchesInventory } from "@/lib/diagramInventory";
 
 export type QtyMode = "ask" | "one" | "diagram";
 const MODE_KEY = "insuranceEstimate.qtyMode";
+const PAGE = 60;
 const readMode = (): QtyMode => {
   const v = typeof localStorage !== "undefined" ? localStorage.getItem(MODE_KEY) : null;
   return v === "one" || v === "diagram" ? v : "ask";
@@ -39,20 +42,64 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
   const { diagrams, isLoading } = useDiagrams();
   const [diagram, setDiagram] = useState<Diagram | null>(null);
   const [term, setTerm] = useState("");
-  const [showAll, setShowAll] = useState(false);
   const [mode, setModeState] = useState<QtyMode>(readMode);
   const [pending, setPending] = useState<PickedPart[] | null>(null);
   const [added, setAdded] = useState(0);
   const setMode = (m: QtyMode) => { setModeState(m); localStorage.setItem(MODE_KEY, m); };
 
+  // 먼저 기종을 고르고, 그 기종 도면만 사진 카드로 보여 준다
+  const [category, setCategory] = useState<DiagramCategory | "전체">("전체");
+  const [model, setModel] = useState<string | null>(null); // null = 아직 안 고름, "전체" = 모든 기종
+  const [shown, setShown] = useState(PAGE);
+  const sheets = useMemo(() => diagrams.filter((d) => d.kind === "diagram"), [diagrams]);
+  const allChips = useMemo(() => Array.from(new Set(sheets.flatMap((d) => modelsOf(d.model_name)).filter(Boolean))), [sheets]);
+  const chips = useMemo(() => Array.from(new Set(
+    sheets.filter((d) => category === "전체" || categoryOf(d.model_name, d.machine_type) === category).flatMap((d) => modelsOf(d.model_name)).filter(Boolean),
+  )), [sheets, category]);
+  const chipCount = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const d of sheets) for (const m of modelsOf(d.model_name)) c.set(m, (c.get(m) ?? 0) + 1);
+    return c;
+  }, [sheets]);
+  const machineChip = useMemo(() => machineModelChip(allChips, machineModel), [allChips, machineModel]);
+  const autoPicked = useRef(false);
+  useEffect(() => {
+    if (!open) { autoPicked.current = false; return; }
+    if (autoPicked.current || !machineChip) return;
+    autoPicked.current = true;
+    setModel(machineChip);
+    setCategory(categoryOf(machineChip));
+  }, [open, machineChip]);
+  const chooseModel = (m: string | null) => { setModel(m); setShown(PAGE); setTerm(""); };
+
   const { hits, pending: searching } = useDiagramPartSearch(term);
   const list = useMemo(() => {
-    const found = searchDiagrams(diagrams, term, hits, { kind: "diagram", model: "전체" });
-    const same = found.filter((h) => bookMatchesMachine(h.diagram.model_name, machineModel));
-    const base = !term.trim() && !showAll && same.length > 0 ? same : found;
-    return [...base].sort((a, b) => Number(bookMatchesMachine(b.diagram.model_name, machineModel)) - Number(bookMatchesMachine(a.diagram.model_name, machineModel)));
-  }, [diagrams, term, hits, machineModel, showAll]);
-  const sameCount = useMemo(() => diagrams.filter((d) => d.kind === "diagram" && bookMatchesMachine(d.model_name, machineModel)).length, [diagrams, machineModel]);
+    if (model === null && !term.trim()) return [];
+    return searchDiagrams(diagrams, term, hits, { kind: "diagram", model: model ?? "전체", category: model ? "전체" : category });
+  }, [diagrams, term, hits, model, category]);
+  useEffect(() => { setShown(PAGE); }, [term]);
+  const thumbPaths = useMemo(() => diagrams.filter((d) => d.kind !== "photo" && d.image_path).map((d) => d.image_path as string), [diagrams]);
+  const { data: thumbs, isError: thumbsFailed } = useDiagramThumbUrls(open ? thumbPaths : []);
+
+  // 도면을 열었다 「목록」으로 돌아오면 보던 자리로
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const savedScroll = useRef(0);
+  const openSheet = (d: Diagram) => { savedScroll.current = scrollRef.current?.scrollTop ?? 0; setDiagram(d); };
+  useEffect(() => {
+    if (diagram) { scrollRef.current?.scrollTo({ top: 0 }); return; }
+    const top = savedScroll.current;
+    if (!top) return;
+    // 카드가 다 자리 잡을 때까지 몇 프레임 다시 맞춘다
+    let tries = 0, raf = 0;
+    const fix = () => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.scrollTop = top;
+      if (Math.abs(el.scrollTop - top) > 4 && tries++ < 60) raf = requestAnimationFrame(fix);
+    };
+    raf = requestAnimationFrame(fix);
+    return () => cancelAnimationFrame(raf);
+  }, [diagram]);
 
   const commit = async (parts: PickedPart[], qtyFor: (p: PickedPart) => number, prices?: Map<string, number | null>) => {
     let priceMap = prices;
@@ -89,7 +136,7 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
   };
 
   const close = (v: boolean) => {
-    if (!v) { setDiagram(null); setAdded(0); }
+    if (!v) { setDiagram(null); setAdded(0); setTerm(""); }
     onOpenChange(v);
   };
 
@@ -97,7 +144,7 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
     <Dialog open={open} onOpenChange={close}>
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}
         className="max-w-none w-screen h-[100dvh] sm:rounded-none p-0 gap-0 flex flex-col lg:flex-row overflow-hidden">
-        <div className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-5">
+        <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-5">
         <DialogHeader className="space-y-2 pr-8">
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <MapIcon className="h-5 w-5 text-primary" /> 도면에서 {target} 담기
@@ -120,46 +167,78 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
             diagram={diagram}
             onBack={() => setDiagram(null)}
             allDiagrams={diagrams}
-            onOpenDiagram={setDiagram}
+            onOpenDiagram={openSheet}
             onPickParts={pick}
             pickTarget={target}
           />
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3 pt-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input autoFocus value={term} onChange={(e) => setTerm(e.target.value)} placeholder="도면 이름 · 부품번호 검색 (예: 탱크커버, 77200)" className="pl-9" />
+              <Input value={term} onChange={(e) => setTerm(e.target.value)}
+                placeholder={model && model !== "전체" ? `${model} 안에서 도면 이름 · 부품번호 검색 (예: 탱크커버, 77200)` : "도면 이름 · 부품번호 검색 (예: 탱크커버, 77200)"} className="pl-9" />
               {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
-            {!term.trim() && machineModel && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {sameCount > 0 ? <span>{showAll ? "전체 도면" : `${machineModel} 도면 ${sameCount}장`}</span> : <span>{machineModel} 도면이 없어 전체 도면을 보여 드려요.</span>}
-                {sameCount > 0 && <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => setShowAll((v) => !v)}>{showAll ? "이 기종만" : "전체 보기"}</Button>}
+
+            {model === null || model === "전체" ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-5 gap-1 rounded-xl border bg-card p-1" role="tablist" aria-label="분류">
+                  {(["전체", ...DIAGRAM_CATEGORIES] as const).map((c) => (
+                    <button key={c} type="button" role="tab" aria-selected={category === c} onClick={() => setCategory(c)}
+                      className={`rounded-lg py-2 text-sm font-medium transition-colors ${category === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{c}</button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{model === null ? "기종을 먼저 골라 주세요. 고른 기종의 도면만 사진으로 보여 드려요." : "모든 기종 도면을 보고 있어요."}</p>
+                {isLoading && diagrams.length === 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-14" />)}</div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2" aria-label="기종">
+                    {chips.map((m) => (
+                      <button key={m} type="button" onClick={() => chooseModel(m)}
+                        className={`rounded-xl border px-3 py-3 text-left transition-colors hover:border-primary hover:bg-primary/10 ${m === machineChip ? "border-primary/60 bg-primary/5" : "bg-card"}`}>
+                        <p className="font-semibold text-sm leading-tight">{m}</p>
+                        <p className="text-[11px] text-muted-foreground">도면 {(chipCount.get(m) ?? 0).toLocaleString()}장{m === machineChip ? " · 이 기계" : ""}</p>
+                      </button>
+                    ))}
+                    {model === null && (
+                      <button type="button" onClick={() => chooseModel("전체")} className="rounded-xl border border-dashed px-3 py-3 text-left text-sm text-muted-foreground hover:bg-muted">모든 기종 보기</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className="text-sm px-3 py-1 bg-primary/15 text-primary border-primary/40">{model}</Badge>
+                <span className="text-xs text-muted-foreground">도면 {(chipCount.get(model) ?? 0).toLocaleString()}장</span>
+                <Button size="sm" variant="outline" className="h-7 ml-auto" onClick={() => chooseModel(null)}>다른 기종 고르기</Button>
               </div>
             )}
-            {isLoading && diagrams.length === 0 ? (
-              <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
-            ) : list.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">찾는 도면이 없어요.</p>
-            ) : (
-              <ul className="divide-y rounded-xl border">
-                {list.slice(0, 120).map((h) => (
-                  <li key={h.diagram.id}>
-                    <button type="button" onClick={() => setDiagram(h.diagram)} className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/40">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{h.diagram.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {h.diagram.model_name || "기종 미지정"}
-                          {h.partCodes.length > 0 && <span className="text-primary"> · {h.partCodes.slice(0, 3).join(", ")}{h.partCodes.length > 3 ? ` 외 ${h.partCodes.length - 3}` : ""}</span>}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
+
+            {(model !== null || term.trim()) && (
+              list.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">{searching ? "찾는 중…" : "찾는 도면이 없어요."}</p>
+              ) : (
+                <>
+                  {term.trim() && <p className="text-xs text-muted-foreground">「{term.trim()}」 도면 {list.length}장</p>}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-2">
+                    {list.slice(0, shown).map((h) => (
+                      <button key={h.diagram.id} type="button" onClick={() => openSheet(h.diagram)} aria-label={`${h.diagram.title} 열기`}
+                        className="rounded-xl overflow-hidden border bg-card text-left hover:border-primary transition-colors">
+                        <DiagramThumb diagram={h.diagram} thumb={thumbs ? (thumbs.get(h.diagram.image_path ?? "") ?? null) : thumbsFailed ? null : undefined} />
+                        <div className="p-2">
+                          <p className="text-xs font-medium line-clamp-2 min-h-8" title={h.diagram.title}>{h.diagram.title}</p>
+                          {(model === "전체" || term.trim()) && h.diagram.model_name && <p className="text-[10px] text-muted-foreground truncate">{h.diagram.model_name}</p>}
+                          {h.partCodes.length > 0 && <p className="text-[10px] text-primary truncate">{h.partCodes.slice(0, 2).join(", ")}{h.partCodes.length > 2 ? ` 외 ${h.partCodes.length - 2}` : ""}</p>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {list.length > shown && (
+                    <Button variant="outline" className="w-full" onClick={() => setShown((n) => n + PAGE)}>도면 더 보기 ({(list.length - shown).toLocaleString()}장 남음)</Button>
+                  )}
+                </>
+              )
             )}
-            {list.length > 120 && <p className="text-xs text-center text-muted-foreground">앞의 120장만 보여요. 검색어를 더 넣어 주세요.</p>}
           </div>
         )}
 
