@@ -126,6 +126,10 @@ serve(async (req) => {
     if (sheetName && action) {
       sheetName = await resolveTab(sheetName, action === "addRow" || action === "updateCell");
     }
+    // 출퇴근 기록은 기사 이름 탭에 쓴다 — 같은 규칙으로 실제 탭 이름에 맞춘다
+    if (action && typeof body.techName === "string" && body.techName) {
+      body.techName = await resolveTab(body.techName, true);
+    }
 
     // WRITE operation — mark row as complete
     if (action === "markComplete") {
@@ -428,7 +432,7 @@ serve(async (req) => {
       if (!supabaseUrl || !serviceRoleKey) throw new Error("Supabase config missing");
 
       // 1. Read 고객목록
-      const custRange = encodeURIComponent("'고객목록'") + "!A:D";
+      const custRange = encodeURIComponent(`'${await resolveTab("고객목록", true)}'`) + "!A:D";
       const custUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${custRange}`;
       const custRes = await fetch(custUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!custRes.ok) throw new Error(`Failed to read 고객목록: ${await custRes.text()}`);
@@ -436,7 +440,7 @@ serve(async (req) => {
       const custRows = (custData.values || []).slice(1); // skip header
 
       // 2. Read 보유기계
-      const machRange = encodeURIComponent("'보유기계'") + "!A:I";
+      const machRange = encodeURIComponent(`'${await resolveTab("보유기계", true)}'`) + "!A:I";
       const machUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${machRange}`;
       const machRes = await fetch(machUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!machRes.ok) throw new Error(`Failed to read 보유기계: ${await machRes.text()}`);
@@ -598,7 +602,7 @@ serve(async (req) => {
     if (action === "syncInventory") {
       const targetBranch = body.branch; // "장흥" or "강진"
       if (!targetBranch) throw new Error("branch is required for syncInventory");
-      const tabName = targetBranch === "장흥" ? "재고창고(장흥)" : "재고창고(강진)";
+      const tabName = await resolveTab(targetBranch === "장흥" ? "재고창고(장흥)" : "재고창고(강진)", true);
       const accessToken = await getAccessToken();
 
       const readRange = encodeURIComponent(`'${tabName}'!A:S`);

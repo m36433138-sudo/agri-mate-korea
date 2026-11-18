@@ -11,3 +11,4 @@
 - Receipts/invoices are read by the read-receipt function (staff with manage_expenses only) and land in a review dialog; rows are inserted into expenses only after the user confirms, with the original kept in the private receipts bucket.
 - Photo part finding (find-part-by-photo) narrows by figure titles first, then compares only the top figures with their parts lists, and drops any AI-returned code not in that figure so suggestions can never point to nonexistent parts.
 - The onsite-repairs page reads and writes the Google Sheets 출장 tab by header names, and edits merge into the existing row so sheet-only columns (priority, request date, completion date) are never blanked.
+- The google-sheets function resolves every tab name (read, write, clock-in/out, inventory and customer sync) against the spreadsheet's real tab titles, ignoring spaces, and fails with the list of existing tabs, so a renamed or space-padded tab never produces a raw range error.
