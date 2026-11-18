@@ -39,6 +39,7 @@ type ParsedGroup = {
 
 type Row = ParsedGroup & {
   include: boolean;
+  saved?: boolean;
   machine_id: string;
 };
 
@@ -194,10 +195,16 @@ export default function BillingPdfImportDialog({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const selected = (rows || []).filter((r) => r.include);
+      const indexed = (rows || []).map((r, idx) => ({ r, idx })).filter(({ r }) => r.include && !r.saved);
+      const selected = indexed.map(({ r }) => r);
       if (selected.length === 0) throw new Error("등록할 항목을 선택해 주세요.");
       const missing = selected.filter((r) => !r.machine_id);
       if (missing.length > 0) throw new Error("기계가 선택되지 않은 항목이 있습니다.");
+      const ownIds = new Set((machines || []).map((m: any) => m.id));
+      if (selected.some((r) => !ownIds.has(r.machine_id)))
+        throw new Error("선택한 고객의 기계가 아닌 항목이 있습니다. 기계를 다시 골라 주세요.");
+      if (selected.some((r) => !/^\d{4}-\d{2}-\d{2}$/.test(r.date || "")))
+        throw new Error("날짜가 비어 있는 항목이 있습니다. 날짜를 입력해 주세요.");
 
       const partIdCache = new Map<string, string>();
       const resolvePartId = async (p: ParsedPart) => {
@@ -223,7 +230,7 @@ export default function BillingPdfImportDialog({
       };
 
       let saved = 0;
-      for (const r of selected) {
+      for (const { r, idx } of indexed) {
         const content =
           r.description?.trim() ||
           (r.parts.length > 0 ? `부품 교체 (${r.parts.length}종)` : "수리");
@@ -258,9 +265,15 @@ export default function BillingPdfImportDialog({
             });
           }
           const { error: pe } = await (supabase as any).from("repair_parts").insert(payload);
-          if (pe) throw pe;
+          if (pe) {
+            await supabase.from("repairs").delete().eq("id", repair.id);
+            throw pe;
+          }
         }
         saved += 1;
+        setRows((prev) =>
+          (prev || []).map((x, k) => (k === idx ? { ...x, saved: true, include: false } : x)),
+        );
       }
       return saved;
     },
@@ -270,8 +283,14 @@ export default function BillingPdfImportDialog({
       reset();
       onOpenChange(false);
     },
-    onError: (e: any) =>
-      toast({ title: "등록 실패", description: e.message, variant: "destructive" }),
+    onError: (e: any) => {
+      qc.invalidateQueries({ queryKey: ["repairs"] });
+      toast({
+        title: "등록 실패",
+        description: `${e.message} (이미 저장된 줄은 「저장됨」으로 표시되어 다시 등록되지 않습니다.)`,
+        variant: "destructive",
+      });
+    },
   });
 
   const selectedCount = (rows || []).filter((r) => r.include).length;
@@ -336,6 +355,8 @@ export default function BillingPdfImportDialog({
                       setCustomerId("");
                       setCustomerName("");
                       lastKeyRef.current = "";
+                      setRows((prev) => (prev ? prev.map((r) => ({ ...r, machine_id: "" })) : prev));
+
                     }}
                   >
                     <X className="h-4 w-4" />
@@ -365,6 +386,8 @@ export default function BillingPdfImportDialog({
                             setCustomerResults([]);
                             setCustomerSearch("");
                             lastKeyRef.current = "";
+                            setRows((prev) => (prev ? prev.map((r) => ({ ...r, machine_id: "" })) : prev));
+
                           }}
                         >
                           <span className="font-medium">{c.name}</span>
@@ -396,10 +419,12 @@ export default function BillingPdfImportDialog({
                   <div className="flex items-start gap-3">
                     <Checkbox
                       checked={r.include}
+                      disabled={r.saved}
                       onCheckedChange={(v) => updateRow(i, { include: !!v })}
                       className="mt-1"
                     />
                     <div className="flex-1 min-w-0 space-y-2">
+                      {r.saved && <div className="text-xs font-medium text-primary">✓ 저장됨</div>}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div>
                           <Label className="text-xs">수리일</Label>
