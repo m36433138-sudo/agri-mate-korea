@@ -100,26 +100,31 @@ serve(async (req) => {
     const { tab, action, rowIndex } = body;
     let sheetName: string | undefined = body.sheetName;
 
-    // 탭 이름의 공백/대소문자 차이를 실제 탭 이름으로 보정
-    if (sheetName && action) {
+    // 탭 이름의 공백/대소문자 차이를 실제 탭 이름으로 보정 (읽기·쓰기 모두)
+    let tabTitles: string[] | null = null;
+    const resolveTab = async (name: string, strict: boolean): Promise<string> => {
       try {
-        const tok = await getAccessToken();
-        const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`, {
-          headers: { Authorization: `Bearer ${tok}` },
-        });
-        if (metaRes.ok) {
+        if (!tabTitles) {
+          const tok = await getAccessToken();
+          const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`, {
+            headers: { Authorization: `Bearer ${tok}` },
+          });
+          if (!metaRes.ok) return name;
           const meta = await metaRes.json();
-          const titles: string[] = (meta.sheets || []).map((s: any) => s.properties.title);
-          const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
-          const hit = titles.find(t => t === sheetName) || titles.find(t => norm(t) === norm(sheetName!));
-          if (hit) sheetName = hit;
-          else if (action === "addRow" || action === "updateCell") {
-            throw new Error(`시트에 '${sheetName}' 탭이 없습니다. 현재 탭: ${titles.join(", ")}`);
-          }
+          tabTitles = (meta.sheets || []).map((s: any) => s.properties.title);
         }
+        const titles = tabTitles!;
+        const norm = (x: string) => x.replace(/\s+/g, "").toLowerCase();
+        const hit = titles.find(t => t === name) || titles.find(t => norm(t) === norm(name));
+        if (hit) return hit;
+        if (strict) throw new Error(`시트에 '${name}' 탭이 없습니다. 현재 탭: ${titles.join(", ")}`);
       } catch (e) {
         if (e instanceof Error && e.message.startsWith("시트에")) throw e;
       }
+      return name;
+    };
+    if (sheetName && action) {
+      sheetName = await resolveTab(sheetName, action === "addRow" || action === "updateCell");
     }
 
     // WRITE operation — mark row as complete
@@ -687,8 +692,9 @@ serve(async (req) => {
     // READ operation — use service account OAuth for restricted sheets
     if (!tab) throw new Error("Tab name is required");
 
+    const realTab = await resolveTab(String(tab), true);
     const accessToken = await getAccessToken();
-    const range = encodeURIComponent(`'${tab}'!A:R`);
+    const range = encodeURIComponent(`'${realTab}'!A:R`);
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`;
     console.log("Fetching URL (OAuth):", url);
 
