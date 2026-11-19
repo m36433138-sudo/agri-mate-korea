@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { isSearchTerm, type PartHit } from "@/lib/diagramSearch";
+import { needsPartSearch, type PartHit } from "@/lib/diagramSearch";
 
 const db = supabase as any;
 
@@ -121,7 +121,8 @@ export function useDiagrams() {
  */
 export function useDiagramPartSearch(term: string) {
   const q = term.trim();
-  const active = isSearchTerm(q);
+  // 「fig341」처럼 도면 번호가 분명하면 기기 안 목록만으로 바로 찾는다 (서버 왕복 없음)
+  const active = needsPartSearch(q);
   const [debounced, setDebounced] = useState("");
 
   useEffect(() => {

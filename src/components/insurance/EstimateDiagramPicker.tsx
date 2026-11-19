@@ -176,7 +176,7 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input value={term} onChange={(e) => setTerm(e.target.value)}
-                placeholder={model && model !== "전체" ? `${model} 안에서 도면 이름 · 부품번호 검색 (예: 탱크커버, 77200)` : "도면 이름 · 부품번호 검색 (예: 탱크커버, 77200)"} className="pl-9" />
+                placeholder={model && model !== "전체" ? `${model} 안에서 도면 번호 · 이름 · 부품번호 검색 (예: 341, 탱크커버, 77200)` : "도면 번호 · 이름 · 부품번호 검색 (예: 341, 탱크커버, 77200)"} className="pl-9" />
               {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
 

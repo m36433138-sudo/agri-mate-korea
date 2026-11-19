@@ -331,7 +331,7 @@ export default function DiagramsPage() {
         <Input
           value={term}
           onChange={(e) => setTerm(e.target.value)}
-          placeholder="부품번호 · 기종 · 도면명으로 검색 (예: 129978-01331, YH1150, 예취부)"
+          placeholder="부품번호 · 도면 번호 · 기종 · 도면명 (예: 129978-01331, 341, YH7140 341, 예취부)"
           aria-label="도면 검색"
           className="pl-9 pr-9"
         />

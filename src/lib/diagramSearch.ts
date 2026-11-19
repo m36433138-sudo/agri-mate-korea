@@ -17,16 +17,50 @@ export function isSearchTerm(term: string): boolean {
   return term.trim().length >= 2;
 }
 
+/** 도면명에서 그림 번호를 꺼낸다: 「Fig.341.」「Fig 10 .」「p.205」「WLZ 18.」 → "341"/"10"/"205"/"18" */
+export function figNumberOf(title: string): string | null {
+  const m = title.match(/fig\s*\.?\s*(\d{1,4})/i) ?? title.match(/(?:^|\s)p\.\s*(\d{1,4})/i);
+  if (m) return String(Number(m[1]));
+  const lead = title.match(/^[A-Za-z]{2,4}\s+(\d{1,3})\.\s/);
+  return lead ? String(Number(lead[1])) : null;
+}
+
+/**
+ * 검색어에서 도면 번호를 찾는다. 「fig341」「fig.341」「f341」「그림341」「p.12」는 확실한 도면 번호,
+ * 숫자만 1~3자리(「341」)도 도면 번호로 본다. 나머지 낱말(기종 등)은 rest로 돌려준다.
+ */
+export function parseFigQuery(term: string): { fig: string; explicit: boolean; rest: string[] } | null {
+  const words = term.trim().toLowerCase().replace(/(fig|그림|p)\s*\.?\s+(?=\d)/g, "$1").split(/\s+/).filter(Boolean);
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const ex = w.match(/^(?:fig\.?|f\.?|그림|p\.?|no\.?)(\d{1,4})\.?$/);
+    const plain = w.match(/^(\d{1,3})\.?$/);
+    if (ex || plain) {
+      return { fig: String(Number((ex ?? plain)![1])), explicit: !!ex, rest: words.filter((_, k) => k !== i) };
+    }
+  }
+  return null;
+}
+
+/** 확실한 도면 번호 검색(fig341, 「YH7140 341」 등)은 부품번호 서버 검색을 보내지 않는다 */
+export function needsPartSearch(term: string): boolean {
+  if (!isSearchTerm(term)) return false;
+  const f = parseFigQuery(term);
+  return !(f && (f.explicit || f.rest.length > 0));
+}
+
 export type DiagramSearchHit<T> = {
   diagram: T;
   partCodes: string[];
   partCount: number;
   matchedTitle: boolean;
   matchedModel: boolean;
+  /** 도면 번호(Fig.)가 정확히 같음 */
+  matchedFig?: boolean;
 };
 
 function score(h: DiagramSearchHit<SearchableDiagram>): number {
-  return h.partCount * 100 + (h.matchedTitle ? 10 : 0) + (h.matchedModel ? 5 : 0);
+  return (h.matchedFig ? 1_000_000 : 0) + h.partCount * 100 + (h.matchedTitle ? 10 : 0) + (h.matchedModel ? 5 : 0);
 }
 
 /**
@@ -41,6 +75,7 @@ export function searchDiagrams<T extends SearchableDiagram>(
 ): DiagramSearchHit<T>[] {
   const q = term.trim().toLowerCase();
   const words = q.split(/\s+/).filter(Boolean);
+  const figQ = parseFigQuery(q);
   const hits: DiagramSearchHit<T>[] = [];
 
   for (const d of diagrams) {
@@ -58,7 +93,11 @@ export function searchDiagrams<T extends SearchableDiagram>(
     const matchedTitle = allWords && words.some((w) => title.includes(w));
     const matchedModel = allWords && words.some((w) => model.includes(w));
 
-    if (q !== "" && !part && !allWords) continue;
+    // 「341」「fig 341」「YH7140 341」 → 그 기종의 Fig.341을 맨 위에 (Fig.3410, 부품번호 341xx보다 먼저)
+    const matchedFig = !!figQ && figNumberOf(d.title) === figQ.fig
+      && figQ.rest.every((w) => title.includes(w) || model.includes(w));
+
+    if (q !== "" && !part && !allWords && !matchedFig) continue;
 
     hits.push({
       diagram: d,
@@ -66,6 +105,7 @@ export function searchDiagrams<T extends SearchableDiagram>(
       partCount: part?.count ?? 0,
       matchedTitle,
       matchedModel,
+      matchedFig,
     });
   }
 

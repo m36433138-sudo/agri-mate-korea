@@ -113,6 +113,13 @@
       "when": 1795009642428,
       "tag": "0015_yanmar_supply_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795052879589,
+      "tag": "0016_speed_up_diagram_policies",
+      "breakpoints": true
     }
   ]
 }

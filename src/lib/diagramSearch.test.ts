@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSearchTerm, searchDiagrams, type PartHit, type SearchableDiagram } from "./diagramSearch";
+import { figNumberOf, isSearchTerm, needsPartSearch, searchDiagrams, type PartHit, type SearchableDiagram } from "./diagramSearch";
 
 const dg = (
   id: string,
@@ -127,5 +127,57 @@ describe("searchDiagrams 분류 필터", () => {
     ];
     expect(searchDiagrams(list, "", new Map(), { kind: "diagram", model: "전체", brand: "얀마" }).map((h) => h.diagram.id)).toEqual(["y"]);
     expect(searchDiagrams(list, "", new Map(), { kind: "diagram", model: "전체", brand: "LS" }).map((h) => h.diagram.id)).toEqual(["l"]);
+  });
+});
+
+describe("도면 번호(Fig.) 검색", () => {
+  const list = [
+    dg("p1", "YH6140 / YH7140 Fig.341. 탱크커버", "YH6140 / YH7140"),
+    dg("p2", "YT6135 / YT6145 Fig.341. 루프", "YT6135 / YT6145"),
+    dg("p3", "YH6140 / YH7140 Fig.34. 예취부", "YH6140 / YH7140"),
+    dg("p4", "Fig 10 . (YR06)", "YR06"),
+    dg("p5", "EG83 p.205 (EG83)", "EG83"),
+  ];
+
+  it("그림 번호를 도면명에서 꺼낸다", () => {
+    expect(figNumberOf("YH6140 / YH7140 Fig.341. 탱크커버")).toBe("341");
+    expect(figNumberOf("Fig 10 . (YR06)")).toBe("10");
+    expect(figNumberOf("EG83 p.205 (EG83)")).toBe("205");
+    expect(figNumberOf("WLZ 18. 좌측 균평판부")).toBe("18");
+    expect(figNumberOf("EM 로타리 명판")).toBeNull();
+  });
+
+  it("숫자만 쳐도 같은 번호 도면이 부품번호 검색 결과보다 먼저 온다", () => {
+    const hits = new Map<string, PartHit>([["p3", { codes: ["1E3410-12345"], count: 9 }]]);
+    const out = searchDiagrams(list, "341", hits, ALL);
+    expect(out.slice(0, 2).map((h) => h.diagram.id).sort()).toEqual(["p1", "p2"]);
+    expect(out[2].diagram.id).toBe("p3");
+  });
+
+  it("fig341·Fig 341·그림341 모두 같은 도면을 찾고 34번은 섞이지 않는다", () => {
+    for (const q of ["fig341", "Fig 341", "fig.341", "그림341", "F341"]) {
+      const out = searchDiagrams(list, q, new Map(), ALL);
+      expect(out.filter((h) => h.matchedFig).map((h) => h.diagram.id).sort()).toEqual(["p1", "p2"]);
+      expect(out.some((h) => h.diagram.id === "p3" && h.matchedFig)).toBe(false);
+    }
+  });
+
+  it("기종과 번호를 함께 쓰면 그 기종 도면만", () => {
+    const out = searchDiagrams(list, "YH7140 341", new Map(), ALL);
+    expect(out[0].diagram.id).toBe("p1");
+    expect(out.filter((h) => h.matchedFig).map((h) => h.diagram.id)).toEqual(["p1"]);
+  });
+
+  it("다른 표기(Fig 10 ., p.205)도 번호로 찾는다", () => {
+    expect(searchDiagrams(list, "fig10", new Map(), ALL)[0].diagram.id).toBe("p4");
+    expect(searchDiagrams(list, "p.205", new Map(), ALL)[0].diagram.id).toBe("p5");
+  });
+
+  it("fig로 시작하는 번호 검색은 서버 부품번호 검색을 보내지 않는다", () => {
+    expect(needsPartSearch("fig341")).toBe(false);
+    expect(needsPartSearch("Fig 341")).toBe(false);
+    expect(needsPartSearch("YH7140 341")).toBe(false);
+    expect(needsPartSearch("341")).toBe(true);
+    expect(needsPartSearch("77200")).toBe(true);
   });
 });
