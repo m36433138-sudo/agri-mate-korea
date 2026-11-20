@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useFinance } from "@/hooks/useFinance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { FinanceModal } from "@/components/workspace/modals/FinanceModal";
+import { DepositInbox } from "@/components/deposits/DepositInbox";
 import type { FinanceRecord } from "@/types/workspace";
 import { outstandingOf, SOURCE_TYPE_LABELS } from "@/types/workspace";
 import {
@@ -26,7 +27,7 @@ const dayDiff = (due: string | null, today: string) => {
 
 export default function ReceivablesPage() {
   const { finance, isLoading } = useFinance();
-  const { hasPermission } = useUserRole();
+  const { hasPermission, isAdmin } = useUserRole();
   const canManage = hasPermission("manage_receivables");
 
   const [filter, setFilter] = useState<Filter>("all");
@@ -156,6 +157,9 @@ export default function ReceivablesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 입금 문자 → 미수금 매칭 대기 */}
+      <DepositInbox finance={finance} canManage={canManage} isAdmin={isAdmin} />
 
       {/* 필터 */}
       <div className="flex flex-wrap gap-2">

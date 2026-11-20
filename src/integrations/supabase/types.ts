@@ -315,6 +315,74 @@ export type Database = {
           },
         ]
       }
+      bank_deposits: {
+        Row: {
+          allocations: Json
+          amount: number
+          balance: number | null
+          bank: string
+          created_at: string
+          customer_id: string | null
+          decided_at: string | null
+          decided_by: string | null
+          dedupe_key: string
+          deposited_at: string
+          depositor_name: string | null
+          id: string
+          note: string | null
+          raw_text: string
+          source: string
+          status: string
+          unallocated_amount: number
+        }
+        Insert: {
+          allocations?: Json
+          amount: number
+          balance?: number | null
+          bank?: string
+          created_at?: string
+          customer_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          dedupe_key: string
+          deposited_at: string
+          depositor_name?: string | null
+          id?: string
+          note?: string | null
+          raw_text: string
+          source?: string
+          status?: string
+          unallocated_amount?: number
+        }
+        Update: {
+          allocations?: Json
+          amount?: number
+          balance?: number | null
+          bank?: string
+          created_at?: string
+          customer_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          dedupe_key?: string
+          deposited_at?: string
+          depositor_name?: string | null
+          id?: string
+          note?: string | null
+          raw_text?: string
+          source?: string
+          status?: string
+          unallocated_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_deposits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blade_sharpenings: {
         Row: {
           branch: string
@@ -626,6 +694,24 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      deposit_sms_settings: {
+        Row: {
+          id: boolean
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          token?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3434,6 +3520,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_bank_deposit: {
+        Args: { _allocations: Json; _deposit_id: string }
+        Returns: undefined
+      }
       create_part_sale: { Args: { _items: Json; _sale: Json }; Returns: string }
       current_employee_branch: { Args: { _user_id: string }; Returns: string }
       delete_part_sale: { Args: { _sale_id: string }; Returns: undefined }
@@ -3492,6 +3582,7 @@ export type Database = {
         Args: { _items: Json; _repair_id: string }
         Returns: number
       }
+      revert_bank_deposit: { Args: { _deposit_id: string }; Returns: undefined }
       search_diagram_parts: {
         Args: { query: string; result_limit?: number }
         Returns: {

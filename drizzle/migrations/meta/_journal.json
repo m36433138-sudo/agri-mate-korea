@@ -141,6 +141,20 @@
       "when": 1795161458977,
       "tag": "0019_fix_has_permission_lookup",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795175636654,
+      "tag": "0020_create_bank_deposits",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795175659453,
+      "tag": "0021_safer_revert_bank_deposit",
+      "breakpoints": true
     }
   ]
 }
