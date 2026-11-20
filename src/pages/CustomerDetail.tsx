@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink, History, Wallet } from "lucide-react";
+import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink, History, Wallet, ShoppingCart } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,12 @@ import { FinanceModal } from "@/components/workspace/modals/FinanceModal";
 import type { FinanceRecord } from "@/types/workspace";
 import { outstandingOf, SOURCE_TYPE_LABELS } from "@/types/workspace";
 import { validateMachineTypeClassification } from "@/lib/machineValidation";
+import { useUserRole } from "@/hooks/useUserRole";
+import { PartSaleDialog } from "@/components/partSales/PartSaleDialog";
+import { PartSaleDetailDialog } from "@/components/partSales/PartSaleDetailDialog";
+import { useCustomerPartSales } from "@/components/partSales/usePartSales";
+import type { PartSaleRow } from "@/components/partSales/types";
+import { PAYMENT_MODE_LABELS } from "@/components/partSales/types";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 
@@ -30,6 +36,12 @@ export default function CustomerDetail() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [machineOpen, setMachineOpen] = useState(false);
   const [financeOpen, setFinanceOpen] = useState(false);
+  const { hasPermission } = useUserRole();
+  const canViewPartSales = hasPermission("view_part_sales");
+  const canManagePartSales = hasPermission("manage_part_sales");
+  const [partSaleOpen, setPartSaleOpen] = useState(false);
+  const [partSaleDetail, setPartSaleDetail] = useState<PartSaleRow | null>(null);
+  const { data: partSales } = useCustomerPartSales(id, canViewPartSales);
   const [editFinance, setEditFinance] = useState<FinanceRecord | undefined>();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -319,6 +331,54 @@ export default function CustomerDetail() {
       </Card>
 
       {/* 미수금 */}
+      {canViewPartSales && (
+        <Card className="shadow-card border-0 mb-6">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
+            <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 shrink-0 text-muted-foreground" />
+              부품 구매 내역
+              {partSales && partSales.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {partSales.length}건 · {formatPrice(partSales.reduce((s, r) => s + Number(r.total_amount), 0))}
+                </Badge>
+              )}
+            </CardTitle>
+            {canManagePartSales && customer && (
+              <Button size="sm" variant="outline" className="shrink-0" onClick={() => setPartSaleOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> 부품 판매
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {!partSales || partSales.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">부품 구매 내역이 없습니다.</p>
+            ) : (
+              <div className="space-y-2">
+                {partSales.slice(0, 20).map((s) => {
+                  const items = s.part_sale_items ?? [];
+                  return (
+                    <button key={s.id} type="button" onClick={() => setPartSaleDetail(s)}
+                      className="w-full text-left flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {items.slice(0, 2).map((i) => `${i.part_name || i.part_code} ×${i.quantity}`).join(", ")}
+                          {items.length > 2 ? ` 외 ${items.length - 2}건` : ""}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{s.sale_date} · {s.branch}</p>
+                      </div>
+                      <Badge className={`text-[11px] shrink-0 ${s.payment_mode === "paid" ? "bg-green-950/60 text-green-400" : "bg-amber-950/60 text-amber-400"}`}>
+                        {PAYMENT_MODE_LABELS[s.payment_mode]}
+                      </Badge>
+                      <span className="text-sm font-bold tabular-nums shrink-0">{formatPrice(s.total_amount)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="shadow-card border-0 mb-6">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
           <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
@@ -491,6 +551,12 @@ export default function CustomerDetail() {
         initialData={editFinance}
         defaultCustomerId={id!}
       />
+      <PartSaleDialog
+        open={partSaleOpen}
+        onOpenChange={setPartSaleOpen}
+        initialCustomer={customer ? { id: customer.id, name: customer.name, phone: customer.phone ?? null } : null}
+      />
+      <PartSaleDetailDialog sale={partSaleDetail} onClose={() => setPartSaleDetail(null)} canManage={canManagePartSales} />
     </div>
   );
 }

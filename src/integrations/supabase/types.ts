@@ -2247,6 +2247,112 @@ export type Database = {
           },
         ]
       }
+      part_sale_items: {
+        Row: {
+          branch: string
+          created_at: string
+          id: string
+          part_code: string
+          part_name: string
+          quantity: number
+          sale_id: string
+          unit_price: number
+        }
+        Insert: {
+          branch: string
+          created_at?: string
+          id?: string
+          part_code: string
+          part_name?: string
+          quantity: number
+          sale_id: string
+          unit_price?: number
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          id?: string
+          part_code?: string
+          part_name?: string
+          quantity?: number
+          sale_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "part_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_sales: {
+        Row: {
+          branch: string
+          buyer_name: string | null
+          buyer_phone: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          discount: number
+          id: string
+          notes: string | null
+          paid_amount: number
+          payment_method: string | null
+          payment_mode: string
+          sale_date: string
+          subtotal: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          branch?: string
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount?: number
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          payment_method?: string | null
+          payment_mode?: string
+          sale_date?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          branch?: string
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount?: number
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          payment_method?: string | null
+          payment_mode?: string
+          sale_date?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       part_tips: {
         Row: {
           content: string
@@ -3328,7 +3434,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_part_sale: { Args: { _items: Json; _sale: Json }; Returns: string }
       current_employee_branch: { Args: { _user_id: string }; Returns: string }
+      delete_part_sale: { Args: { _sale_id: string }; Returns: undefined }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

@@ -3,7 +3,7 @@ import {
   ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
   ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin, Landmark, FileText,
   BookOpen, ShieldCheck, Wallet, Map,
-  AlertTriangle, Receipt,
+  AlertTriangle, Receipt, ShoppingCart,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
@@ -79,6 +79,7 @@ export function AppSidebar() {
     ...(hasPermission("view_repairs") || hasPermission("manage_repairs") ? [{ title: "수리이력", url: "/repairs", icon: Wrench }] : []),
     ...(hasPermission("view_repairs") ? [{ title: "에러코드 기록", url: "/error-codes", icon: AlertTriangle }] : []),
     ...(hasPermission("view_parts") ? [{ title: "부품관리", url: "/parts", icon: Package }] : []),
+    ...(hasPermission("view_part_sales") ? [{ title: "부품 판매", url: "/part-sales", icon: ShoppingCart }] : []),
     ...(hasPermission("view_parts") ? [{ title: "부품 도면", url: "/diagrams", icon: Map }] : []),
     ...(hasPermission("view_repair_templates") ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
     ...(hasPermission("view_vendors") ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),

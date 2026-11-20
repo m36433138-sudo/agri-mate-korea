@@ -33,6 +33,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/attachments": "작업기 관리",
   "/error-codes": "에러코드 기록",
   "/diagrams": "부품 도면",
+  "/part-sales": "부품 판매",
   "/insurance-repairs": "보험수리 관리",
   "/quotes": "견적서 관리",
   "/knowledge": "지식베이스",
