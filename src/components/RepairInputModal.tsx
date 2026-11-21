@@ -10,7 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as MapIcon } from "lucide-react";
+import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as MapIcon, Camera } from "lucide-react";
+import RepairPhotoPartsDialog from "@/components/repair/RepairPhotoPartsDialog";
+import type { EstimateItem } from "@/lib/insuranceEstimate";
 import EstimateDiagramPicker from "@/components/insurance/EstimateDiagramPicker";
 import { mergeDiagramParts, modelFromMachineLabel, rowsToPanelItems } from "@/lib/repairDiagramParts";
 import { formatPrice } from "@/lib/formatters";
@@ -184,6 +186,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [customPartNumber, setCustomPartNumber] = useState("");
   const [customPartQty, setCustomPartQty] = useState("1");
   const [diagramOpen, setDiagramOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   const addCustomPart = () => {
     const name = customPartName.trim();
@@ -547,6 +550,18 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   };
 
   const laborCostNum = parseInt(laborCost) || 0;
+  const addPickedParts = (picked: EstimateItem[]) =>
+    setPartRows((prev) =>
+      mergeDiagramParts(prev, picked, (it) => ({
+        part_id: `custom-diag-${it.key}`,
+        part_name: it.part_name || it.part_code,
+        part_number: it.part_code,
+        unit: "개",
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        branch: defaultBranch,
+      })),
+    );
   const partsSubtotal = partRows.reduce((sum, r) => sum + (Number(r.unit_price) || 0) * (Number(r.quantity) || 0), 0);
   const totalCost = laborCostNum + partsSubtotal;
 
@@ -926,28 +941,27 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                 </div>
               )}
 
-              <Button type="button" variant="outline" className="w-full gap-2" onClick={() => setDiagramOpen(true)}>
-                <MapIcon className="h-4 w-4 text-primary" /> 부품 도면 보면서 담기
-              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button type="button" variant="outline" className="w-full gap-2" onClick={() => setDiagramOpen(true)}>
+                  <MapIcon className="h-4 w-4 text-primary" /> 부품 도면 보면서 담기
+                </Button>
+                <Button type="button" variant="outline" className="w-full gap-2" onClick={() => setPhotoOpen(true)}>
+                  <Camera className="h-4 w-4 text-primary" /> 수리 사진으로 부품 찾기
+                </Button>
+              </div>
+              <RepairPhotoPartsDialog
+                open={photoOpen}
+                onOpenChange={setPhotoOpen}
+                machineModel={modelFromMachineLabel(selectedMachineName)}
+                onAdd={addPickedParts}
+              />
               <EstimateDiagramPicker
                 open={diagramOpen}
                 onOpenChange={setDiagramOpen}
                 target="수리 부품"
                 machineModel={modelFromMachineLabel(selectedMachineName)}
                 items={rowsToPanelItems(partRows)}
-                onAdd={(picked) =>
-                  setPartRows((prev) =>
-                    mergeDiagramParts(prev, picked, (it) => ({
-                      part_id: `custom-diag-${it.key}`,
-                      part_name: it.part_name || it.part_code,
-                      part_number: it.part_code,
-                      unit: "개",
-                      quantity: it.quantity,
-                      unit_price: it.unit_price,
-                      branch: defaultBranch,
-                    })),
-                  )
-                }
+                onAdd={addPickedParts}
                 onUpdate={(key, patch) =>
                   setPartRows((prev) => prev.map((r, i) => (String(i) === key && patch.quantity != null ? { ...r, quantity: patch.quantity } : r)))
                 }

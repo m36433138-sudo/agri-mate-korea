@@ -13,3 +13,14 @@ export function photoModelOptions(diagrams: D[]): string[] {
 export function diagramIdsForModel(diagrams: D[], model: string): string[] {
   return diagrams.filter((d) => d.kind === "diagram" && modelsOf(d.model_name).includes(model)).map((d) => d.id);
 }
+
+/** 사진을 긴 변 max px JPEG data URL로 줄인다 (AI에 보내는 크기·속도 절약) */
+export async function toJpegDataUrl(file: File, max = 1600): Promise<string> {
+  const img = await createImageBitmap(file);
+  const s = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+  img.close?.();
+  return c.toDataURL("image/jpeg", 0.85);
+}

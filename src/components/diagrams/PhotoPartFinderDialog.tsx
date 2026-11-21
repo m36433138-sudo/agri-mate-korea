@@ -7,20 +7,11 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Camera, ImagePlus, Loader2, Sparkles, Map as MapIcon } from "lucide-react";
 import type { Diagram } from "@/hooks/useDiagrams";
-import { diagramIdsForModel, photoModelOptions } from "@/lib/photoPartFinder";
+import { diagramIdsForModel, photoModelOptions, toJpegDataUrl } from "@/lib/photoPartFinder";
 
 type Area = { diagram_id: string; title: string; reason: string };
-type Match = Area & { part_code: string; part_name: string | null; callout_no: string | null; confidence: string };
+type Match = { diagram_id: string | null; title: string | null; reason: string; part_code: string; part_name: string | null; callout_no: string | null; confidence: string };
 type Result = { description: string; areas: Area[]; matches: Match[] };
-
-async function toJpegDataUrl(file: File, max = 1600): Promise<string> {
-  const img = await createImageBitmap(file);
-  const s = Math.min(1, max / Math.max(img.width, img.height));
-  const c = document.createElement("canvas");
-  c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
-  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-  return c.toDataURL("image/jpeg", 0.85);
-}
 
 const confClass: Record<string, string> = {
   높음: "bg-emerald-950/60 text-emerald-400 border-emerald-800",
@@ -71,8 +62,8 @@ export default function PhotoPartFinderDialog({
     } finally { setBusy(false); }
   };
 
-  const go = (id: string, code?: string) => {
-    const d = byId.get(id);
+  const go = (id: string | null, code?: string) => {
+    const d = id ? byId.get(id) : undefined;
     if (!d) return;
     onOpenChange(false);
     onOpen(d, code);

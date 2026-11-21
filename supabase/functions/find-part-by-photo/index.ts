@@ -22,6 +22,45 @@ const toBase64 = (buf: Uint8Array) => {
   return btoa(s);
 };
 
+const norm = (c: unknown) => String(c ?? "").toUpperCase().replace(/\s+/g, "");
+
+/** 라벨에서 읽은 번호의 표기 변형 (하이픈 유무) */
+const variantsOf = (c: string) => {
+  const v = new Set([c, c.replace(/-/g, "")]);
+  const bare = c.replace(/-/g, "");
+  if (/^[0-9A-Z]{11,12}$/.test(bare)) v.add(`${bare.slice(0, 6)}-${bare.slice(6)}`);
+  return [...v].filter(Boolean);
+};
+
+/**
+ * 사진 속 부품 상자·라벨에서 읽은 번호를 실제 데이터와 맞춘다.
+ * 그 기종 도면에 있는 번호 먼저, 없으면 재고에 있는 번호. 어디에도 없는 번호는 버린다.
+ */
+async function matchLabelCodes(db: any, codes: string[], diagrams: { id: string; title: string }[]) {
+  const variants = [...new Set(codes.flatMap(variantsOf))];
+  const byId = new Map(diagrams.map((d) => [d.id, d]));
+  const found = new Map<string, any>();
+  for (let i = 0; i < diagrams.length && found.size < codes.length; i += 300) {
+    const { data } = await db.from("diagram_hotspots").select("diagram_id,part_code,part_name,callout_no")
+      .in("diagram_id", diagrams.slice(i, i + 300).map((d) => d.id)).in("part_code", variants).limit(200);
+    for (const h of data ?? []) {
+      const key = norm(h.part_code).replace(/-/g, "");
+      if (found.has(key)) continue;
+      const d = byId.get(h.diagram_id);
+      found.set(key, { diagram_id: h.diagram_id, title: d?.title ?? null, part_code: h.part_code, part_name: h.part_name, callout_no: h.callout_no ?? null });
+    }
+  }
+  const missing = variants.filter((v) => !found.has(v.replace(/-/g, "")));
+  if (missing.length) {
+    const { data } = await db.from("inventory").select("part_code,part_name").in("part_code", missing).limit(20);
+    for (const r of data ?? []) {
+      const key = norm(r.part_code).replace(/-/g, "");
+      if (!found.has(key)) found.set(key, { diagram_id: null, title: null, part_code: r.part_code, part_name: r.part_name, callout_no: null });
+    }
+  }
+  return [...found.values()].slice(0, 5).map((m) => ({ ...m, confidence: "높음", reason: "사진 속 부품번호(라벨)를 읽었어요", source: "label" }));
+}
+
 async function ask(req: Request, apiKey: string, system: string, content: any[]) {
   const { result } = createResponsesCall(req, { baseURL: BASE, apiKey, model: MODEL }, [
     { role: "system", content: system },
@@ -66,7 +105,7 @@ Deno.serve(async (req) => {
     const list = diagrams.map((d, i) => `${i + 1}. ${d.title}`).join("\n");
     const step1 = await ask(
       req, apiKey,
-      "You are a parts expert for agricultural machinery (combines, tractors, rice transplanters, implements). Given a photo of a part (possibly mounted on the machine) and the list of parts-book figure titles for one model, pick the figures most likely to contain the photographed part. Reply ONLY with JSON: {\"description\":\"short Korean description of what the photo shows\",\"picks\":[{\"n\":<figure number from list>,\"reason\":\"short Korean reason\"}]} with 1-3 picks, best first.",
+      "You are a parts expert for agricultural machinery (combines, tractors, rice transplanters, implements). Given a photo of a part (possibly mounted on the machine) and the list of parts-book figure titles for one model, pick the figures most likely to contain the photographed part. Also, if a part number is printed on a part, box, bag or tag in the photo, copy it exactly into label_codes (otherwise leave it empty; never guess). Reply ONLY with JSON: {\"description\":\"short Korean description of what the photo shows\",\"label_codes\":[\"part number as printed\"],\"picks\":[{\"n\":<figure number from list>,\"reason\":\"short Korean reason\"}]} with 1-3 picks, best first.",
       [{ type: "text", text: `모델: ${model}\n도면 목록:\n${list}` }, photo],
     );
     const picks = (Array.isArray(step1.picks) ? step1.picks : [])
@@ -74,7 +113,17 @@ Deno.serve(async (req) => {
       .filter((p: any) => p.d)
       .filter((p: any, i: number, a: any[]) => a.findIndex((x) => x.d.id === p.d.id) === i)
       .slice(0, 3);
-    if (picks.length === 0) return json({ description: step1.description ?? "", areas: [], matches: [] });
+    const areas = picks.map((p: any) => ({ diagram_id: p.d.id, title: p.d.title, reason: p.reason }));
+    const description = String(step1.description ?? "").slice(0, 300);
+
+    // 라벨 번호가 실제 데이터와 맞으면 그걸로 끝 (두 번째 AI 호출 생략)
+    const labelCodes = (Array.isArray(step1.label_codes) ? step1.label_codes : [])
+      .map(norm).filter((c: string) => /^[0-9A-Z][0-9A-Z-]{4,29}$/.test(c)).slice(0, 5);
+    if (labelCodes.length) {
+      const labelMatches = await matchLabelCodes(db, labelCodes, diagrams);
+      if (labelMatches.length) return json({ description, areas, matches: labelMatches });
+    }
+    if (picks.length === 0) return json({ description, areas: [], matches: [] });
 
     // ② 후보 도면 그림 + 부품표와 대조
     const figs = await Promise.all(picks.map(async (p: any) => {
@@ -113,17 +162,14 @@ Deno.serve(async (req) => {
         callout_no: [...p.callouts][0] ?? null,
         confidence: ["높음", "보통", "낮음"].includes(m?.confidence) ? m.confidence : "낮음",
         reason: String(m?.reason ?? "").slice(0, 200),
+        source: "diagram",
       };
     }).filter(Boolean).filter((m: any, i: number, a: any[]) => a.findIndex((x) => x.diagram_id === m.diagram_id && x.part_code === m.part_code) === i).slice(0, 5);
 
-    return json({
-      description: String(step1.description ?? "").slice(0, 300),
-      areas: picks.map((p: any) => ({ diagram_id: p.d.id, title: p.d.title, reason: p.reason })),
-      matches,
-    });
+    return json({ description, areas, matches });
   } catch (e) {
     const status = (e as { statusCode?: number })?.statusCode;
     const msg = e instanceof Error ? e.message : "인식 실패";
-    return json({ error: status === 402 ? "AI 크레딧이 부족합니다. 충전 후 다시 시도해 주세요." : msg }, status && status >= 400 ? status : 500);
+    return json({ error: status === 402 ? "AI 크레딧이 부족합니다. 충전 후 다시 시도해 주세요." : status === 429 ? "요청이 많아요. 잠시 후 다시 시도해 주세요." : msg }, status && status >= 400 ? status : 500);
   }
 });
