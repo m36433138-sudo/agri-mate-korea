@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { FormDialogTopBar, formDialogBodyClass, formDialogContentClass } from "@/components/forms/FormDialogTopBar";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Search, Map as MapIcon, Camera } from "lucide-react";
 import RepairPhotoPartsDialog from "@/components/repair/RepairPhotoPartsDialog";
@@ -63,6 +65,8 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
   const [manualQty, setManualQty] = useState("1");
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
+  // 기존 부품 목록을 다 불러온 뒤의 값을 "변경 없음" 기준으로 삼는다
+  const [partsLoaded, setPartsLoaded] = useState(false);
 
   const { data: employees } = useQuery({
     queryKey: ["employees-list"],
@@ -117,10 +121,12 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       setManualNumber("");
       setManualQty("1");
     }
+    if (!open) setPartsLoaded(false);
   }, [open, repair]);
 
   useEffect(() => {
-    if (existingParts) {
+    // 다시 열 때도(캐시가 같아도) 저장된 부품 목록으로 되돌린다
+    if (open && existingParts) {
       setPartRows(
         existingParts.map((rp: any) => ({
           key: rp.id,
@@ -133,8 +139,9 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           branch: (rp.branch === "강진" ? "강진" : "장흥") as "장흥" | "강진",
         }))
       );
+      setPartsLoaded(true);
     }
-  }, [existingParts]);
+  }, [existingParts, open]);
 
   const addFromSearch = async (p: any) => {
     // 매출가는 inventory(부품관리)에서 최신 값을 조회
@@ -344,17 +351,34 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
 
   const valid = repairDate && repairContent;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>수리 이력 수정</DialogTitle>
-          {repair && (
-            <LastModifiedInfo updatedBy={repair.updated_by} updatedAt={repair.updated_at} className="pt-1" />
-          )}
-        </DialogHeader>
+  const snapshot = JSON.stringify({
+    repairDate, repairContent, technician, laborCost, operatingHours, notes, accountingPosted,
+    parts: partRows.map((r) => [r.part_id, r.part_name, r.part_number, r.quantity, r.unit_price, r.branch]),
+  });
+  const closeNow = useCallback(() => onOpenChange(false), [onOpenChange]);
+  const { requestClose } = useUnsavedGuard({ open, ready: partsLoaded, snapshot, onClose: closeNow });
 
-        <div className="flex-1 overflow-y-auto space-y-4 -mx-6 px-6">
+  return (
+    <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : requestClose())}>
+      <DialogContent
+        hideClose
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => { e.preventDefault(); requestClose(); }}
+        className={`sm:max-w-2xl max-h-[90vh] flex flex-col ${formDialogContentClass}`}
+      >
+        <FormDialogTopBar
+          title="수리 이력 수정"
+          onClose={requestClose}
+          onSave={() => updateMutation.mutate()}
+          saving={updateMutation.isPending}
+          saveDisabled={!valid}
+          extra={repair && (
+            <LastModifiedInfo updatedBy={repair.updated_by} updatedAt={repair.updated_at} className="pt-1 text-center sm:text-left" />
+          )}
+        />
+
+        <div className={`flex-1 min-h-0 overflow-y-auto space-y-4 pb-2 ${formDialogBodyClass}`}>
           {repair?.machines && (
             <div className="rounded-md border bg-muted/30 p-2 text-sm">
               <span className="font-medium">{repair.machines.model_name}</span>{" "}
@@ -571,7 +595,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="pt-3 border-t">
           <div className="flex flex-col mr-auto text-xs text-muted-foreground">
             <div className="flex items-center gap-3">
               <span>공임비 {formatPrice(laborCostNum)}</span>
@@ -582,10 +606,6 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
               <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
             </div>
           </div>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={() => updateMutation.mutate()} disabled={!valid || updateMutation.isPending}>
-            {updateMutation.isPending ? "저장 중..." : "저장"}
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { FormDialogTopBar, formDialogBodyClass, formDialogContentClass } from "@/components/forms/FormDialogTopBar";
+import { SelectedCustomerCard } from "@/components/SelectedCustomerCard";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as MapIcon, Camera } from "lucide-react";
@@ -169,6 +172,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [selectedCustomerName, setSelectedCustomerName] = useState<string>("");
+  const [selectedCustomerPhone, setSelectedCustomerPhone] = useState<string | null>(null);
+  const [selectedCustomerAddress, setSelectedCustomerAddress] = useState<string | null>(null);
+  // 「고객 변경」으로 검색을 다시 열었을 때만 검색칸에 바로 커서를 준다
+  const [customerSearchFocus, setCustomerSearchFocus] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerResults, setCustomerResults] = useState<any[]>([]);
   const [customerMachines, setCustomerMachines] = useState<any[]>([]);
@@ -248,6 +255,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const pickCustomer = async (c: any) => {
     setSelectedCustomerId(c.id);
     setSelectedCustomerName(c.name);
+    setSelectedCustomerPhone(c.phone || null);
+    setSelectedCustomerAddress(c.address || null);
+    setCustomerSearchFocus(false);
     setCustomerSearch("");
     setCustomerResults([]);
     const { data } = await supabase
@@ -261,6 +271,8 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const clearCustomer = () => {
     setSelectedCustomerId("");
     setSelectedCustomerName("");
+    setSelectedCustomerPhone(null);
+    setSelectedCustomerAddress(null);
     setCustomerMachines([]);
     setSelectedMachineId("");
     setSelectedMachineName("");
@@ -336,6 +348,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setPartialPaid("");
       setSelectedCustomerId("");
       setSelectedCustomerName("");
+      setSelectedCustomerPhone(null);
+      setSelectedCustomerAddress(null);
+      setCustomerSearchFocus(false);
       setCustomerSearch("");
       setCustomerResults([]);
       setCustomerMachines([]);
@@ -715,16 +730,35 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
   const valid = selectedMachineId && repairDate && repairContent;
 
+  // 기계 자동 매칭(작업표 초안)은 비동기로 채워지므로 비교에서 뺀다 — 사람이 입력한 값만 본다
+  const snapshot = JSON.stringify({
+    repairDate, repairContent, technician, laborCost, operatingHours, notes, accountingPosted,
+    paymentMode, partialPaid, selectedCustomerId,
+    parts: partRows.map((r) => [r.part_name, r.part_number, r.quantity, r.unit_price, r.branch]),
+  });
+  const closeNow = useCallback(() => onOpenChange(false), [onOpenChange]);
+  const { requestClose } = useUnsavedGuard({ open, snapshot, onClose: closeNow });
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>수리 이력 추가</DialogTitle>
-        </DialogHeader>
+    <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : requestClose())}>
+      <DialogContent
+        hideClose
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => { e.preventDefault(); requestClose(); }}
+        className={`sm:max-w-2xl max-h-[90vh] flex flex-col ${formDialogContentClass}`}
+      >
+        <FormDialogTopBar
+          title="수리 이력 추가"
+          onClose={requestClose}
+          onSave={() => saveMutation.mutate()}
+          saving={saveMutation.isPending}
+          saveDisabled={!valid}
+        />
 
         <div
           ref={scrollRef}
-          className="flex-1 -mx-6 px-6 overflow-y-auto cursor-grab"
+          className={`flex-1 min-h-0 overflow-y-auto cursor-grab ${formDialogBodyClass}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -767,18 +801,19 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                   <div className="relative">
                     <Label>1. 고객 선택 *</Label>
                     {selectedCustomerId ? (
-                      <div className="flex items-center gap-2">
-                        <Input value={selectedCustomerName} disabled className="bg-muted flex-1" />
-                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={clearCustomer}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <SelectedCustomerCard
+                        name={selectedCustomerName}
+                        phone={selectedCustomerPhone}
+                        address={selectedCustomerAddress}
+                        onChange={() => { clearCustomer(); setCustomerSearchFocus(true); }}
+                      />
                     ) : (
                       <>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             placeholder="고객명 또는 전화번호로 검색..."
+                            autoFocus={customerSearchFocus}
                             value={customerSearch}
                             onChange={(e) => searchCustomers(e.target.value)}
                             className="pl-9"
@@ -1178,39 +1213,41 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               )}
             </div>
           </div>
-        </div>
 
-        <div className="rounded-lg border p-3 space-y-2">
-          <Label className="text-sm">결제</Label>
-          <div className="grid grid-cols-3 gap-2">
-            {([["paid","완납"],["unpaid","외상(미수)"],["partial","일부 입금"]] as const).map(([v,l]) => (
-              <Button key={v} type="button" size="sm" variant={paymentMode === v ? "default" : "outline"} onClick={() => setPaymentMode(v)}>
-                {l}
-              </Button>
-            ))}
+          <div className="space-y-3 pt-5 pb-2">
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm">결제</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {([["paid","완납"],["unpaid","외상(미수)"],["partial","일부 입금"]] as const).map(([v,l]) => (
+                  <Button key={v} type="button" size="sm" variant={paymentMode === v ? "default" : "outline"} onClick={() => setPaymentMode(v)}>
+                    {l}
+                  </Button>
+                ))}
+              </div>
+              {paymentMode === "partial" && (
+                <Input type="number" min={0} value={partialPaid} onChange={(e) => setPartialPaid(e.target.value)} placeholder="받은 금액" className="h-9" />
+              )}
+              {paymentMode !== "paid" && totalCost > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  저장하면 미수금 {formatPrice(Math.max(0, totalCost - (paymentMode === "partial" ? parseInt(partialPaid) || 0 : 0)))}이 고객 미수금에 자동 등록돼요 (만기 30일).
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 px-1">
+              <Checkbox
+                id="accounting-posted"
+                checked={accountingPosted}
+                onCheckedChange={(v) => setAccountingPosted(!!v)}
+              />
+              <Label htmlFor="accounting-posted" className="cursor-pointer text-sm">
+                전산 기표 완료
+              </Label>
+            </div>
           </div>
-          {paymentMode === "partial" && (
-            <Input type="number" min={0} value={partialPaid} onChange={(e) => setPartialPaid(e.target.value)} placeholder="받은 금액" className="h-9" />
-          )}
-          {paymentMode !== "paid" && totalCost > 0 && (
-            <p className="text-xs text-muted-foreground">
-              저장하면 미수금 {formatPrice(Math.max(0, totalCost - (paymentMode === "partial" ? parseInt(partialPaid) || 0 : 0)))}이 고객 미수금에 자동 등록돼요 (만기 30일).
-            </p>
-          )}
         </div>
 
-        <div className="flex items-center gap-2 px-1">
-          <Checkbox
-            id="accounting-posted"
-            checked={accountingPosted}
-            onCheckedChange={(v) => setAccountingPosted(!!v)}
-          />
-          <Label htmlFor="accounting-posted" className="cursor-pointer text-sm">
-            전산 기표 완료
-          </Label>
-        </div>
-
-        <DialogFooter className="pt-4 border-t">
+        <DialogFooter className="pt-3 border-t">
           <div className="flex flex-col mr-auto text-xs text-muted-foreground">
             <div className="flex items-center gap-3">
               <span>공임비 {formatPrice(laborCostNum)}</span>
@@ -1221,10 +1258,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
             </div>
           </div>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={() => saveMutation.mutate()} disabled={!valid || saveMutation.isPending}>
-            {saveMutation.isPending ? "저장 중..." : "저장"}
-          </Button>
+          {!valid && (
+            <p className="text-[11px] text-muted-foreground self-center">기계·수리일·수리 내용을 넣으면 저장할 수 있어요</p>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
