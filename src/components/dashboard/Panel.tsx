@@ -22,7 +22,7 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className={cn("rounded-2xl bg-card border border-border/70 card-shadow overflow-hidden", className)}>
+    <section className={cn("rounded-3xl bg-card border border-border/70 card-shadow overflow-hidden", className)}>
       <div className="flex items-center justify-between px-5 pt-5 pb-2">
         <h2 className="text-[17px] font-bold tracking-tight flex items-center gap-2">
           {title}

@@ -63,11 +63,11 @@ export function AppSidebar() {
   }, [activeGroup]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="px-3 pt-4 pb-2">
+    <Sidebar collapsible="icon" variant="floating" className="p-3 pr-0">
+      <SidebarHeader className="px-4 pt-5 pb-3">
         <LogoHeader collapsed={collapsed} />
       </SidebarHeader>
-      <SidebarContent className="gap-0 px-1">
+      <SidebarContent className="gap-0 px-2">
         {groups.map((g, i) => (
           <NavSection
             key={g.id}
@@ -79,7 +79,7 @@ export function AppSidebar() {
           />
         ))}
       </SidebarContent>
-      <SidebarFooter className="p-2">
+      <SidebarFooter className="p-3">
         <FooterMenu collapsed={collapsed} profile={profile} role={role} onLogout={handleLogout} />
       </SidebarFooter>
     </Sidebar>
@@ -137,15 +137,21 @@ function NavSection({ group, collapsed, open, onToggle, first }: {
 function NavRow({ item, collapsed, onPick }: { item: NavItem; collapsed: boolean; onPick: () => void }) {
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined} className="h-10">
+      <SidebarMenuButton
+        asChild
+        tooltip={collapsed ? item.title : undefined}
+        className="h-11 p-0 hover:bg-transparent active:bg-transparent group-data-[collapsible=icon]:!p-0"
+      >
         <NavLink
           to={item.url}
           end={item.url === "/" || item.url === "/my-page"}
           onClick={onPick}
-          className="flex items-center gap-3 px-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-colors duration-150"
-          activeClassName="bg-sidebar-accent !text-sidebar-accent-foreground font-semibold"
+          className="group/nav flex items-center gap-3 pl-1.5 pr-3 rounded-full text-sidebar-foreground/85 hover:bg-foreground/[0.05] hover:text-sidebar-foreground transition-colors duration-150"
+          activeClassName="nav-active bg-sidebar-accent !text-sidebar-accent-foreground font-semibold shadow-sm hover:!bg-sidebar-accent"
         >
-          <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.9} />
+          <span className="nav-icon w-8 h-8 shrink-0 rounded-full bg-foreground/[0.06] flex items-center justify-center transition-colors">
+            <item.icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
+          </span>
           {!collapsed && <span className="text-[14px] leading-none flex-1 truncate">{item.title}</span>}
           {!!item.badge && item.badge > 0 && (
             <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-white text-[11px] font-bold flex items-center justify-center">

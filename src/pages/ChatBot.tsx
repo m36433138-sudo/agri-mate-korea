@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Send, Bot, User, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +19,9 @@ const EXAMPLE_QUESTIONS = [
 
 export default function ChatBot() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  // 대시보드 AI 카드에서 넘어온 질문(?q=)은 입력칸에만 채운다 — 보내기는 직원이 누른다
+  const [params] = useSearchParams();
+  const [input, setInput] = useState(() => params.get("q") ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
