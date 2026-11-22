@@ -101,7 +101,7 @@ export default function ErrorCodeCatalogList({ entries, loading, recordCount, on
       {loading ? (
         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : filtered.length === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             찾는 코드가 없습니다. 코드 뒷자리만 넣어 보거나 기종을 「전체」로 바꿔 보세요.
           </CardContent>
@@ -120,7 +120,7 @@ export default function ErrorCodeCatalogList({ entries, loading, recordCount, on
                 <span className="text-xs text-muted-foreground truncate">{e.series}</span>
                 <span className="flex-1" />
                 {n > 0 && (
-                  <Badge variant="outline" className="gap-1 text-emerald-400 border-emerald-400/40 shrink-0">
+                  <Badge variant="outline" className="gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-400/40 shrink-0">
                     <Wrench className="h-3 w-3" /> 수리 {n}건
                   </Badge>
                 )}

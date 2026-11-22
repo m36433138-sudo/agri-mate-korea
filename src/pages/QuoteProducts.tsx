@@ -52,7 +52,7 @@ export default function QuoteProducts() {
   );
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-5">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">견적 제품 관리</h1>

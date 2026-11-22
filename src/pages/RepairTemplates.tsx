@@ -69,7 +69,7 @@ export default function RepairTemplates() {
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
       ) : templates?.length === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             등록된 템플릿이 없습니다. 자주 사용하는 수리 부품 조합을 템플릿으로 등록하세요.
           </CardContent>
@@ -77,7 +77,7 @@ export default function RepairTemplates() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {templates?.map((t) => (
-            <Card key={t.id} className="shadow-card border-0 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setEditId(t.id)}>
+            <Card key={t.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setEditId(t.id)}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">

@@ -82,7 +82,7 @@ export default function MyPage() {
       <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight mb-6">마이페이지</h1>
 
       {/* Profile Card */}
-      <Card className="shadow-card border-0 mb-6">
+      <Card className="mb-6">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-full bg-primary/10">
@@ -111,7 +111,7 @@ export default function MyPage() {
       )}
 
       {/* My Machines */}
-      <Card className="shadow-card border-0 mb-6">
+      <Card className="mb-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Tractor className="h-4 w-4" /> 내 기계
@@ -159,7 +159,7 @@ export default function MyPage() {
       </Card>
 
       {/* My Repair History */}
-      <Card className="shadow-card border-0">
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Wrench className="h-4 w-4" /> 수리 이력

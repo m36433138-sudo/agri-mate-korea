@@ -167,7 +167,7 @@ function SummaryCard({
   return (
     <div
       className={`border rounded-lg p-3 ${
-        danger ? "border-red-200 bg-red-50" : highlight ? "border-orange-200 bg-orange-50" : ""
+        danger ? "border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/15" : highlight ? "border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/15" : ""
       }`}
     >
       <p className="text-[11px] text-muted-foreground mb-1">{label}</p>
@@ -196,7 +196,7 @@ function FinanceRow({
   return (
     <tr
       className={`hover:bg-muted/30 transition-colors ${
-        isOverdue ? "bg-red-50" : record.is_paid ? "opacity-50" : ""
+        isOverdue ? "bg-red-50 dark:bg-red-500/15" : record.is_paid ? "opacity-50" : ""
       }`}
     >
       <td className="px-3 py-2">

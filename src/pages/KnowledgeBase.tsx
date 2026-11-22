@@ -387,7 +387,7 @@ export default function KnowledgeBase() {
                     <span>
                       학습 {readyDocs} / {g.totalParts} 조각 완료
                       {processingDocs > 0 && (
-                        <span className="text-amber-400 ml-1">· 진행 {processingDocs}</span>
+                        <span className="text-amber-600 dark:text-amber-400 ml-1">· 진행 {processingDocs}</span>
                       )}
                       {errorDocs > 0 && (
                         <span className="text-red-400 ml-1">· 실패 {errorDocs}</span>
@@ -488,7 +488,7 @@ export default function KnowledgeBase() {
         <h2 className="text-sm font-semibold text-muted-foreground">
           업로드된 자료 <span className="text-foreground">{docs.length}개</span>
           {readyCount > 0 && (
-            <span className="ml-2 text-xs text-emerald-400">· AI 학습 완료 {readyCount}개</span>
+            <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">· AI 학습 완료 {readyCount}개</span>
           )}
         </h2>
       </div>
@@ -612,7 +612,7 @@ function StatusPill({ status, doc }: { status: string; doc?: KnowledgeDoc }) {
         ? `학습 중 ${doc.processed_segments ?? 0}/${doc.total_segments}`
         : "학습 중";
     return (
-      <Badge variant="outline" className="gap-1 text-amber-400 border-amber-400/40">
+      <Badge variant="outline" className="gap-1 text-amber-600 dark:text-amber-400 border-amber-400/40">
         <Loader2 className="h-3 w-3 animate-spin" />
         {label}
       </Badge>
@@ -620,7 +620,7 @@ function StatusPill({ status, doc }: { status: string; doc?: KnowledgeDoc }) {
   }
   if (status === "ready")
     return (
-      <Badge variant="outline" className="gap-1 text-emerald-400 border-emerald-400/40">
+      <Badge variant="outline" className="gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-400/40">
         <CheckCircle2 className="h-3 w-3" />
         완료
       </Badge>

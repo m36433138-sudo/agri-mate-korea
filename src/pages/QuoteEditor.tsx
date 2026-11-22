@@ -177,7 +177,7 @@ export default function QuoteEditor() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-24">
+    <div className="space-y-4 max-w-6xl mx-auto pb-24">
       <div className="flex flex-wrap justify-between items-center gap-2">
         <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">{isNew ? "견적서 작성" : `견적서 #${quoteNumber}`}</h1>
         <div className="flex gap-2">

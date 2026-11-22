@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, RefreshCw, Wrench, ShoppingCart, TrendingUp, User, Package } from "lucide-react";
+import { PageHeader } from "@/components/page/PageParts";
 import { formatPrice, formatDate } from "@/lib/formatters";
 
 type Period = "이번달" | "지난달" | "3개월" | "올해";
@@ -269,9 +270,24 @@ export default function RepairStats() {
 
   return (
     <div className="space-y-5">
-      {/* 공통 필터 + 액션 */}
+      <PageHeader
+        title="실적 현황"
+        sub={<>{period} · {branch === "전체" ? "두 지점" : branch} · 수리 {filteredRepairs.length}건 · 판매 {filteredSales.length}대</>}
+        actions={
+          <>
+            <Button onClick={exportCSV} variant="outline" className="h-11 rounded-full bg-card">
+              <Download className="h-4 w-4 mr-1.5" /> CSV
+            </Button>
+            <Button onClick={refresh} variant="outline" className="h-11 w-11 p-0 rounded-full bg-card" aria-label="새로고침" title="새로고침">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </>
+        }
+      />
+
+      {/* 공통 필터 */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex gap-2 items-center overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
           <Tabs value={period} onValueChange={v => setPeriod(v as Period)}>
             <TabsList>
               <TabsTrigger value="이번달">이번달</TabsTrigger>
@@ -288,14 +304,6 @@ export default function RepairStats() {
             </TabsList>
           </Tabs>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={exportCSV} variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-1" /> CSV
-          </Button>
-          <Button onClick={refresh} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-1" /> 새로고침
-          </Button>
-        </div>
       </div>
 
       {/* 메인 탭 */}
@@ -303,11 +311,11 @@ export default function RepairStats() {
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="repair" className="gap-1.5 flex-1 sm:flex-none">
             <Wrench className="h-4 w-4" /> 수리 실적
-            <span className="ml-1 text-[11px] bg-muted/50 rounded px-1.5 py-0.5">{filteredRepairs.length}</span>
+            <span className="ml-1 text-[11px] bg-foreground/[0.06] rounded-full px-2 py-0.5 tabular-nums">{filteredRepairs.length}</span>
           </TabsTrigger>
           <TabsTrigger value="sales" className="gap-1.5 flex-1 sm:flex-none">
             <ShoppingCart className="h-4 w-4" /> 영업 실적
-            <span className="ml-1 text-[11px] bg-muted/50 rounded px-1.5 py-0.5">{filteredSales.length}</span>
+            <span className="ml-1 text-[11px] bg-foreground/[0.06] rounded-full px-2 py-0.5 tabular-nums">{filteredSales.length}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -317,7 +325,7 @@ export default function RepairStats() {
           {/* 기사 필터 */}
           <div className="flex items-center gap-2">
             <Select value={techFilter} onValueChange={setTechFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="기사 선택" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-11 rounded-xl bg-card"><SelectValue placeholder="기사 선택" /></SelectTrigger>
               <SelectContent>
                 {technicians.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
@@ -331,7 +339,7 @@ export default function RepairStats() {
               <User className="h-4 w-4 text-muted-foreground" /> 기사별 실적
             </h3>
             {techCards.length === 0 ? (
-              <Card className="border-0 shadow-card">
+              <Card>
                 <CardContent className="py-12 text-center text-muted-foreground text-sm">
                   해당 기간에 완료된 수리 내역이 없습니다.
                 </CardContent>
@@ -341,7 +349,7 @@ export default function RepairStats() {
                 {techCards.map(tc => {
                   const color = getTechnicianColor(tc.name);
                   return (
-                    <Card key={tc.name} className="border-0 shadow-card overflow-hidden">
+                    <Card key={tc.name} className="overflow-hidden">
                       {/* 상단 색상 바 */}
                       <div className="h-1" style={{ backgroundColor: color }} />
                       <CardContent className="p-4 space-y-3">
@@ -425,7 +433,7 @@ export default function RepairStats() {
               <h3 className="text-base font-bold mb-3 flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" /> 월별 작업 현황
               </h3>
-              <Card className="border-0 shadow-card overflow-hidden">
+              <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -516,7 +524,7 @@ export default function RepairStats() {
           {/* ③ 완료 상세 테이블 */}
           <div>
             <h3 className="text-base font-bold mb-3">완료 상세</h3>
-            <Card className="border-0 shadow-card overflow-hidden">
+            <Card className="overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -564,7 +572,7 @@ export default function RepairStats() {
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {r.입고일 ? formatSheetDateFull(r.입고일) : (
-                              <span className="text-[10px] bg-amber-100 text-amber-700 rounded px-1 py-0.5">날짜없음</span>
+                              <span className="text-[10px] bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 rounded px-1 py-0.5">날짜없음</span>
                             )}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
@@ -595,7 +603,7 @@ export default function RepairStats() {
             <>
               {/* KPI 카드 */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <Card className="border-0 shadow-card">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="p-1.5 rounded-lg bg-primary/10"><ShoppingCart className="h-4 w-4 text-primary" /></div>
@@ -604,7 +612,7 @@ export default function RepairStats() {
                     <p className="text-2xl font-bold tabular-nums">{filteredSales.length}<span className="text-sm font-normal text-muted-foreground ml-1">대</span></p>
                   </CardContent>
                 </Card>
-                <Card className="border-0 shadow-card">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="p-1.5 rounded-lg bg-success/10"><TrendingUp className="h-4 w-4 text-success" /></div>
@@ -613,7 +621,7 @@ export default function RepairStats() {
                     <p className="text-2xl font-bold tabular-nums">{Math.round(totalSalesRevenue / 10000).toLocaleString()}<span className="text-sm font-normal text-muted-foreground ml-1">만원</span></p>
                   </CardContent>
                 </Card>
-                <Card className="border-0 shadow-card sm:col-span-1 col-span-2">
+                <Card className="sm:col-span-1 col-span-2">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="p-1.5 rounded-lg bg-info/10"><Package className="h-4 w-4 text-info" /></div>
@@ -633,7 +641,7 @@ export default function RepairStats() {
                   <User className="h-4 w-4 text-muted-foreground" /> 영업사원별 실적
                 </h3>
                 {salesCards.length === 0 ? (
-                  <Card className="border-0 shadow-card">
+                  <Card>
                     <CardContent className="py-12 text-center text-muted-foreground text-sm">
                       해당 기간 판매 내역이 없습니다.<br />
                       <span className="text-xs mt-1 block">기계 등록 시 영업사원을 입력하면 여기에 표시됩니다.</span>
@@ -642,7 +650,7 @@ export default function RepairStats() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {salesCards.map(sc => (
-                      <Card key={sc.name} className="border-0 shadow-card">
+                      <Card key={sc.name}>
                         <CardContent className="p-4 space-y-3">
                           <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ backgroundColor: getSalesColor(sc.name) }}>
@@ -687,7 +695,7 @@ export default function RepairStats() {
               {/* 판매 상세 테이블 */}
               <div>
                 <h3 className="text-base font-bold mb-3">판매 상세</h3>
-                <Card className="border-0 shadow-card overflow-hidden">
+                <Card className="overflow-hidden">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>

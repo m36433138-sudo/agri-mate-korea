@@ -114,7 +114,7 @@ export default function AttachmentsCatalog() {
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
+    <div className="space-y-5 max-w-6xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2">
           <Tractor className="h-6 w-6 text-primary" /> 작업기 관리

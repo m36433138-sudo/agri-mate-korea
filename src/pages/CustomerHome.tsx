@@ -80,7 +80,7 @@ export default function CustomerHome() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <Card className="border-0 shadow-card rounded-2xl">
+        <Card className="rounded-2xl">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-primary/10">
               <Tractor className="h-5 w-5 text-primary" />
@@ -95,7 +95,7 @@ export default function CustomerHome() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-card rounded-2xl">
+        <Card className="rounded-2xl">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-warning/10">
               <Wrench className="h-5 w-5 text-warning" />
@@ -115,7 +115,7 @@ export default function CustomerHome() {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link to="/my-page">
-          <Card className="border-0 shadow-card rounded-2xl hover:shadow-card-hover transition-shadow cursor-pointer group">
+          <Card className="rounded-2xl hover:-hover transition-shadow cursor-pointer group">
             <CardContent className="p-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-primary/10">
@@ -131,7 +131,7 @@ export default function CustomerHome() {
           </Card>
         </Link>
         <Link to="/chat">
-          <Card className="border-0 shadow-card rounded-2xl hover:shadow-card-hover transition-shadow cursor-pointer group">
+          <Card className="rounded-2xl hover:-hover transition-shadow cursor-pointer group">
             <CardContent className="p-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-info/10">
@@ -149,7 +149,7 @@ export default function CustomerHome() {
       </div>
 
       {/* Recent Repairs */}
-      <Card className="border-0 shadow-card rounded-2xl">
+      <Card className="rounded-2xl">
         <div className="p-5 border-b flex justify-between items-center">
           <h3 className="font-bold text-base flex items-center gap-2">
             <CalendarClock className="h-4 w-4 text-muted-foreground" />
@@ -190,7 +190,7 @@ export default function CustomerHome() {
 
       {/* No customer linked notice */}
       {!loading && !customer && (
-        <Card className="border-0 shadow-card rounded-2xl border-l-4 border-l-warning">
+        <Card className="rounded-2xl border-l-4 border-l-warning">
           <CardContent className="p-5">
             <p className="text-sm font-medium">고객 정보 미연결</p>
             <p className="text-xs text-muted-foreground mt-1">

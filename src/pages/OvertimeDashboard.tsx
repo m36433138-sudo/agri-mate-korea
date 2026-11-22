@@ -29,11 +29,11 @@ import OvertimePayoutPanel from "@/components/overtime/OvertimePayoutPanel";
 
 const TECH_COLORS: Record<string, { bg: string; text: string; accent: string }> = {
   유호상: { bg: "bg-blue-500/10", text: "text-blue-400", accent: "bg-blue-500" },
-  마성수: { bg: "bg-emerald-500/10", text: "text-emerald-400", accent: "bg-emerald-500" },
-  김영일: { bg: "bg-amber-500/10", text: "text-amber-400", accent: "bg-amber-500" },
+  마성수: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", accent: "bg-emerald-500" },
+  김영일: { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", accent: "bg-amber-500" },
   이재현: { bg: "bg-purple-500/10", text: "text-purple-400", accent: "bg-purple-500" },
   이동진: { bg: "bg-rose-500/10", text: "text-rose-400", accent: "bg-rose-500" },
-  주희로: { bg: "bg-cyan-500/10", text: "text-cyan-400", accent: "bg-cyan-500" },
+  주희로: { bg: "bg-cyan-500/10", text: "text-cyan-600 dark:text-cyan-400", accent: "bg-cyan-500" },
 };
 
 function formatTime(isoStr: string | null): string {
@@ -86,7 +86,7 @@ function EmployeeCard({
           </div>
           <span className="font-bold text-lg">{emp.name}</span>
           {todayRec?.clock_in && !todayRec?.clock_out && (
-            <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 text-[10px]">근무중</Badge>
+            <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px]">근무중</Badge>
           )}
           {todayRec?.clock_out && (
             <Badge variant="outline" className="text-muted-foreground border-border text-[10px]">퇴근완료</Badge>
@@ -118,7 +118,7 @@ function EmployeeCard({
         <div className="flex gap-2 pt-3 border-t">
           <Button
             size="sm" variant="outline"
-            className="flex-1 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+            className="flex-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
             onClick={() => onClockIn(emp.id)}
             disabled={isMutating || !!todayRec?.clock_in}
           >
@@ -390,10 +390,10 @@ function DailyRecordsTable({
                 <td className="py-2 px-3 text-right font-mono font-semibold">{minutesToHM(mins)}</td>
                 <td className="py-2 px-3 text-center">
                   {r.is_modified && (
-                    <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-[10px]">수정</Badge>
+                    <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px]">수정</Badge>
                   )}
                   {r.is_settled && (
-                    <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 text-[10px]">
+                    <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px]">
                       <CheckCircle2 className="h-3 w-3 mr-0.5" />정산
                     </Badge>
                   )}
@@ -492,7 +492,7 @@ export default function OvertimeDashboard() {
     const myAllRecords = allRecords.filter((r) => r.employee_id === myEmployee.id && !r.is_settled);
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2">
               <Clock className="h-6 w-6" /> 내 출퇴근
@@ -545,7 +545,7 @@ export default function OvertimeDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2">
             <Clock className="h-6 w-6" /> 초과근무 현황
@@ -590,7 +590,7 @@ export default function OvertimeDashboard() {
       {employees.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+            <AlertTriangle className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
               재직 중인 직원이 없습니다. 직원 관리에서 직원을 등록하고 팀을 설정해주세요.
             </p>

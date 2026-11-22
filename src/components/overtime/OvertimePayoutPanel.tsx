@@ -475,11 +475,11 @@ export default function OvertimePayoutPanel({
                       <td className="py-2.5 pr-3 text-right font-semibold tabular-nums">{won(row.total)}</td>
                       <td className="py-2.5 pr-3">
                         {done ? (
-                          <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">
+                          <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 className="mr-1 h-3 w-3" /> 지급완료
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="border-amber-500/30 text-amber-400">미지급</Badge>
+                          <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-400">미지급</Badge>
                         )}
                       </td>
                       <td className="py-2.5 pr-3">

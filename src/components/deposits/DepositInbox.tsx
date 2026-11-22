@@ -19,7 +19,7 @@ import { DepositSetupDialog } from "./DepositSetupDialog";
 import { Banknote, Check, ClipboardPaste, EyeOff, Settings2, Undo2 } from "lucide-react";
 
 const confClass = (score: number) =>
-  score >= 90 ? "bg-green-950/60 text-green-400" : score >= 60 ? "bg-blue-950/60 text-blue-400" : "bg-amber-950/60 text-amber-400";
+  score >= 90 ? "bg-green-500/15 text-green-700 dark:text-green-400" : score >= 60 ? "bg-blue-500/15 text-blue-700 dark:text-blue-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400";
 
 export function DepositInbox({ finance, canManage, isAdmin }: { finance: FinanceRecord[]; canManage: boolean; isAdmin: boolean }) {
   const [tab, setTab] = useState<"pending" | "done">("pending");
@@ -42,7 +42,7 @@ export function DepositInbox({ finance, canManage, isAdmin }: { finance: Finance
   const financeById = useMemo(() => new Map(finance.map((f) => [f.id, f])), [finance]);
 
   return (
-    <Card className="border-0 shadow-card">
+    <Card>
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 border-b border-border/40">
         <div className="flex items-center gap-2">
           <Banknote className="h-4 w-4 text-primary" />
@@ -180,7 +180,7 @@ function PendingRow({ deposit, open, labelOf, canManage }: {
             ))}
           </ul>
           {chosen.unallocated > 0 && (
-            <p className="text-xs text-amber-400">미수금보다 {formatPrice(chosen.unallocated)} 더 들어왔어요. 남는 금액은 따로 확인해 주세요.</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">미수금보다 {formatPrice(chosen.unallocated)} 더 들어왔어요. 남는 금액은 따로 확인해 주세요.</p>
           )}
         </div>
       ) : (
@@ -224,7 +224,7 @@ function DoneRow({ deposit, financeById, canManage }: { deposit: BankDeposit; fi
       <span className="text-xs text-muted-foreground tabular-nums">{fmtDepositTime(deposit.deposited_at)}</span>
       <span className="font-medium">{deposit.depositor_name ?? "입금자 모름"}</span>
       {deposit.status === "approved" ? (
-        <Badge className="text-[11px] bg-green-950/60 text-green-400">→ {deposit.customers?.name ?? "고객"} 입금 처리</Badge>
+        <Badge className="text-[11px] bg-green-500/15 text-green-700 dark:text-green-400">→ {deposit.customers?.name ?? "고객"} 입금 처리</Badge>
       ) : (
         <Badge variant="secondary" className="text-[11px]">미수금 아님</Badge>
       )}
@@ -232,7 +232,7 @@ function DoneRow({ deposit, financeById, canManage }: { deposit: BankDeposit; fi
         <span className="text-xs text-muted-foreground">{deposit.allocations.length}건에 나눠 넣음</span>
       )}
       {Number(deposit.unallocated_amount) > 0 && (
-        <span className="text-xs text-amber-400">남은 {formatPrice(deposit.unallocated_amount)}</span>
+        <span className="text-xs text-amber-600 dark:text-amber-400">남은 {formatPrice(deposit.unallocated_amount)}</span>
       )}
       <span className="ml-auto font-semibold tabular-nums">{formatPrice(deposit.amount)}</span>
       {canManage && (

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EXPENSE_CATEGORIES, expenseSheet, receiptToRows, totalsByCategory, type Expense, type ReceiptRead } from "@/lib/expenses";
 import { Camera, Download, FileText, Loader2, Plus, Receipt, Search, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { PageHeader, SearchField } from "@/components/page/PageParts";
 
 const db = supabase as any;
 const BUCKET = "receipts";
@@ -165,21 +166,24 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2"><Receipt className="h-6 w-6 text-primary" /> 지출 관리</h1>
-        <div className="ml-auto flex gap-2 flex-wrap">
-          <Button variant="outline" className="gap-1.5" onClick={exportXlsx} disabled={filtered.length === 0}>
-            <Download className="h-4 w-4" /> 엑셀 내보내기
-          </Button>
-          {canManage && (
-            <>
-              <Button variant="outline" className="gap-1.5" onClick={() => setManualOpen(true)}><Plus className="h-4 w-4" /> 직접 입력</Button>
-              <Button variant="outline" className="gap-1.5 sm:hidden" onClick={() => cameraRef.current?.click()} disabled={!!busy}><Camera className="h-4 w-4" /> 촬영</Button>
-              <Button className="gap-1.5" onClick={() => fileRef.current?.click()} disabled={!!busy}><Upload className="h-4 w-4" /> 영수증·청구서 올리기</Button>
-            </>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="지출 관리"
+        sub={<>{month.replace("-", "년 ")}월 지출 {won(monthSum)} · {rows.length}건</>}
+        actions={
+          <>
+            <Button variant="outline" className="h-11 rounded-full bg-card gap-1.5 hidden sm:inline-flex" onClick={exportXlsx} disabled={filtered.length === 0}>
+              <Download className="h-4 w-4" /> 엑셀
+            </Button>
+            {canManage && (
+              <>
+                <Button variant="outline" className="h-11 rounded-full bg-card gap-1.5" onClick={() => setManualOpen(true)}><Plus className="h-4 w-4" /> 직접 입력</Button>
+                <Button variant="outline" className="h-11 rounded-full bg-card gap-1.5 sm:hidden" onClick={() => cameraRef.current?.click()} disabled={!!busy}><Camera className="h-4 w-4" /> 촬영</Button>
+                <Button className="h-11 rounded-full px-5 gap-1.5" onClick={() => fileRef.current?.click()} disabled={!!busy}><Upload className="h-4 w-4" /> 영수증 올리기</Button>
+              </>
+            )}
+          </>
+        }
+      />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
       <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
 
@@ -190,27 +194,24 @@ export default function ExpensesPage() {
       )}
 
       <div className="flex gap-2 flex-wrap items-center">
-        <Input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} className="w-40" aria-label="월" />
+        <Input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} className="w-40 h-11 rounded-xl bg-card" aria-label="월" />
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-40" aria-label="분류"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-40 h-11 rounded-xl bg-card" aria-label="분류"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="전체">전체 분류</SelectItem>
             {EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
-        <div className="relative flex-1 min-w-[12rem]">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="거래처·내용 검색" className="pl-9" aria-label="지출 검색" />
-        </div>
+        <SearchField value={q} onChange={setQ} placeholder="거래처, 내용으로 찾기" className="min-w-[12rem]" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card className="shadow-card border-0"><CardContent className="p-4">
+        <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">{month.replace("-", "년 ")}월 지출</p>
-          <p className="text-2xl font-bold tabular-nums">{won(monthSum)}</p>
+          <p className="text-[26px] sm:text-[30px] leading-tight font-extrabold tracking-tight tabular-nums mt-1">{won(monthSum)}</p>
           <p className="text-xs text-muted-foreground">{rows.length}건{category !== "전체" || q ? ` · 보이는 것 ${won(sum)}` : ""}</p>
         </CardContent></Card>
-        <Card className="shadow-card border-0 sm:col-span-2"><CardContent className="p-4 space-y-1.5">
+        <Card className="sm:col-span-2"><CardContent className="p-4 space-y-1.5">
           <p className="text-xs text-muted-foreground">분류별</p>
           {totals.length === 0 ? <p className="text-sm text-muted-foreground">아직 없음</p> : totals.slice(0, 6).map((t) => (
             <button key={t.category} type="button" onClick={() => setCategory(category === t.category ? "전체" : t.category)} className="w-full flex items-center gap-2 text-sm text-left">
@@ -225,12 +226,12 @@ export default function ExpensesPage() {
       {isLoading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
       ) : filtered.length === 0 ? (
-        <Card className="shadow-card border-0 border-dashed border-2"><CardContent className="py-14 text-center text-sm text-muted-foreground">
+        <Card className="border-dashed border-2"><CardContent className="py-14 text-center text-sm text-muted-foreground">
           <Receipt className="h-8 w-8 mx-auto mb-3 opacity-30" />
           이 달 지출이 없습니다. 영수증 사진이나 청구서 PDF를 올리면 AI가 항목별로 나눠 분류해 표에 넣습니다.
         </CardContent></Card>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/30 text-xs text-muted-foreground">

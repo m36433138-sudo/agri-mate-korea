@@ -101,8 +101,8 @@ export default function MachineDetail() {
         <Link to="/machines" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4 mr-1" /> 기계 목록
         </Link>
-        <Button variant="outline" size="sm" onClick={() => window.print()}>
-          <Printer className="h-4 w-4 mr-1" /> 인쇄
+        <Button variant="outline" className="h-10 rounded-full bg-card" onClick={() => window.print()}>
+          <Printer className="h-4 w-4 mr-1.5" /> 인쇄
         </Button>
       </div>
 
@@ -111,14 +111,17 @@ export default function MachineDetail() {
         <p className="text-sm text-gray-500">출력일: {new Date().toLocaleDateString("ko-KR")}</p>
       </div>
 
-      <Card className="shadow-card border-0 mb-6 print:shadow-none print:border">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
+      <Card className="mb-6 print:shadow-none print:border">
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 print:hidden">
+              <Tractor className="h-7 w-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight print:text-xl">{machine.model_name}</h1>
                 {(machine as any).ecu_mapped && (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold tracking-wide bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow shadow-blue-200">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold tracking-wide bg-gradient-to-r from-blue-600 to-violet-600 text-white">
                     <Zap className="h-3 w-3" />
                     ECU UP{(machine as any).ecu_hp ? ` ${(machine as any).ecu_hp}HP` : ""}
                   </span>
@@ -130,15 +133,17 @@ export default function MachineDetail() {
                 updatedAt={(machine as any).updated_at}
                 className="mt-1 print:hidden"
               />
+              <div className="flex gap-1.5 items-center mt-2">
+                <TypeBadge type={machine.machine_type} />
+                <StatusBadge status={machine.status} />
+              </div>
             </div>
-            <div className="flex gap-2 items-center">
-              <TypeBadge type={machine.machine_type} />
-              <StatusBadge status={machine.status} />
-              <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} className="print:hidden"><Pencil className="h-4 w-4" /></Button>
-            </div>
+            <Button variant="outline" onClick={() => setEditOpen(true)} className="h-11 w-11 p-0 rounded-full shrink-0 print:hidden" aria-label="기계 정보 수정" title="수정">
+              <Pencil className="h-4 w-4" />
+            </Button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-5">
             <InfoItem label="제조사" value={machine.manufacturer || "-"} />
             <InfoItem label="기종" value={(machine as any).classification ? ((machine as any).classification === "농업용트랙터" ? "트랙터" : (machine as any).classification) : "-"} />
             <InfoItem label="입고일" value={formatDate(machine.entry_date)} />
@@ -186,7 +191,7 @@ export default function MachineDetail() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-card border-0 mb-4 print:shadow-none print:border">
+      <Card className="mb-4 print:shadow-none print:border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Images className="h-4 w-4 text-muted-foreground" /> 기계 사진
@@ -198,7 +203,7 @@ export default function MachineDetail() {
       </Card>
 
       {/* 소유 · 판매 이력 */}
-      <Card className="shadow-card border-0 mb-4 print:shadow-none print:border">
+      <Card className="mb-4 print:shadow-none print:border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <History className="h-4 w-4 text-muted-foreground" /> 소유 · 판매 이력
@@ -258,7 +263,7 @@ export default function MachineDetail() {
       </Card>
 
       {/* 작업기 섹션 */}
-      <Card className="shadow-card border-0 mb-4 print:shadow-none print:border">
+      <Card className="mb-4 print:shadow-none print:border">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Tractor className="h-4 w-4 text-muted-foreground" /> 작업기
@@ -308,7 +313,7 @@ export default function MachineDetail() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-card border-0 print:shadow-none print:border">
+      <Card className="print:shadow-none print:border">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base font-semibold">수리 이력</CardTitle>
           <Button size="sm" variant="outline" onClick={() => setRepairOpen(true)} className="print:hidden">
@@ -410,7 +415,7 @@ export default function MachineDetail() {
 
 function InfoItem({ label, value, bold, primary }: { label: string; value: any; bold?: boolean; primary?: boolean }) {
   return (
-    <div>
+    <div className="rounded-2xl bg-muted/60 px-4 py-3 min-w-0 print:bg-transparent print:px-0">
       <p className={`text-xs mb-1 ${primary ? "text-primary font-semibold" : "text-muted-foreground"}`}>{label}</p>
       <div className={`${bold ? "font-bold tabular-nums" : "font-medium"} ${primary ? "text-primary" : ""}`}>{value}</div>
     </div>

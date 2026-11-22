@@ -316,7 +316,7 @@ export default function WorkspacePage() {
                 <TrendingUp className="h-3.5 w-3.5" />
                 재무
                 {finance.filter((f) => !f.is_paid && f.due_date && f.due_date < today).length > 0 && (
-                  <span className="bg-red-100 text-red-600 text-[10px] rounded-full px-1.5">
+                  <span className="bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 text-[10px] rounded-full px-1.5">
                     {finance.filter((f) => !f.is_paid && f.due_date && f.due_date < today).length}
                   </span>
                 )}

@@ -76,7 +76,7 @@ export default function Messenger() {
   }, [rooms, activeRoomId]);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2">

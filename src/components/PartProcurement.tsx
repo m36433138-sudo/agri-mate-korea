@@ -21,9 +21,9 @@ type Status = (typeof STATUSES)[number];
 
 const STATUS_STYLE: Record<Status, string> = {
   주문접수: "bg-slate-800/60 text-slate-300 border-slate-700",
-  배송중: "bg-blue-950/60 text-blue-400 border-blue-900",
-  배송완료: "bg-amber-950/60 text-amber-400 border-amber-900",
-  전달완료: "bg-emerald-950/60 text-emerald-400 border-emerald-900",
+  배송중: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
+  배송완료: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  전달완료: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
 };
 
 const STATUS_ICON: Record<Status, typeof Truck> = {
@@ -257,7 +257,7 @@ export default function PartProcurement() {
       {isLoading ? (
         <Skeleton className="h-40 w-full rounded-xl" />
       ) : filtered.length === 0 ? (
-        <Card className="border-0 shadow-card">
+        <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
             해당 조건의 부품 주문이 없습니다.
           </CardContent>
@@ -267,7 +267,7 @@ export default function PartProcurement() {
           {filtered.map((o) => {
             const Icon = STATUS_ICON[o.status] ?? ClipboardList;
             return (
-              <Card key={o.id} className="border-0 shadow-card">
+              <Card key={o.id}>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex flex-wrap items-start gap-2">
                     <div className="flex-1 min-w-0">

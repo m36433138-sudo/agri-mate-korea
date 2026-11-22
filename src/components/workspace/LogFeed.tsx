@@ -164,7 +164,7 @@ function LogItem({
 
           {/* 다음 액션 */}
           {log.next_action && (
-            <div className="mt-2 flex items-center justify-between bg-blue-50 border border-blue-100 rounded px-2 py-1.5">
+            <div className="mt-2 flex items-center justify-between bg-blue-50 dark:bg-blue-500/15 border border-blue-100 dark:border-blue-500/30 rounded px-2 py-1.5">
               <div className="flex items-center gap-1.5 text-xs text-blue-700">
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" />
                 <span className="font-medium">다음 액션:</span>

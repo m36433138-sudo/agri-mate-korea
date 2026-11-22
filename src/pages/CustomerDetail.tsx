@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink, History, Wallet, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Pencil, UserCheck, FolderOpen, Plus, Trash2, ExternalLink, History, Wallet, ShoppingCart, Phone, MapPin, Tractor } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -249,37 +249,73 @@ export default function CustomerDetail() {
         <ArrowLeft className="h-4 w-4 mr-1" /> 고객 목록
       </Link>
 
-      <Card className="shadow-card border-0 mb-6">
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">{customer.name}</h1>
-              {customer.grade && <CustomerGradeBadge grade={customer.grade} />}
-              {customer.user_id && (
-                <Badge variant="secondary" className="gap-1">
-                  <UserCheck className="h-3 w-3" /> 계정 연동됨
-                </Badge>
-              )}
+      <Card className="mb-6 overflow-hidden">
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-extrabold shrink-0">
+              {customer.name.charAt(0)}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">{customer.name}</h1>
+                {customer.grade && <CustomerGradeBadge grade={customer.grade} />}
+                {customer.user_id && (
+                  <Badge variant="secondary" className="gap-1 rounded-full">
+                    <UserCheck className="h-3 w-3" /> 계정 연동됨
+                  </Badge>
+                )}
+              </div>
+              <LastModifiedInfo
+                updatedBy={(customer as any).updated_by}
+                updatedAt={(customer as any).updated_at}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex gap-2 shrink-0">
+              {customer.phone && (
+                <Button asChild className="h-11 rounded-full px-4 hidden sm:inline-flex">
+                  <a href={`tel:${customer.phone}`}><Phone className="h-4 w-4 mr-1.5" />전화</a>
+                </Button>
+              )}
+              <Button variant="outline" className="h-11 w-11 p-0 rounded-full" onClick={() => setEditOpen(true)} aria-label="고객 정보 수정" title="수정">
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <LastModifiedInfo
-            updatedBy={(customer as any).updated_by}
-            updatedAt={(customer as any).updated_at}
-            className="mt-2"
-          />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t">
-            <div><p className="text-xs text-muted-foreground">연락처</p><p className="font-medium">{customer.phone}</p></div>
-            <div><p className="text-xs text-muted-foreground">주소</p><p className="font-medium">{customer.address || "-"}</p></div>
-            {customer.notes && <div><p className="text-xs text-muted-foreground">비고</p><p className="font-medium">{customer.notes}</p></div>}
+          <div className="grid gap-2 sm:grid-cols-3 mt-5">
+            <a
+              href={customer.phone ? `tel:${customer.phone}` : undefined}
+              className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 min-w-0 hover:bg-muted transition-colors"
+            >
+              <Phone className="h-4 w-4 text-primary shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-xs text-muted-foreground">연락처</span>
+                <span className="block font-semibold tabular-nums truncate">{customer.phone || "-"}</span>
+              </span>
+            </a>
+            <div className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 min-w-0">
+              <MapPin className="h-4 w-4 text-primary shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-xs text-muted-foreground">주소</span>
+                <span className="block font-semibold truncate">{customer.address || "-"}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 min-w-0">
+              <Tractor className="h-4 w-4 text-primary shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-xs text-muted-foreground">보유 기계</span>
+                <span className="block font-semibold">{machines?.length ?? 0}대</span>
+              </span>
+            </div>
           </div>
+          {customer.notes && (
+            <p className="mt-3 text-sm text-muted-foreground rounded-2xl border border-dashed px-4 py-3 whitespace-pre-wrap">{customer.notes}</p>
+          )}
         </CardContent>
       </Card>
 
       {/* 구글 드라이브 링크 */}
-      <Card className="shadow-card border-0 mb-6">
+      <Card className="mb-6">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
           <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
             <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -301,7 +337,7 @@ export default function CustomerDetail() {
             <div className="space-y-2">
               {driveLinks.map((link: any) => (
                 <div key={link.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors group">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center shrink-0">
                     <FolderOpen className="h-4 w-4 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -332,7 +368,7 @@ export default function CustomerDetail() {
 
       {/* 미수금 */}
       {canViewPartSales && (
-        <Card className="shadow-card border-0 mb-6">
+        <Card className="mb-6">
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
             <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -366,7 +402,7 @@ export default function CustomerDetail() {
                         </p>
                         <p className="text-xs text-muted-foreground">{s.sale_date} · {s.branch}</p>
                       </div>
-                      <Badge className={`text-[11px] shrink-0 ${s.payment_mode === "paid" ? "bg-green-950/60 text-green-400" : "bg-amber-950/60 text-amber-400"}`}>
+                      <Badge className={`text-[11px] shrink-0 ${s.payment_mode === "paid" ? "bg-green-500/15 text-green-700 dark:text-green-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
                         {PAYMENT_MODE_LABELS[s.payment_mode]}
                       </Badge>
                       <span className="text-sm font-bold tabular-nums shrink-0">{formatPrice(s.total_amount)}</span>
@@ -379,7 +415,7 @@ export default function CustomerDetail() {
         </Card>
       )}
 
-      <Card className="shadow-card border-0 mb-6">
+      <Card className="mb-6">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
           <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
             <Wallet className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -425,7 +461,7 @@ export default function CustomerDetail() {
                       </p>
                     </div>
                     {r.is_paid ? (
-                      <Badge className="text-[11px] bg-green-950/60 text-green-400 shrink-0">완납</Badge>
+                      <Badge className="text-[11px] bg-green-500/15 text-green-700 dark:text-green-400 shrink-0">완납</Badge>
                     ) : overdue ? (
                       <Badge className="text-[11px] bg-destructive/15 text-destructive shrink-0">연체</Badge>
                     ) : null}
@@ -440,7 +476,7 @@ export default function CustomerDetail() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-card border-0 mb-6">
+      <Card className="mb-6">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
           <CardTitle className="min-w-0 text-base font-semibold flex items-center gap-2">
             <History className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -511,7 +547,7 @@ export default function CustomerDetail() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-card border-0">
+      <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base font-semibold">전체 수리 이력</CardTitle></CardHeader>
         <CardContent>
           {!repairs || repairs.length === 0 ? (

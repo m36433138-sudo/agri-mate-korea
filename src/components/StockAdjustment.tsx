@@ -137,13 +137,13 @@ export default function StockAdjustment() {
       {isLoading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
       ) : filtered?.length === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             {branch} 지점에 등록된 재고가 없습니다.
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -185,13 +185,13 @@ export default function StockAdjustment() {
         {logsLoading ? (
           <Skeleton className="h-40 w-full" />
         ) : !logs?.length ? (
-          <Card className="shadow-card border-0">
+          <Card>
             <CardContent className="py-8 text-center text-muted-foreground text-sm">
               재고조정 이력이 없습니다.
             </CardContent>
           </Card>
         ) : (
-          <Card className="shadow-card border-0 overflow-hidden">
+          <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

@@ -188,7 +188,7 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
               className="w-fit gap-1.5 mt-1"
               onClick={() => setTipsOpen(true)}
             >
-              <Lightbulb className="h-3.5 w-3.5 text-amber-400" /> 부품 팁 · 사진 보기
+              <Lightbulb className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> 부품 팁 · 사진 보기
             </Button>
             <Button
               size="sm"
@@ -206,7 +206,7 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
           {/* 재고 정보 */}
           <section className="mt-4 space-y-2">
             <h3 className="text-sm font-semibold flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-emerald-400" /> 재고 · 위치 · 가격
+              <MapPin className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> 재고 · 위치 · 가격
             </h3>
             {price?.source === "공급가표" && (
               <p className="text-sm border rounded-lg p-2.5 border-primary/40">
@@ -253,7 +253,7 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
           {/* 부품 사진 */}
           <section className="mt-4 space-y-2">
             <h3 className="text-sm font-semibold flex items-center gap-1.5">
-              <ImageIcon className="h-3.5 w-3.5 text-amber-400" /> 부품 사진
+              <ImageIcon className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> 부품 사진
             </h3>
             {photoLoading ? (
               <Skeleton className="h-20 w-full rounded-lg" />
@@ -293,7 +293,7 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
           {/* 수리 사용 이력 */}
           <section className="mt-5 space-y-2">
             <h3 className="text-sm font-semibold flex items-center gap-1.5">
-              <Wrench className="h-3.5 w-3.5 text-sky-400" /> 수리 사용 이력
+              <Wrench className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" /> 수리 사용 이력
               {totalUsed > 0 && (
                 <span className="text-xs font-normal text-muted-foreground">(누적 {totalUsed}개)</span>
               )}

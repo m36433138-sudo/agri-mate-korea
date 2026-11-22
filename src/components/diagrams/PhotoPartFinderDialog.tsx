@@ -14,8 +14,8 @@ type Match = { diagram_id: string | null; title: string | null; reason: string; 
 type Result = { description: string; areas: Area[]; matches: Match[] };
 
 const confClass: Record<string, string> = {
-  높음: "bg-emerald-950/60 text-emerald-400 border-emerald-800",
-  보통: "bg-amber-950/60 text-amber-400 border-amber-800",
+  높음: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  보통: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
   낮음: "bg-muted text-muted-foreground",
 };
 

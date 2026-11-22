@@ -254,7 +254,7 @@ export default function InventoryManagement() {
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
         </div>
       ) : !searchResults || searchResults.length === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <p className="text-sm">"{debouncedSearch}"에 해당하는 부품이 없습니다.</p>
           </CardContent>
@@ -286,7 +286,7 @@ export default function InventoryManagement() {
                       <span className="text-sm font-semibold truncate">{loc.length ? loc.join(" · ") : "위치 미지정"}</span>
                     </div>
                     <Button variant="ghost" size="icon" className="h-9 w-9 relative shrink-0" onClick={() => setTipsItem(item)} aria-label="부품 팁·사진">
-                      <Lightbulb className={`h-4 w-4 ${tipCounts[item.part_code] ? "text-amber-400" : "text-muted-foreground"}`} />
+                      <Lightbulb className={`h-4 w-4 ${tipCounts[item.part_code] ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setEditItem(item)} aria-label="수정">
                       <Pencil className="h-4 w-4 text-muted-foreground" />
@@ -349,9 +349,9 @@ export default function InventoryManagement() {
                       <td className="p-3">
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => setTipsItem(item)} title="부품 팁·사진">
-                            <Lightbulb className={`h-3.5 w-3.5 ${tipCounts[item.part_code] ? "text-amber-400" : "text-muted-foreground"}`} />
+                            <Lightbulb className={`h-3.5 w-3.5 ${tipCounts[item.part_code] ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} />
                             {!!tipCounts[item.part_code] && (
-                              <span className="absolute -top-0.5 -right-0.5 text-[9px] bg-amber-400/20 text-amber-400 rounded-full px-1 leading-3">
+                              <span className="absolute -top-0.5 -right-0.5 text-[9px] bg-amber-400/20 text-amber-600 dark:text-amber-400 rounded-full px-1 leading-3">
                                 {tipCounts[item.part_code]}
                               </span>
                             )}

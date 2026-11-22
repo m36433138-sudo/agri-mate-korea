@@ -55,20 +55,20 @@ const PROPERTY_TYPES   = ["토지", "건물", "창고", "기타"];
 const MAINT_TYPES      = ["엔진오일교환", "타이어교환", "수리", "정기점검", "기타"];
 
 const EQUIP_STATUS_STYLE: Record<string, string> = {
-  "사용중": "bg-green-100 text-green-700",
-  "보관":   "bg-amber-100 text-amber-700",
-  "폐기":   "bg-red-100 text-red-600",
+  "사용중": "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400",
+  "보관":   "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  "폐기":   "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
 };
 const VEHICLE_STATUS_STYLE: Record<string, string> = {
-  "사용중": "bg-blue-100 text-blue-700",
-  "매각":   "bg-amber-100 text-amber-700",
-  "폐차":   "bg-red-100 text-red-600",
+  "사용중": "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  "매각":   "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  "폐차":   "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
 };
 const PROPERTY_TYPE_STYLE: Record<string, string> = {
-  "토지":  "bg-emerald-100 text-emerald-700",
-  "건물":  "bg-blue-100 text-blue-700",
-  "창고":  "bg-amber-100 text-amber-700",
-  "기타":  "bg-gray-100 text-gray-600",
+  "토지":  "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  "건물":  "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  "창고":  "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  "기타":  "bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-400",
 };
 
 function Badge({ text, style }: { text: string; style: string }) {
@@ -174,12 +174,12 @@ function EquipmentTab() {
             <div key={item.id} className="bg-white rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center shrink-0">
                     <Laptop className="h-4.5 w-4.5 text-blue-600" />
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-base leading-tight truncate">{item.name}</p>
-                    <Badge text={item.category} style="bg-blue-100 text-blue-700" />
+                    <Badge text={item.category} style="bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400" />
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
@@ -206,7 +206,7 @@ function EquipmentTab() {
                 )}
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                <Badge text={item.status} style={EQUIP_STATUS_STYLE[item.status] || "bg-gray-100 text-gray-600"} />
+                <Badge text={item.status} style={EQUIP_STATUS_STYLE[item.status] || "bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-400"} />
                 {item.notes && <p className="text-[11px] text-muted-foreground truncate ml-2 max-w-[120px]">{item.notes}</p>}
               </div>
             </div>
@@ -368,7 +368,7 @@ function VehiclesTab() {
                 <div className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-500/15 flex items-center justify-center shrink-0">
                         <Car className="h-4.5 w-4.5 text-violet-600" />
                       </div>
                       <div className="min-w-0">
@@ -403,7 +403,7 @@ function VehiclesTab() {
                   </div>
 
                   {lastMaint && (
-                    <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 rounded-xl">
+                    <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-500/15 rounded-xl">
                       <Wrench className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-amber-800">마지막 정비: {lastMaint.maintenance_type}</p>
@@ -413,7 +413,7 @@ function VehiclesTab() {
                   )}
 
                   <div className="flex items-center justify-between pt-1">
-                    <Badge text={v.status} style={VEHICLE_STATUS_STYLE[v.status] || "bg-gray-100 text-gray-600"} />
+                    <Badge text={v.status} style={VEHICLE_STATUS_STYLE[v.status] || "bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-400"} />
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" className="h-7 text-xs px-2.5"
                         onClick={() => { setMaintVehicle(v); setMaintOpen(true); }}>
@@ -671,12 +671,12 @@ function PropertiesTab() {
             <div key={item.id} className="bg-white rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 flex items-center justify-center shrink-0">
                     <MapPin className="h-4.5 w-4.5 text-emerald-600" />
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-base leading-tight truncate">{item.name}</p>
-                    <Badge text={item.property_type} style={PROPERTY_TYPE_STYLE[item.property_type] || "bg-gray-100 text-gray-600"} />
+                    <Badge text={item.property_type} style={PROPERTY_TYPE_STYLE[item.property_type] || "bg-gray-100 dark:bg-gray-500/15 text-gray-600 dark:text-gray-400"} />
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">

@@ -171,7 +171,7 @@ export default function RepairErrorCodeDialog({ open, onOpenChange, repair, init
       <DialogContent className="w-[calc(100%-2rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-400" />
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             에러코드 기록
           </DialogTitle>
         </DialogHeader>
@@ -263,12 +263,12 @@ export default function RepairErrorCodeDialog({ open, onOpenChange, repair, init
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="font-mono">{r.error_code}</Badge>
                   {r.is_resolved ? (
-                    <Badge variant="outline" className="gap-1 text-emerald-400 border-emerald-400/40">
+                    <Badge variant="outline" className="gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-400/40">
                       <CheckCircle2 className="h-3 w-3" /> 조치완료
                       {r.resolved_at && <span className="ml-1">{formatDate(r.resolved_at)}</span>}
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="gap-1 text-amber-400 border-amber-400/40">
+                    <Badge variant="outline" className="gap-1 text-amber-600 dark:text-amber-400 border-amber-400/40">
                       <AlertTriangle className="h-3 w-3" /> 미조치
                     </Badge>
                   )}

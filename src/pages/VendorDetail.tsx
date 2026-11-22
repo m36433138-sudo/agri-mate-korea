@@ -219,7 +219,7 @@ export default function VendorDetail() {
             <Button size="sm" onClick={() => { setItemForm({}); setItemOpen(true); }}><Plus className="h-4 w-4 mr-1" /> 품목 추가</Button>
           </div>
 
-          <Card className="border-0 shadow-card overflow-hidden">
+          <Card className="overflow-hidden">
             {items.length === 0 ? (
               <CardContent className="py-10 text-center text-sm text-muted-foreground">등록된 취급품목이 없습니다.</CardContent>
             ) : items.map((it, idx) => (
@@ -252,7 +252,7 @@ export default function VendorDetail() {
               <Plus className="h-4 w-4 mr-1" /> 매입 등록
             </Button>
           </div>
-          <Card className="border-0 shadow-card overflow-hidden">
+          <Card className="overflow-hidden">
             {purchases.length === 0 ? (
               <CardContent className="py-10 text-center text-sm text-muted-foreground">매입 내역이 없습니다.</CardContent>
             ) : purchases.map((p, idx) => (

@@ -15,6 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Search, Trash2, Pencil, Building2 } from "lucide-react";
+import { PageHeader } from "@/components/page/PageParts";
 
 interface Vendor {
   id: string;
@@ -132,25 +133,15 @@ export default function VendorsList() {
 
   return (
     <div className="space-y-4">
-      {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Building2 className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold">
-              {isLoading ? "..." : `전체 ${vendors.length}개`}
-            </p>
-            {search && !isLoading && (
-              <p className="text-xs text-muted-foreground">검색결과 {filtered.length}개</p>
-            )}
-          </div>
-        </div>
-        <Button size="sm" onClick={openAdd}>
-          <Plus className="h-4 w-4 mr-1" /> 업체 등록
-        </Button>
-      </div>
+      <PageHeader
+        title="업체관리"
+        sub={isLoading ? "불러오는 중…" : <>전체 {vendors.length}개{search && <> · 찾은 업체 {filtered.length}개</>}</>}
+        actions={
+          <Button className="h-11 rounded-full px-5" onClick={openAdd}>
+            <Plus className="h-4 w-4 mr-1" /> 업체 등록
+          </Button>
+        }
+      />
 
       {/* 검색 */}
       <div className="relative max-w-sm">
@@ -167,13 +158,13 @@ export default function VendorsList() {
       {isLoading ? (
         <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}</div>
       ) : filtered.length === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
             {search ? `"${search}"에 해당하는 업체가 없습니다.` : "등록된 업체가 없습니다."}
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
+        <Card className="overflow-hidden">
           {filtered.map((v, idx) => (
             <div
               key={v.id}

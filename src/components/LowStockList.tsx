@@ -109,13 +109,13 @@ export default function LowStockList() {
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
         </div>
       ) : (filtered?.length ?? 0) === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             재고 부족 품목이 없습니다. 🎉
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

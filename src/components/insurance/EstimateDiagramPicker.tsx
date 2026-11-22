@@ -320,8 +320,8 @@ function QtyPrompt({ target, parts, machineModel, onCancel, onConfirm }: {
                       className="h-7 w-14 px-1 text-right text-xs" />
                   </label>
                 </div>
-                {r.notUsed && <p className="text-amber-400">이 기종에는 「-」로 표시된 부품이에요. 확인 후 담아 주세요.</p>}
-                {r.ambiguous && chosen[p.code] == null && <p className="text-amber-400">기종마다 수량이 달라요. 맞는 기종을 눌러 주세요.</p>}
+                {r.notUsed && <p className="text-amber-600 dark:text-amber-400">이 기종에는 「-」로 표시된 부품이에요. 확인 후 담아 주세요.</p>}
+                {r.ambiguous && chosen[p.code] == null && <p className="text-amber-600 dark:text-amber-400">기종마다 수량이 달라요. 맞는 기종을 눌러 주세요.</p>}
                 <p>
                   {loading ? <span className="text-muted-foreground">재고·가격 확인 중…</span> : (
                     <>
@@ -331,7 +331,7 @@ function QtyPrompt({ target, parts, machineModel, onCancel, onConfirm }: {
                             <span className={stock > 0 ? "text-primary font-semibold" : "text-destructive font-semibold"}>재고 {stock}개</span>
                             <span className="text-muted-foreground"> · {inv.map((x) => `${inventoryBranchName(x.branch)} ${x.quantity ?? 0}개${x.location_main ? ` (${[x.location_main, x.location_sub].filter(Boolean).join("/")})` : ""}`).join(", ")}</span>
                           </>}
-                      <span> · 판매가 {price == null ? <span className="text-amber-400">미등록</span> : `${price.price.toLocaleString("ko-KR")}원`}</span>
+                      <span> · 판매가 {price == null ? <span className="text-amber-600 dark:text-amber-400">미등록</span> : `${price.price.toLocaleString("ko-KR")}원`}</span>
                       {price?.source === "공급가표" && <span className="text-primary"> (공급가표 기준)</span>}
                     </>
                   )}
@@ -368,7 +368,7 @@ function EstimateSidePanel({ items, onUpdate, onRemove, target, machineModel }: 
           <div key={it.key} className="px-3 py-2 text-xs flex items-center gap-2">
             <div className="min-w-0 flex-1">
               <p className="truncate"><span className="text-muted-foreground">{it.item_type}</span> {it.part_code && <span className="font-mono">{it.part_code}</span>} {it.part_name}</p>
-              <p className="text-muted-foreground">{it.unit_price ? won(it.unit_price) : <span className="text-amber-400">단가 미입력</span>}</p>
+              <p className="text-muted-foreground">{it.unit_price ? won(it.unit_price) : <span className="text-amber-600 dark:text-amber-400">단가 미입력</span>}</p>
               {onUpdate && <QtyNoteChips note={it.notes} machineModel={machineModel} value={Number(it.quantity)} onPick={(n) => onUpdate(it.key, { quantity: n })} className="mt-0.5" />}
             </div>
             <Input aria-label="수량" inputMode="decimal" value={String(it.quantity)} onChange={(e) => onUpdate?.(it.key, { quantity: Number(e.target.value.replace(/[^0-9.]/g, "")) || 1 })} className="h-7 w-12 px-1 text-right text-xs" />

@@ -134,8 +134,8 @@ export function BladeSharpeningPanel({ compact = false }: { compact?: boolean })
               <p className="text-xs text-muted-foreground truncate">{new Date(b.created_at).toLocaleDateString("ko-KR")}{b.notes ? ` · ${b.notes}` : ""}</p>
               <div className="flex items-center gap-2 mt-1">
                 {b.sheet_synced
-                  ? <span className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400">시트 반영됨</span>
-                  : <span className="text-[11px] px-1.5 py-0.5 rounded bg-red-950/60 text-red-400">시트 미반영</span>}
+                  ? <span className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">시트 반영됨</span>
+                  : <span className="text-[11px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-700 dark:text-red-400">시트 미반영</span>}
                 {!b.sheet_synced && (
                   <button className="text-[11px] text-primary underline disabled:opacity-50" disabled={retrySync.isPending}
                     onClick={() => retrySync.mutate(b)}>{retrySync.isPending && retrySync.variables?.id === b.id ? "재시도 중…" : "다시 시도"}</button>
