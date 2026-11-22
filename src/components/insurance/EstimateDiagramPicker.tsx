@@ -13,9 +13,11 @@ import { categoryOf, modelsOf, DIAGRAM_CATEGORIES, type DiagramCategory } from "
 import DiagramViewer, { type PickedPart } from "@/components/diagrams/DiagramViewer";
 import { searchDiagrams } from "@/lib/diagramSearch";
 import { machineModelChip } from "@/lib/repairDiagrams";
-import { fetchDiagramInventory } from "@/lib/diagramInventory";
+import { fetchPartPrices } from "@/lib/diagramInventory";
+import QtyNoteChips from "./QtyNoteChips";
 import { estimateTotals, lineAmount, newKey, resolveDiagramQty, type EstimateItem } from "@/lib/insuranceEstimate";
-import { salesPriceOf, usePartsStock } from "@/components/diagrams/PartsStockList";
+import { partPriceOf, usePartsStock, useSupplyPrices } from "@/components/diagrams/PartsStockList";
+import type { PartPrice } from "@/lib/partPricing";
 import { inventoryBranchName, matchesInventory } from "@/lib/diagramInventory";
 
 export type QtyMode = "ask" | "one" | "diagram";
@@ -101,13 +103,10 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
     return () => cancelAnimationFrame(raf);
   }, [diagram]);
 
-  const commit = async (parts: PickedPart[], qtyFor: (p: PickedPart) => number, prices?: Map<string, number | null>) => {
+  const commit = async (parts: PickedPart[], qtyFor: (p: PickedPart) => number, prices?: Map<string, PartPrice | null>) => {
     let priceMap = prices;
     if (!priceMap) {
-      try {
-        const rows = await fetchDiagramInventory(parts.map((p) => p.code));
-        priceMap = new Map(parts.map((p) => [p.code, salesPriceOf(p.code, rows)]));
-      } catch { priceMap = new Map(); }
+      try { priceMap = await fetchPartPrices(parts.map((p) => p.code)); } catch { priceMap = new Map(); }
     }
     const items: EstimateItem[] = parts.map((p) => ({
       key: newKey(),
@@ -115,14 +114,17 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
       part_code: p.code,
       part_name: p.name || "",
       quantity: Math.max(1, qtyFor(p)),
-      unit_price: priceMap!.get(p.code) ?? 0,
+      unit_price: priceMap!.get(p.code)?.price ?? 0,
       diagram_id: diagram?.id ?? null,
       diagram_title: diagram?.title ?? null,
+      notes: p.qtyNote ?? null,
     }));
     onAdd(items);
     setAdded((n) => n + items.length);
     const noPrice = items.filter((i) => !i.unit_price).length;
-    toast.success(`${items.length}개 ${target}에 담았어요`, { description: noPrice ? `가격 미등록 ${noPrice}개는 단가를 직접 넣어 주세요.` : undefined });
+    const fromSupply = parts.filter((p) => priceMap!.get(p.code)?.source === "공급가표").length;
+    const notes = [fromSupply ? `${fromSupply}개는 공급가표 기준 매출가로 채웠어요.` : "", noPrice ? `가격 미등록 ${noPrice}개는 단가를 직접 넣어 주세요.` : ""].filter(Boolean).join(" ");
+    toast.success(`${items.length}개 ${target}에 담았어요`, { description: notes || undefined });
   };
 
   const pick = (parts: PickedPart[]) => {
@@ -243,7 +245,7 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
         )}
 
         </div>
-        <EstimateSidePanel items={items} onUpdate={onUpdate} onRemove={onRemove} target={target} />
+        <EstimateSidePanel items={items} onUpdate={onUpdate} onRemove={onRemove} target={target} machineModel={machineModel} />
         <QtyPrompt
           target={target}
           parts={pending}
@@ -261,38 +263,41 @@ export default function EstimateDiagramPicker({ open, onOpenChange, machineModel
   );
 }
 
-/** 부품을 누르면: 1개로 담을지, 도면 소요 수량만큼 담을지 묻고 재고·가격도 함께 보여준다 */
+/** 부품을 누르면: 1개로 담을지, 도면 기종별 소요 수량 중 무엇으로 담을지 고르고 재고·가격도 함께 보여준다 */
 function QtyPrompt({ target, parts, machineModel, onCancel, onConfirm }: {
   target: string;
   parts: PickedPart[] | null;
   machineModel: string | null;
   onCancel: () => void;
-  onConfirm: (qtyFor: (p: PickedPart) => number, prices: Map<string, number | null>, remember: QtyMode | null) => void;
+  onConfirm: (qtyFor: (p: PickedPart) => number, prices: Map<string, PartPrice | null>, remember: QtyMode | null) => void;
 }) {
   const open = !!parts && parts.length > 0;
   const list = parts ?? [];
-  const { data: rows = [], isFetching } = usePartsStock(list.map((p) => p.code), open);
+  const codes = list.map((p) => p.code);
+  const { data: rows = [], isFetching } = usePartsStock(codes, open);
+  const { data: supply, isFetching: supplyLoading } = useSupplyPrices(codes, open);
   const [remember, setRemember] = useState(false);
   const [chosen, setChosen] = useState<Record<string, number>>({});
   const resolved = list.map((p) => resolveDiagramQty(p.qtyNote, machineModel));
-  const diagramQty = (p: PickedPart, i: number) => chosen[p.code] ?? resolved[i].qty ?? 1;
-  const totalDiagram = list.reduce((s, p, i) => s + diagramQty(p, i), 0);
-  const prices = new Map(list.map((p) => [p.code, salesPriceOf(p.code, rows)]));
-  const anyNote = resolved.some((r) => r.options.length > 0);
+  const qtyOf = (p: PickedPart, i: number) => chosen[p.code] ?? resolved[i].qty ?? 1;
+  const total = list.reduce((s, p, i) => s + qtyOf(p, i), 0);
+  const prices = new Map(list.map((p) => [p.code, partPriceOf(p.code, rows, supply)]));
+  const loading = (isFetching && rows.length === 0) || (supplyLoading && !supply);
 
+  const reset = () => { setChosen({}); setRemember(false); };
   const done = (m: "one" | "diagram") => {
     const idx = new Map(list.map((p, i) => [p.code, i]));
-    onConfirm(m === "one" ? () => 1 : (p) => diagramQty(p, idx.get(p.code)!), prices, remember ? m : null);
-    setChosen({}); setRemember(false);
+    onConfirm(m === "one" ? () => 1 : (p) => qtyOf(p, idx.get(p.code)!), prices, remember ? m : null);
+    reset();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { onCancel(); setChosen({}); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { onCancel(); reset(); } }}>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><FilePlus2 className="h-4 w-4 text-primary" /> {target}에 몇 개 담을까요?</DialogTitle>
           <DialogDescription>
-            {list.length === 1 ? "이 부품을" : `부품 ${list.length}개를`} 1개씩 담거나, 도면에 적힌 소요 수량만큼 담을 수 있어요.
+            도면에 적힌 기종별 수량을 누르거나 숫자를 직접 고쳐서 담으세요.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
@@ -301,29 +306,33 @@ function QtyPrompt({ target, parts, machineModel, onCancel, onConfirm }: {
             const inv = rows.filter((x) => matchesInventory(p.code, x));
             const stock = inv.reduce((s, x) => s + (x.quantity ?? 0), 0);
             const price = prices.get(p.code);
+            const q = qtyOf(p, i);
             return (
-              <div key={p.code} className="rounded-lg border p-2.5 space-y-1 text-xs">
+              <div key={p.code} className="rounded-lg border p-2.5 space-y-1.5 text-xs">
                 <p><span className="font-mono font-semibold">{p.code}</span>{p.name && <span className="text-muted-foreground"> · {p.name}</span>}</p>
-                <p className="text-muted-foreground">
-                  도면 소요 수량: {r.options.length === 0 ? "표시 없음" : p.qtyNote}
-                  {r.matchedModel && <span className="text-primary"> → {r.matchedModel} {r.qty ?? "-"}개</span>}
-                </p>
+                {r.options.length === 0 && <p className="text-muted-foreground">도면 소요 수량 표시 없음</p>}
+                <div className="flex items-center gap-2">
+                  <QtyNoteChips note={p.qtyNote} machineModel={machineModel} value={q} onPick={(n) => setChosen((c) => ({ ...c, [p.code]: n }))} className="flex-1" />
+                  <label className="ml-auto flex items-center gap-1 shrink-0 text-muted-foreground">
+                    수량
+                    <Input aria-label={`${p.code} 수량`} inputMode="decimal" value={String(q)}
+                      onChange={(e) => setChosen((c) => ({ ...c, [p.code]: Number(e.target.value.replace(/[^0-9.]/g, "")) || 1 }))}
+                      className="h-7 w-14 px-1 text-right text-xs" />
+                  </label>
+                </div>
                 {r.notUsed && <p className="text-amber-400">이 기종에는 「-」로 표시된 부품이에요. 확인 후 담아 주세요.</p>}
-                {r.ambiguous && (
-                  <div className="flex flex-wrap items-center gap-1">
-                    <span className="text-muted-foreground">기종 선택:</span>
-                    {r.options.filter((o) => o.qty != null).map((o) => (
-                      <Button key={`${o.model}-${o.qty}`} size="sm" variant={chosen[p.code] === o.qty ? "default" : "outline"} className="h-6 px-2 text-[11px]"
-                        onClick={() => setChosen((c) => ({ ...c, [p.code]: o.qty! }))}>{o.model} {o.qty}개</Button>
-                    ))}
-                  </div>
-                )}
+                {r.ambiguous && chosen[p.code] == null && <p className="text-amber-400">기종마다 수량이 달라요. 맞는 기종을 눌러 주세요.</p>}
                 <p>
-                  {isFetching && inv.length === 0 ? <span className="text-muted-foreground">재고 확인 중…</span> : inv.length === 0 ? <span className="text-muted-foreground">재고 없음 · 가격 미등록</span> : (
+                  {loading ? <span className="text-muted-foreground">재고·가격 확인 중…</span> : (
                     <>
-                      <span className={stock > 0 ? "text-primary font-semibold" : "text-destructive font-semibold"}>재고 {stock}개</span>
-                      <span className="text-muted-foreground"> · {inv.map((x) => `${inventoryBranchName(x.branch)} ${x.quantity ?? 0}개${x.location_main ? ` (${[x.location_main, x.location_sub].filter(Boolean).join("/")})` : ""}`).join(", ")}</span>
-                      <span> · 판매가 {price == null ? "미등록" : `${price.toLocaleString("ko-KR")}원`}</span>
+                      {inv.length === 0
+                        ? <span className="text-muted-foreground">재고 없음</span>
+                        : <>
+                            <span className={stock > 0 ? "text-primary font-semibold" : "text-destructive font-semibold"}>재고 {stock}개</span>
+                            <span className="text-muted-foreground"> · {inv.map((x) => `${inventoryBranchName(x.branch)} ${x.quantity ?? 0}개${x.location_main ? ` (${[x.location_main, x.location_sub].filter(Boolean).join("/")})` : ""}`).join(", ")}</span>
+                          </>}
+                      <span> · 판매가 {price == null ? <span className="text-amber-400">미등록</span> : `${price.price.toLocaleString("ko-KR")}원`}</span>
+                      {price?.source === "공급가표" && <span className="text-primary"> (공급가표 기준)</span>}
                     </>
                   )}
                 </p>
@@ -333,10 +342,10 @@ function QtyPrompt({ target, parts, machineModel, onCancel, onConfirm }: {
         </div>
         <div className="grid grid-cols-2 gap-2 pt-1">
           <Button variant="outline" onClick={() => done("one")}>1개씩 담기{list.length > 1 ? ` (${list.length}개)` : ""}</Button>
-          <Button onClick={() => done("diagram")} disabled={!anyNote}>도면 수량대로 ({totalDiagram}개)</Button>
+          <Button onClick={() => done("diagram")}>고른 수량으로 담기 ({total}개)</Button>
         </div>
         <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-          <Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} /> 다음부터 묻지 않고 고른 방식으로 바로 담기
+          <Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} /> 다음부터 묻지 않고 바로 담기 (기종이 정해진 부품만)
         </label>
       </DialogContent>
     </Dialog>
@@ -344,7 +353,7 @@ function QtyPrompt({ target, parts, machineModel, onCancel, onConfirm }: {
 }
 
 /** 도면 옆에 항상 보이는 현재 견적 목록 */
-function EstimateSidePanel({ items, onUpdate, onRemove, target }: { items: EstimateItem[]; onUpdate?: (k: string, p: Partial<EstimateItem>) => void; onRemove?: (k: string) => void; target: string }) {
+function EstimateSidePanel({ items, onUpdate, onRemove, target, machineModel }: { items: EstimateItem[]; onUpdate?: (k: string, p: Partial<EstimateItem>) => void; onRemove?: (k: string) => void; target: string; machineModel: string | null }) {
   const isEstimate = target === "견적";
   const t = estimateTotals(items);
   const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
@@ -360,6 +369,7 @@ function EstimateSidePanel({ items, onUpdate, onRemove, target }: { items: Estim
             <div className="min-w-0 flex-1">
               <p className="truncate"><span className="text-muted-foreground">{it.item_type}</span> {it.part_code && <span className="font-mono">{it.part_code}</span>} {it.part_name}</p>
               <p className="text-muted-foreground">{it.unit_price ? won(it.unit_price) : <span className="text-amber-400">단가 미입력</span>}</p>
+              {onUpdate && <QtyNoteChips note={it.notes} machineModel={machineModel} value={Number(it.quantity)} onPick={(n) => onUpdate(it.key, { quantity: n })} className="mt-0.5" />}
             </div>
             <Input aria-label="수량" inputMode="decimal" value={String(it.quantity)} onChange={(e) => onUpdate?.(it.key, { quantity: Number(e.target.value.replace(/[^0-9.]/g, "")) || 1 })} className="h-7 w-12 px-1 text-right text-xs" />
             <span className="w-20 text-right tabular-nums font-medium">{won(lineAmount(it))}</span>

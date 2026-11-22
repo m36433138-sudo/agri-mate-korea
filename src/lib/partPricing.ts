@@ -32,3 +32,20 @@ export function missingPriceFields(origin: PartOrigin, purchase: string, sales: 
   }
   return missing;
 }
+
+export type PartPriceSource = "재고" | "공급가표";
+export type PartPrice = { price: number; source: PartPriceSource };
+
+/**
+ * 견적·수리에 넣을 단가: 부품관리(재고)에 매출가가 있으면 그 값,
+ * 없으면 얀마 공급가표의 공급가로 계산한 매출가(공급가×1.1×1.35, 100원 반올림). 둘 다 없으면 null.
+ */
+export function resolvePartPrice(
+  inventoryPrice: number | null | undefined,
+  supplyPrice: number | null | undefined,
+): PartPrice | null {
+  const inv = Number(inventoryPrice);
+  if (inventoryPrice != null && Number.isFinite(inv) && inv > 0) return { price: Math.round(inv), source: "재고" };
+  const fromSupply = yanmarSalesPrice(supplyPrice);
+  return fromSupply == null ? null : { price: fromSupply, source: "공급가표" };
+}

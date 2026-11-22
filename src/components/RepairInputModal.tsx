@@ -14,6 +14,7 @@ import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as
 import RepairPhotoPartsDialog from "@/components/repair/RepairPhotoPartsDialog";
 import type { EstimateItem } from "@/lib/insuranceEstimate";
 import EstimateDiagramPicker from "@/components/insurance/EstimateDiagramPicker";
+import { fetchPartPrices } from "@/lib/diagramInventory";
 import { mergeDiagramParts, modelFromMachineLabel, rowsToPanelItems } from "@/lib/repairDiagramParts";
 import { formatPrice } from "@/lib/formatters";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -437,6 +438,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
         .limit(1)
         .maybeSingle();
       unitPrice = Number(latest?.sales_price) || 0;
+      if (!unitPrice) {
+        // 부품관리에 매출가가 없으면 얀마 공급가표 기준 매출가
+        try { unitPrice = (await fetchPartPrices([inv.part_code])).get(inv.part_code)?.price ?? 0; } catch { /* 직접 입력 */ }
+      }
     }
 
     // Find or create a matching record in the parts table (needed for FK)

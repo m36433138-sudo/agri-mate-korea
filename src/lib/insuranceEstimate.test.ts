@@ -68,3 +68,25 @@ describe("syncAutoLabor", () => {
     expect(r).toHaveLength(0);
   });
 });
+
+import { qtyChoices } from "./insuranceEstimate";
+
+describe("qtyChoices (견적에서 도면 기종별 수량 고르기)", () => {
+  it("같은 수량 기종은 한 버튼으로 묶는다", () => {
+    expect(qtyChoices("소요 수량 · YH6140 1 / YH7140 1", null)).toEqual([{ qty: 1, models: ["YH6140", "YH7140"], matched: false }]);
+  });
+  it("수량이 다르면 기종별 버튼, 이 기계 기종이 맨 앞", () => {
+    const c = qtyChoices("YH6140 2 / YH7140 3", "YH7140-X");
+    expect(c.map((x) => x.qty)).toEqual([3, 2]);
+    expect(c[0].matched).toBe(true);
+  });
+  it("「-」 기종은 안 씀(qty null)으로 남긴다", () => {
+    expect(qtyChoices("AW6114 - / AW7114 1", null)).toEqual([
+      { qty: null, models: ["AW6114"], matched: false },
+      { qty: 1, models: ["AW7114"], matched: false },
+    ]);
+  });
+  it("기종 없는 「2개」는 수량 버튼 하나", () => {
+    expect(qtyChoices("소요 수량 · 2개", null)).toEqual([{ qty: 2, models: [], matched: false }]);
+  });
+});

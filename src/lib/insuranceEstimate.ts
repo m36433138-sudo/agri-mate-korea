@@ -44,6 +44,7 @@ export function addEstimateItem(items: EstimateItem[], item: EstimateItem): Esti
         quantity: (Number(prev.quantity) || 0) + (Number(item.quantity) || 1),
         part_name: prev.part_name || item.part_name,
         unit_price: prev.unit_price || item.unit_price,
+        notes: prev.notes || item.notes,
       };
       return next;
     }
@@ -102,6 +103,23 @@ export function resolveDiagramQty(note: string | null | undefined, machineModel:
   if (used.length > 0 && distinct.size === 1) return { ...base, qty: used[0].qty };
   if (used.length === 0) return { ...base, notUsed: true };
   return { ...base, ambiguous: true };
+}
+
+/** 견적에서 고를 수 있는 도면 수량 버튼: 같은 수량의 기종은 한 버튼으로 묶는다 (qty=null은 「안 씀」) */
+export type QtyChoice = { qty: number | null; models: string[]; matched: boolean };
+
+export function qtyChoices(note: string | null | undefined, machineModel: string | null | undefined): QtyChoice[] {
+  const options = parseQtyNote(note);
+  const matched = resolveDiagramQty(note, machineModel).matchedModel;
+  const groups: QtyChoice[] = [];
+  for (const o of options) {
+    let g = groups.find((x) => x.qty === o.qty);
+    if (!g) { g = { qty: o.qty, models: [], matched: false }; groups.push(g); }
+    if (o.model && !g.models.includes(o.model)) g.models.push(o.model);
+    if (o.model && o.model === matched) g.matched = true;
+  }
+  // 이 기계 기종이 들어 있는 버튼을 맨 앞에
+  return groups.sort((a, b) => Number(b.matched) - Number(a.matched));
 }
 
 /** 부품가 비율로 계산하는 자동 공임 줄의 품명 (이 이름의 공임 줄은 자동으로 다시 계산된다) */

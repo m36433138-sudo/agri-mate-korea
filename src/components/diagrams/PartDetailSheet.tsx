@@ -13,6 +13,7 @@ import { cart, useCart } from "@/lib/partOrderCart";
 import PartOrderCartContents from "./PartOrderCartContents";
 import PartOrderCartDialog from "./PartOrderCartDialog";
 import { fetchDiagramInventory } from "@/lib/diagramInventory";
+import { partPriceOf, useSupplyPrices } from "./PartsStockList";
 import { toast } from "sonner";
 import { ShoppingCart } from "lucide-react";
 
@@ -89,6 +90,8 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
     queryFn: ({ signal }) => fetchDiagramInventory(partCode ? [partCode] : [], signal),
   });
 
+  const { data: supply } = useSupplyPrices(partCode ? [partCode] : [], open && !!partCode);
+  const price = partCode ? partPriceOf(partCode, inventory as any, supply) : null;
   const { data: usage = [], isLoading: usageLoading } = useQuery<UsageRow[]>({
     queryKey: ["diagram-part-usage", partCode],
     enabled: open && !!partCode,
@@ -192,8 +195,7 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
               className="w-fit gap-1.5"
               onClick={() => {
                 if (!partCode) return;
-                const price = inventory.find((r) => r.sales_price)?.sales_price ?? null;
-                cart.add({ partCode, partName: partName || inventory[0]?.part_name || "", qty: 1, model: diagramTitle?.split(" ")[0], unitPrice: price as any });
+                cart.add({ partCode, partName: partName || inventory[0]?.part_name || "", qty: 1, model: diagramTitle?.split(" ")[0], unitPrice: (price?.price ?? null) as any });
                 toast.success(`${partCode} 주문 목록에 담았어요`);
               }}
             >
@@ -206,6 +208,12 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
             <h3 className="text-sm font-semibold flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-emerald-400" /> 재고 · 위치 · 가격
             </h3>
+            {price?.source === "공급가표" && (
+              <p className="text-sm border rounded-lg p-2.5 border-primary/40">
+                <span className="text-muted-foreground">공급가표 기준 매출가 </span><span className="font-semibold text-primary">{won(price.price)}</span>
+                <span className="block text-[11px] text-muted-foreground">부품관리에 매출가가 없어 얀마 공급가 × 1.1 × 1.35로 계산했어요.</span>
+              </p>
+            )}
             {invLoading ? (
               <Skeleton className="h-24 w-full rounded-lg" />
             ) : inventory.length === 0 ? (

@@ -24,3 +24,21 @@ describe("missingPriceFields", () => {
     expect(missingPriceFields("yanmar", "", "")).toEqual([]);
   });
 });
+
+import { resolvePartPrice } from "./partPricing";
+
+describe("resolvePartPrice (견적 단가 자동 채우기)", () => {
+  it("부품관리 매출가가 있으면 그 값을 쓴다", () => {
+    expect(resolvePartPrice(55000, 10000)).toEqual({ price: 55000, source: "재고" });
+  });
+  it("부품관리 매출가가 없으면 공급가표 공급가 × 1.1 × 1.35 (100원 반올림)", () => {
+    // 10,000 × 1.1 × 1.35 = 14,850 → 14,900
+    expect(resolvePartPrice(null, 10000)).toEqual({ price: 14900, source: "공급가표" });
+  });
+  it("매출가 0원은 미등록으로 보고 공급가표로 채운다", () => {
+    expect(resolvePartPrice(0, 10000)?.source).toBe("공급가표");
+  });
+  it("둘 다 없으면 null", () => {
+    expect(resolvePartPrice(null, undefined)).toBeNull();
+  });
+});

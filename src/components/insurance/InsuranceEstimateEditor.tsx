@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
 import PartsStockList from "@/components/diagrams/PartsStockList";
-import { salesPriceOf } from "@/components/diagrams/PartsStockList";
 import EstimateDiagramPicker from "./EstimateDiagramPicker";
-import { fetchDiagramInventory } from "@/lib/diagramInventory";
+import { fetchPartPrices } from "@/lib/diagramInventory";
+import QtyNoteChips from "./QtyNoteChips";
+import { toast } from "sonner";
 import { AUTO_LABOR_NAME, syncAutoLabor, addEstimateItem, estimateTotals, lineAmount, newKey, type EstimateItem, type EstimateItemType } from "@/lib/insuranceEstimate";
 import { FileText, Map as MapIcon, MapPin, Plus, Printer, Trash2, Wrench } from "lucide-react";
 
@@ -44,9 +45,10 @@ export default function InsuranceEstimateEditor({ items, setItems, machineModel,
   const blank = (type: EstimateItemType) => setItems((prev) => [...prev, { key: newKey(), item_type: type, part_code: "", part_name: type === "공임" ? "수리 공임" : "", quantity: 1, unit_price: 0 }]);
 
   const addFromInventory = async (p: { part_code: string; part_name: string }) => {
-    let price: number | null = null;
-    try { price = salesPriceOf(p.part_code, await fetchDiagramInventory([p.part_code])); } catch { /* 가격 없이 담는다 */ }
-    addMany([{ key: newKey(), item_type: "부품", part_code: p.part_code, part_name: p.part_name, quantity: 1, unit_price: price ?? 0 }]);
+    let price: { price: number; source: string } | null = null;
+    try { price = (await fetchPartPrices([p.part_code])).get(p.part_code) ?? null; } catch { /* 가격 없이 담는다 */ }
+    addMany([{ key: newKey(), item_type: "부품", part_code: p.part_code, part_name: p.part_name, quantity: 1, unit_price: price?.price ?? 0 }]);
+    if (price?.source === "공급가표") toast.success(`${p.part_code} 공급가표 기준 매출가로 채웠어요`);
   };
 
   return (
@@ -93,6 +95,7 @@ export default function InsuranceEstimateEditor({ items, setItems, machineModel,
               <div className="col-span-3 sm:col-span-1 min-w-0">
                 <Input aria-label="품명" value={it.part_name} onChange={(e) => update(it.key, { part_name: e.target.value })} placeholder="품명 · 작업 내용" className={cellCls} />
                 {it.diagram_title && <p className="text-[10px] text-muted-foreground truncate mt-0.5">도면: {it.diagram_title}</p>}
+                {it.item_type === "부품" && <QtyNoteChips note={it.notes} machineModel={machineModel} value={Number(it.quantity)} onPick={(n) => update(it.key, { quantity: n })} className="mt-1" />}
               </div>
               <div className="col-span-3 sm:contents grid grid-cols-3 gap-1.5">
                 <Input aria-label="수량" inputMode="decimal" value={String(it.quantity)} onChange={(e) => update(it.key, { quantity: toNum(e.target.value) || 1 })} className={`${cellCls} text-right`} />

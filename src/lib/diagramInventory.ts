@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolvePartPrice, type PartPrice } from "@/lib/partPricing";
 
 export type DiagramInventoryRow = {
   id: string; part_code: string; alt_part_code: string | null; part_name: string | null;
@@ -37,4 +38,34 @@ export function inventoryBranchName(branch: string) {
   if (/^(Jangheung|00|장흥)/i.test(branch)) return "장흥";
   if (/^(Gangjin|01|강진)/i.test(branch)) return "강진";
   return branch;
+}
+const safeCode = (c: string) => c.trim().toUpperCase();
+
+/** 재고에 등록된 매출가(0원은 미등록으로 본다) */
+export function inventoryPriceOf(code: string, rows: DiagramInventoryRow[]): number | null {
+  const hit = rows.find((r) => matchesInventory(code, r) && Number(r.sales_price) > 0);
+  return hit ? Number(hit.sales_price) : null;
+}
+
+/** 얀마 공급가표(부가세 별도) 공급가: 부품번호(대문자) → 공급가 */
+export async function fetchSupplyPrices(codes: string[], signal?: AbortSignal): Promise<Map<string, number>> {
+  const list = [...new Set(codes.map(safeCode))].filter((c) => /^[A-Z0-9-]+$/.test(c));
+  const out = new Map<string, number>();
+  for (let i = 0; i < list.length; i += 150) {
+    let query = (supabase as any).from("yanmar_supply_prices").select("part_code, supply_price").in("part_code", list.slice(i, i + 150));
+    if (signal) query = query.abortSignal(signal);
+    const { data, error } = await query;
+    if (error) throw error;
+    for (const r of data || []) if (Number(r.supply_price) > 0) out.set(safeCode(r.part_code), Number(r.supply_price));
+  }
+  return out;
+}
+
+/** 재고 매출가 → 없으면 공급가표 매출가. 재고 행을 이미 받아 왔으면 rows로 넘긴다 */
+export async function fetchPartPrices(codes: string[], rows?: DiagramInventoryRow[], signal?: AbortSignal): Promise<Map<string, PartPrice | null>> {
+  const [inv, supply] = await Promise.all([
+    rows ? Promise.resolve(rows) : fetchDiagramInventory(codes, signal).catch(() => [] as DiagramInventoryRow[]),
+    fetchSupplyPrices(codes, signal).catch(() => new Map<string, number>()),
+  ]);
+  return new Map(codes.map((c) => [c, resolvePartPrice(inventoryPriceOf(c, inv), supply.get(safeCode(c)))]));
 }

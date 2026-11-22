@@ -12,6 +12,7 @@ import { Plus, Trash2, Search, Map as MapIcon, Camera } from "lucide-react";
 import RepairPhotoPartsDialog from "@/components/repair/RepairPhotoPartsDialog";
 import type { EstimateItem } from "@/lib/insuranceEstimate";
 import EstimateDiagramPicker from "@/components/insurance/EstimateDiagramPicker";
+import { fetchPartPrices } from "@/lib/diagramInventory";
 import { mergeDiagramParts, rowsToPanelItems } from "@/lib/repairDiagramParts";
 import LastModifiedInfo from "@/components/LastModifiedInfo";
 import { formatPrice } from "@/lib/formatters";
@@ -148,6 +149,10 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
         .limit(1)
         .maybeSingle();
       unitPrice = Number(inv?.sales_price) || 0;
+      if (!unitPrice) {
+        // 부품관리에 매출가가 없으면 얀마 공급가표 기준 매출가
+        try { unitPrice = (await fetchPartPrices([p.part_number])).get(p.part_number)?.price ?? 0; } catch { /* 직접 입력 */ }
+      }
     }
     setPartRows((prev) => {
       const idx = prev.findIndex((r) => r.part_id === p.id);

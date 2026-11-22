@@ -10,8 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDiagrams } from "@/hooks/useDiagrams";
 import { diagramIdsForModel, photoModelOptions, toJpegDataUrl } from "@/lib/photoPartFinder";
 import { machineModelChip } from "@/lib/repairDiagrams";
-import { fetchDiagramInventory } from "@/lib/diagramInventory";
-import { salesPriceOf } from "@/components/diagrams/PartsStockList";
+import { fetchPartPrices } from "@/lib/diagramInventory";
 import { newKey, type EstimateItem } from "@/lib/insuranceEstimate";
 import {
   MAX_REPAIR_PHOTOS, mergePhotoCandidates, preChecked, stopsQueue, type PhotoMatch,
@@ -164,8 +163,8 @@ export default function RepairPhotoPartsDialog({ open, onOpenChange, machineMode
     setAdding(true);
     let prices = new Map<string, number | null>();
     try {
-      const rows = await fetchDiagramInventory(selected.map((c) => c.part_code));
-      prices = new Map(selected.map((c) => [c.part_code, salesPriceOf(c.part_code, rows)]));
+      const found = await fetchPartPrices(selected.map((c) => c.part_code));
+      prices = new Map(selected.map((c) => [c.part_code, found.get(c.part_code)?.price ?? null]));
     } catch { /* 가격은 직접 입력 */ }
     const items: EstimateItem[] = selected.map((c) => ({
       key: newKey(),
