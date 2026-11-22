@@ -70,7 +70,7 @@ export default function CustomerHome() {
       {/* Welcome Section */}
       <div className="pt-2">
         <p className="text-sm text-muted-foreground">{greeting} 👋</p>
-        <h1 className="text-2xl font-bold mt-1">
+        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight mt-1">
           {loading ? <Skeleton className="h-8 w-48" /> : `${displayName}님`}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">

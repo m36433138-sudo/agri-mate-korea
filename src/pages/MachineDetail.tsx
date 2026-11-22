@@ -107,7 +107,7 @@ export default function MachineDetail() {
       </div>
 
       <div className="hidden print:block mb-6">
-        <h1 className="text-xl font-bold">얀마 관리 시스템 — 기계 상세 정보</h1>
+        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">얀마 관리 시스템 — 기계 상세 정보</h1>
         <p className="text-sm text-gray-500">출력일: {new Date().toLocaleDateString("ko-KR")}</p>
       </div>
 
@@ -116,7 +116,7 @@ export default function MachineDetail() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold print:text-xl">{machine.model_name}</h1>
+                <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight print:text-xl">{machine.model_name}</h1>
                 {(machine as any).ecu_mapped && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold tracking-wide bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow shadow-blue-200">
                     <Zap className="h-3 w-3" />

@@ -194,7 +194,7 @@ export default function VendorDetail() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" asChild><Link to="/vendors"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div>
-          <h1 className="text-xl font-bold">{vendor.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">{vendor.name}</h1>
           <p className="text-xs text-muted-foreground">
             {[vendor.representative && `대표: ${vendor.representative}`, vendor.phone, vendor.business_number].filter(Boolean).join(" · ")}
           </p>

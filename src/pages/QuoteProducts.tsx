@@ -55,7 +55,7 @@ export default function QuoteProducts() {
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">견적 제품 관리</h1>
+          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">견적 제품 관리</h1>
           <p className="text-sm text-muted-foreground mt-1">견적서에서 선택할 제품/규격/단가</p>
         </div>
         <div className="flex gap-2">

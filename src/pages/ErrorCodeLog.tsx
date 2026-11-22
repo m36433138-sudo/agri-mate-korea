@@ -172,7 +172,7 @@ export default function ErrorCodeLog() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-foreground flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-amber-400" />
             에러코드
           </h1>

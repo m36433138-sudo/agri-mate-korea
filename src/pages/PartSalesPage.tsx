@@ -63,7 +63,7 @@ export default function PartSalesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <ShoppingCart className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-bold">부품 판매</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">부품 판매</h1>
         </div>
         {canManage && (
           <Button onClick={() => setNewOpen(true)} className="w-full sm:w-auto">

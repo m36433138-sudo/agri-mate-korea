@@ -79,7 +79,7 @@ export default function Messenger() {
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             사내 메신저
           </h1>

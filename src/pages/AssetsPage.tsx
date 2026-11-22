@@ -843,7 +843,7 @@ export default function AssetsPage() {
           <Banknote className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold leading-tight">자산 관리</h1>
+          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight leading-tight">자산 관리</h1>
           <p className="text-sm text-muted-foreground">전자장비 · 차량 · 토지 및 부동산</p>
         </div>
       </div>

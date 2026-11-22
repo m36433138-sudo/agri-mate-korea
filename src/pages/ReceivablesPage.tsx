@@ -102,7 +102,7 @@ export default function ReceivablesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Wallet className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-bold">미수금 관리</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">미수금 관리</h1>
         </div>
         {canManage && (
           <Button onClick={openNew} className="w-full sm:w-auto">

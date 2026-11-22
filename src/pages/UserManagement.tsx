@@ -60,7 +60,7 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">사용자 관리</h1>
+      <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">사용자 관리</h1>
       <Tabs value={tab} onValueChange={v => setTab(v as any)}>
         <TabsList>
           <TabsTrigger value="accounts" className="gap-1.5">

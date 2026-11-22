@@ -47,7 +47,7 @@ export default function QuotesList() {
     <div className="p-6 space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-2">
         <div>
-          <h1 className="text-2xl font-bold">견적서 관리</h1>
+          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">견적서 관리</h1>
           <p className="text-sm text-muted-foreground mt-1">발행한 견적서 목록</p>
         </div>
         <div className="flex gap-2">

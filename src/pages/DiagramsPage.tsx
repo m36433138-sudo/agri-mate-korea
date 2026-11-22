@@ -304,7 +304,7 @@ export default function DiagramsPage() {
     <div className={viewer ? "hidden" : undefined}>
       <PartOrderCartDialog open={cartOpen} onOpenChange={setCartOpen} />
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2">
           <Map className="h-6 w-6 text-primary" /> 부품 도면
         </h1>
         <Button variant="outline" className="ml-auto gap-1.5" onClick={() => setCartOpen(true)}>

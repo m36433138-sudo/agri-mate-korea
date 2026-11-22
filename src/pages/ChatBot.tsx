@@ -135,7 +135,7 @@ export default function ChatBot() {
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)]">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-foreground flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
           AI 어시스턴트
         </h1>

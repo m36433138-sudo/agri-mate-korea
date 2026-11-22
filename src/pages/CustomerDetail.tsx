@@ -253,7 +253,7 @@ export default function CustomerDetail() {
         <CardContent className="p-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold">{customer.name}</h1>
+              <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">{customer.name}</h1>
               {customer.grade && <CustomerGradeBadge grade={customer.grade} />}
               {customer.user_id && (
                 <Badge variant="secondary" className="gap-1">

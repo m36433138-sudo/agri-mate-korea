@@ -60,7 +60,7 @@ export default function RepairTemplates() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold">수리 템플릿</h1>
+        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">수리 템플릿</h1>
         <Button onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4 mr-1" /> 템플릿 추가
         </Button>

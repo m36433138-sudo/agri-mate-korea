@@ -189,7 +189,7 @@ export default function OnsiteRepairs() {
     <div className="space-y-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">방문수리</h1>
+        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">방문수리</h1>
         <div className="flex gap-2">
           <Button onClick={handleAdd} size="sm">
             <Plus className="h-4 w-4 mr-1" /> 추가

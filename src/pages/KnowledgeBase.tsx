@@ -287,7 +287,7 @@ export default function KnowledgeBase() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-foreground flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
           지식베이스
         </h1>

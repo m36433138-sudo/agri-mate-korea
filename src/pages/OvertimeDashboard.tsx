@@ -494,7 +494,7 @@ export default function OvertimeDashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2">
               <Clock className="h-6 w-6" /> 내 출퇴근
             </h1>
             <p className="text-sm text-muted-foreground mt-1">현재 시각: {nowStr}</p>
@@ -547,7 +547,7 @@ export default function OvertimeDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2">
             <Clock className="h-6 w-6" /> 초과근무 현황
           </h1>
           <p className="text-sm text-muted-foreground mt-1">현재 시각: {nowStr}</p>

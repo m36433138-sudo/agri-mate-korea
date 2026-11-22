@@ -169,7 +169,7 @@ export default function LocationHistory() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2">
           <MapPin className="h-6 w-6" />
           출퇴근 위치 이력
         </h1>

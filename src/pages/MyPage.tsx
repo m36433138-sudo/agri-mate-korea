@@ -79,7 +79,7 @@ export default function MyPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">마이페이지</h1>
+      <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight mb-6">마이페이지</h1>
 
       {/* Profile Card */}
       <Card className="shadow-card border-0 mb-6">

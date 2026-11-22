@@ -166,7 +166,7 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Receipt className="h-6 w-6 text-primary" /> 지출 관리</h1>
+        <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight flex items-center gap-2"><Receipt className="h-6 w-6 text-primary" /> 지출 관리</h1>
         <div className="ml-auto flex gap-2 flex-wrap">
           <Button variant="outline" className="gap-1.5" onClick={exportXlsx} disabled={filtered.length === 0}>
             <Download className="h-4 w-4" /> 엑셀 내보내기

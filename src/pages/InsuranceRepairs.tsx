@@ -96,7 +96,7 @@ export default function InsuranceRepairs() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[200px]">
-          <h1 className="text-xl font-bold flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" /> 보험수리 관리
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
