@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchDiagramInventory, fetchSupplyPrices, inventoryBranchName, inventoryPriceOf, matchesInventory, type DiagramInventoryRow } from "@/lib/diagramInventory";
 import { resolvePartPrice, type PartPrice } from "@/lib/partPricing";
@@ -66,10 +66,17 @@ export default function PartsStockList({ parts }: { parts: { code: string; name?
             ) : (
               <div className="grid gap-1">
                 {matched.map((r) => (
-                  <div key={r.id} className="grid grid-cols-[3rem_3.5rem_1fr] sm:grid-cols-[3rem_3.5rem_1fr_auto] items-baseline gap-x-2 gap-y-0.5 text-xs border-l-2 border-primary/60 pl-2">
+                  <div key={r.id} className="grid grid-cols-[3rem_3.5rem_1fr] sm:grid-cols-[3rem_3.5rem_1fr_auto] items-center gap-x-2 gap-y-1 text-xs border-l-2 border-primary/60 pl-2 py-0.5">
                     <span className="font-semibold">{inventoryBranchName(r.branch)}</span>
-                    <span className={(r.quantity ?? 0) > 0 ? "" : "text-destructive"}>{r.quantity ?? 0}개</span>
-                    <span className="break-words">{[r.location_main, r.location_sub].filter(Boolean).join(" / ") || "위치 미등록"}</span>
+                    <span className={`font-bold tabular-nums ${(r.quantity ?? 0) > 0 ? "" : "text-destructive"}`}>{r.quantity ?? 0}개</span>
+                    {[r.location_main, r.location_sub].some(Boolean) ? (
+                      <span className="flex items-center gap-1 w-fit max-w-full rounded-lg bg-primary/10 text-primary px-2 py-1 text-sm font-extrabold break-words">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        {[r.location_main, r.location_sub].filter(Boolean).join(" / ")}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">위치 미등록</span>
+                    )}
                     <span className="col-span-3 sm:col-span-1 text-muted-foreground sm:text-right">
                       판매 {won(r.sales_price)} · 매입 {won(r.purchase_price)}
                     </span>
