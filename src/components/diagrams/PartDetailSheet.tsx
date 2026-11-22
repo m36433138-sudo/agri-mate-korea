@@ -16,6 +16,7 @@ import { fetchDiagramInventory } from "@/lib/diagramInventory";
 import { partPriceOf, useSupplyPrices } from "./PartsStockList";
 import { toast } from "sonner";
 import { ShoppingCart } from "lucide-react";
+import { LocationPhotos } from "@/components/partReceipts/LocationPhotos";
 
 const db = supabase as any;
 
@@ -251,6 +252,20 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
             )}
           </section>
 
+
+          {/* 적재 위치 사진 (직원끼리 공유) */}
+          {partCode && (
+            <section className="mt-4 space-y-2">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-primary" /> 적재 위치 사진
+              </h3>
+              <LocationPhotos
+                partCode={partCode}
+                branch={(inventory.find((i) => (i.quantity ?? 0) > 0)?.branch ?? inventory[0]?.branch ?? "장흥") as string}
+                location={inventory.find((i) => (i.quantity ?? 0) > 0)?.location_main ?? inventory[0]?.location_main ?? null}
+              />
+            </section>
+          )}
 
           {cartItems.length > 0 && <section aria-label="담은 주문 목록" className="mt-4 border-y py-3">
             <div className="flex items-center justify-between gap-2">

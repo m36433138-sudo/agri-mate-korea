@@ -12,7 +12,15 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EXPENSE_CATEGORIES, expenseSheet, receiptToRows, totalsByCategory, type Expense, type ReceiptRead } from "@/lib/expenses";
 import { Camera, Download, FileText, Loader2, Plus, Receipt, Search, Trash2, Upload, Image as ImageIcon } from "lucide-react";
-import { PageHeader, SearchField } from "@/components/page/PageParts";
+import { PageHeader, SearchField, Segmented } from "@/components/page/PageParts";
+import { readPdfText } from "@/lib/pdfText";
+import { isYanmarStatement, parseYanmarStatement, type YanmarStatement } from "@/lib/yanmarStatement";
+import YanmarStatementDialog from "@/components/partReceipts/YanmarStatementDialog";
+import { codeFromDescription, generalPartCode, matchVendor, type Branch } from "@/lib/partReceipts";
+import { createPartReceipt, ensureVendor, loadVendors } from "@/components/partReceipts/receiptData";
+import { ToastAction } from "@/components/ui/toast";
+import { useNavigate } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const db = supabase as any;
 const BUCKET = "receipts";
@@ -52,6 +60,12 @@ export default function ExpensesPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [review, setReview] = useState<{ rows: Draft[]; fileName: string; total: number | null; vendor: string | null } | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  const [yanmar, setYanmar] = useState<{ file: File; statement: YanmarStatement } | null>(null);
+  // 일반 거래처 명세서의 「부품 매입」 줄을 부품 입고 대기로 보낼지 · 어느 지점으로
+  const [toReceiving, setToReceiving] = useState(true);
+  const [receiveBranch, setReceiveBranch] = useState<Branch>("장흥");
+  const navigate = useNavigate();
+  const { data: vendorList = [] } = useQuery({ queryKey: ["vendors-for-expenses"], queryFn: loadVendors, staleTime: 60_000 });
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const queue = useRef<File[]>([]);
@@ -101,6 +115,20 @@ export default function ExpensesPage() {
     setBusy(`「${file.name}」 읽는 중… (AI가 항목을 나누고 분류합니다)${queue.current.length ? ` · 남은 ${queue.current.length}장` : ""}`);
     try {
       if (file.size > 10 * 1024 * 1024) throw new Error("10MB 이하 파일만 올릴 수 있습니다.");
+      // 얀마 거래명세서 PDF는 글자층을 바로 읽는다 (AI 없이, 부품번호·수량·금액이 정확)
+      if (file.type === "application/pdf") {
+        try {
+          const pages = await readPdfText(file, 10);
+          if (isYanmarStatement(pages)) {
+            const statement = parseYanmarStatement(pages);
+            if (statement.lines.length > 0) {
+              setBusy(null);
+              setYanmar({ file, statement });
+              return;
+            }
+          }
+        } catch { /* 글자층이 없는 스캔 PDF 등은 AI로 읽는다 */ }
+      }
       const { dataUrl, blob, ext, type } = await toDataUrl(file);
       const { data: u } = await supabase.auth.getUser();
       const path = `${u.user?.id ?? "anon"}/${todayStr()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
@@ -127,15 +155,52 @@ export default function ExpensesPage() {
   const pick = (list: FileList | null) => {
     if (!list?.length) return;
     queue.current.push(...Array.from(list));
-    if (!busy && !review) readNext();
+    if (!busy && !review && !yanmar) readNext();
   };
 
   const saveReview = async () => {
     if (!review) return;
     const valid = review.rows.filter((r) => r.description.trim() && Number(r.amount));
+    const partRows = valid.filter((r) => r.category === "부품 매입");
     const { error } = await db.from("expenses").insert(valid);
     if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
-    toast({ title: `지출 ${valid.length}건을 표에 추가했습니다.`, description: won(valid.reduce((s, r) => s + Number(r.amount), 0)) });
+    let receivingNote = "";
+    if (toReceiving && partRows.length > 0) {
+      // 거래처를 찾거나 등록하고, 부품 매입 줄을 부품 입고 대기로 (모두 재고에 등록되는 일반 부품)
+      try {
+        const first = partRows[0];
+        const vendor = await ensureVendor(vendorList, {
+          name: first.vendor, business_number: first.business_number,
+          itemsHint: partRows.map((r) => r.description).slice(0, 3).join(", "),
+        });
+        await createPartReceipt(
+          {
+            source: "general", vendor_id: vendor?.id ?? null, vendor_name: vendor?.name ?? first.vendor, business_number: first.business_number,
+            doc_number: null, doc_date: first.expense_date, branch: receiveBranch,
+            supply_amount: null, vat_amount: null, total_amount: partRows.reduce((s, r) => s + Number(r.amount), 0),
+            expense_group: first.receipt_group, file_path: first.receipt_path, notes: null,
+          },
+          partRows.map((r, i) => {
+            const qty = Math.max(1, Math.round(Number(r.quantity) || 1));
+            return {
+              line_no: i + 1,
+              part_code: codeFromDescription(r.description) ?? generalPartCode(vendor?.name ?? first.vendor, r.description),
+              alt_part_code: null, part_name: r.description.trim(), quantity: qty,
+              unit_price: Math.round(Number(r.unit_price) || Number(r.amount) / qty), amount: Math.round(Number(r.amount)), location: null,
+            };
+          }),
+        );
+        receivingNote = ` · ${receiveBranch} 부품 입고 대기 ${partRows.length}줄`;
+        qc.invalidateQueries({ queryKey: ["vendors-for-expenses"] });
+      } catch (e: any) {
+        toast({ title: "지출은 저장했지만 부품 입고 대기를 만들지 못했어요", description: e.message, variant: "destructive" });
+      }
+    }
+    toast({
+      title: `지출 ${valid.length}건을 표에 추가했습니다.`,
+      description: won(valid.reduce((s, r) => s + Number(r.amount), 0)) + receivingNote,
+      action: receivingNote ? <ToastAction altText="부품 입고로 가기" onClick={() => navigate("/parts?tab=receiving")}>입고하러 가기</ToastAction> : undefined,
+    });
     if (valid[0]?.expense_date) setMonth(valid[0].expense_date.slice(0, 7));
     qc.invalidateQueries({ queryKey: ["expenses"] });
     setReview(null);
@@ -308,6 +373,27 @@ export default function ExpensesPage() {
                   </div>
                 ))}
               </div>
+              {review.rows.some((r) => r.category === "부품 매입") && (() => {
+                const v = matchVendor(vendorList, review.rows[0]?.vendor ?? null, review.rows[0]?.business_number ?? null);
+                const n = review.rows.filter((r) => r.category === "부품 매입").length;
+                return (
+                  <div className="rounded-2xl border bg-muted/40 p-3 space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                      <Checkbox checked={toReceiving} onCheckedChange={(c) => setToReceiving(!!c)} />
+                      「부품 매입」 {n}줄을 부품 입고 대기로 보내기 (창고 확인 후 재고 등록)
+                    </label>
+                    {toReceiving && (
+                      <div className="flex items-center gap-3 flex-wrap pl-6">
+                        <Segmented<Branch> label="입고 지점" value={receiveBranch} onChange={setReceiveBranch}
+                          options={[{ value: "장흥", label: "장흥" }, { value: "강진", label: "강진" }]} />
+                        <span className="text-xs text-muted-foreground">
+                          거래처: {v ? <b className="text-foreground">{v.name} (등록된 거래처)</b> : <b className="text-primary">{review.rows[0]?.vendor || "이름 없음"} · 새로 등록돼요</b>}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <p className="text-sm text-right">
                 항목 합계 <b className="tabular-nums">{won(review.rows.reduce((s, r) => s + Number(r.amount || 0), 0))}</b>
                 {review.total != null && <span className="text-muted-foreground"> · 영수증 합계 {won(review.total)}</span>}
@@ -320,6 +406,18 @@ export default function ExpensesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {yanmar && (
+        <YanmarStatementDialog
+          file={yanmar.file}
+          statement={yanmar.statement}
+          onDone={(saved) => {
+            setYanmar(null);
+            if (saved) { setMonth(saved.month); qc.invalidateQueries({ queryKey: ["expenses"] }); qc.invalidateQueries({ queryKey: ["part-receipts"] }); }
+            readNext();
+          }}
+        />
+      )}
 
       <ManualExpenseDialog open={manualOpen} onOpenChange={setManualOpen} onSaved={(d) => { setMonth(d.slice(0, 7)); qc.invalidateQueries({ queryKey: ["expenses"] }); }} />
     </div>
