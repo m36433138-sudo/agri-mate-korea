@@ -221,22 +221,33 @@ export default function PartDetailSheet({ partCode, partName, quantityNote, open
                 재고 목록에 이 부품번호가 없습니다.
               </p>
             ) : (
-              inventory.map((inv) => (
-                <div key={inv.id} className="border rounded-lg p-3 space-y-1.5">
-                  <p className="text-xs font-mono">{inv.part_code}{inv.part_name ? ` · ${inv.part_name}` : ""}</p>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline">{inv.branch}</Badge>
-                    <span className={`text-sm font-bold ${(inv.quantity ?? 0) > 0 ? "" : "text-destructive"}`}>
-                      재고 {inv.quantity ?? 0}개
-                    </span>
+              inventory.map((inv) => {
+                const loc = [inv.location_main, inv.location_sub].filter(Boolean).join(" / ");
+                const inStock = (inv.quantity ?? 0) > 0;
+                return (
+                  <div key={inv.id} className="border rounded-2xl p-3 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge variant="outline" className="rounded-full text-sm px-2.5">{inv.branch}</Badge>
+                      <span className={`text-base font-extrabold tabular-nums ${inStock ? "" : "text-destructive"}`}>
+                        재고 {inv.quantity ?? 0}개
+                      </span>
+                    </div>
+                    {/* 창고에서 바로 찾을 수 있게 위치를 가장 크게 */}
+                    <div className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ${loc ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      <MapPin className="h-6 w-6 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium opacity-80">재고 위치</p>
+                        <p className="text-xl sm:text-2xl font-extrabold leading-tight break-words">{loc || "위치 미등록"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-2 text-sm">
+                      <span>매출가 <b className="tabular-nums">{won(inv.sales_price)}</b></span>
+                      <span className="text-muted-foreground text-xs tabular-nums">매입 {won(inv.purchase_price)}</span>
+                    </div>
+                    <p className="text-xs font-mono text-muted-foreground break-all">{inv.part_code}{inv.part_name ? ` · ${inv.part_name}` : ""}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span>위치: {inv.location_main || "—"}{inv.location_sub ? ` / ${inv.location_sub}` : ""}</span>
-                    <span>매입가: {won(inv.purchase_price)}</span>
-                    <span className="col-span-2">매출가: {won(inv.sales_price)}</span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </section>
 
