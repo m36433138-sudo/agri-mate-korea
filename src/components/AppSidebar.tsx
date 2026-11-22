@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LogOut, ChevronDown, Tractor } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -56,11 +56,8 @@ export function AppSidebar() {
       return next;
     });
 
-  // 지금 보고 있는 화면이 든 묶음은 항상 펼친다
+  // 지금 보고 있는 화면이 든 묶음은 항상 펼친다 (접어도 지금 화면 메뉴가 사라지지 않게)
   const activeGroup = groups.find((g) => g.items.some((it) => isActivePath(pathname, it.url)))?.id;
-  useEffect(() => {
-    if (activeGroup && !open[activeGroup]) setOpen((prev) => ({ ...prev, [activeGroup]: true }));
-  }, [activeGroup]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Sidebar collapsible="icon" variant="floating" className="p-3 pr-0">
@@ -73,7 +70,8 @@ export function AppSidebar() {
             key={g.id}
             group={g}
             collapsed={collapsed}
-            open={!!open[g.id] || groups.length === 1}
+            open={!!open[g.id] || g.id === activeGroup || groups.length === 1}
+            locked={g.id === activeGroup || groups.length === 1}
             onToggle={() => toggle(g.id)}
             first={i === 0}
           />
@@ -102,8 +100,8 @@ function LogoHeader({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-function NavSection({ group, collapsed, open, onToggle, first }: {
-  group: NavGroup; collapsed: boolean; open: boolean; onToggle: () => void; first: boolean;
+function NavSection({ group, collapsed, open, locked, onToggle, first }: {
+  group: NavGroup; collapsed: boolean; open: boolean; locked: boolean; onToggle: () => void; first: boolean;
 }) {
   // 핸드폰에서는 메뉴를 고르면 서랍을 닫아 바뀐 화면이 바로 보이게 한다
   const { isMobile, setOpenMobile } = useSidebar();
@@ -113,12 +111,14 @@ function NavSection({ group, collapsed, open, onToggle, first }: {
       {!collapsed && (
         <button
           type="button"
-          onClick={onToggle}
+          onClick={locked ? undefined : onToggle}
           aria-expanded={open}
+          aria-disabled={locked || undefined}
+          title={locked ? "지금 보는 화면이 든 묶음이라 펼쳐 둬요" : undefined}
           className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[12px] font-semibold text-muted-foreground hover:text-sidebar-foreground transition-colors"
         >
           {group.label}
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+          {!locked && <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />}
         </button>
       )}
       {showItems && (
