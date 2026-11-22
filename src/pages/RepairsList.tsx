@@ -1,10 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useListFilter } from "@/hooks/useListFilter";
-import { Link } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,9 +17,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp, AlertTriangle, Map as MapIcon } from "lucide-react";
+import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp, AlertTriangle, Map as MapIcon, MoreHorizontal } from "lucide-react";
 import RepairDiagramDialog from "@/components/diagrams/RepairDiagramDialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +38,61 @@ import MechanicRepairForm from "@/components/MechanicRepairForm";
 import RepairLogHistory from "@/components/RepairLogHistory";
 import type { RepairWithMachine } from "@/types/database";
 
+const PAGE = 100;
+
+/** 전산 기표 상태 배지. 눌러서 바로 바꿀 수 있다. */
+function AccountingBadge({ posted, disabled, onToggle }: { posted: boolean; disabled?: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      disabled={disabled}
+      aria-pressed={posted}
+      title={posted ? "눌러서 미기표로 바꾸기" : "눌러서 기표완료로 바꾸기"}
+      className={cn(
+        "inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors disabled:opacity-50",
+        posted
+          ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
+          : "bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400",
+      )}
+    >
+      {posted && <Check className="h-3 w-3" strokeWidth={3} />}
+      {posted ? "기표완료" : "미기표"}
+    </button>
+  );
+}
+
+function RowMenu({ onDiagram, onErrorCode, onEdit, onDelete }: {
+  onDiagram: () => void; onErrorCode: () => void; onEdit: () => void; onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-muted-foreground"
+          aria-label="더 보기"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreHorizontal className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem onSelect={onEdit}><Pencil className="h-4 w-4 mr-2" /> 수정</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onDiagram}><MapIcon className="h-4 w-4 mr-2" /> 도면에서 부품 보기</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onErrorCode}><AlertTriangle className="h-4 w-4 mr-2" /> 에러코드 기록</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
+          <Trash2 className="h-4 w-4 mr-2" /> 삭제
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export default function RepairsList() {
+  const [params, setParams] = useSearchParams();
   const [repairOpen, setRepairOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -41,7 +100,21 @@ export default function RepairsList() {
   const [errorCodeRepair, setErrorCodeRepair] = useState<any | null>(null);
   const [diagramRepair, setDiagramRepair] = useState<any | null>(null);
   const [technicianFilter, setTechnicianFilter] = useState("");
-  const [accountingFilter, setAccountingFilter] = useState<"all" | "posted" | "unposted">("all");
+  const [accountingFilter, setAccountingFilter] = useState<"all" | "posted" | "unposted">(() => {
+    const a = params.get("accounting");
+    return a === "posted" || a === "unposted" ? a : "all";
+  });
+  const [shown, setShown] = useState(PAGE);
+
+  // 대시보드의 「수리 등록」 바로가기 (?new=1)
+  useEffect(() => {
+    if (params.get("new") === "1") {
+      setRepairOpen(true);
+      const next = new URLSearchParams(params);
+      next.delete("new");
+      setParams(next, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [techOpen, setTechOpen] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -87,6 +160,14 @@ export default function RepairsList() {
     return result;
   }, [searchFiltered, technicianFilter, accountingFilter]);
 
+  // 필터가 바뀌면 처음 100건부터 다시 보여 준다 (수천 건도 휴대폰에서 가볍게)
+  useEffect(() => setShown(PAGE), [search, technicianFilter, accountingFilter]);
+  const visible = filtered.slice(0, shown);
+  const unpostedCount = useMemo(() => (repairs ?? []).filter((r) => r.accounting_posted !== true).length, [repairs]);
+  const askDelete = (r: any) => {
+    if (confirm("이 수리 이력을 삭제하시겠습니까?")) deleteMutation.mutate(r.id);
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("repairs").delete().eq("id", id);
@@ -112,228 +193,275 @@ export default function RepairsList() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold">수리이력</h1>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5 sm:mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">수리이력</h1>
+          {repairs && (
+            <p className="text-sm text-muted-foreground mt-1">
+              전체 {repairs.length.toLocaleString("ko-KR")}건
+              {unpostedCount > 0 && (
+                <>
+                  {" · "}
+                  <button
+                    type="button"
+                    className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                    onClick={() => setAccountingFilter("unposted")}
+                  >
+                    미기표 {unpostedCount.toLocaleString("ko-KR")}건
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+        </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <FileUp className="h-4 w-4 mr-1" /> 청구서 PDF 가져오기
+          <Button variant="outline" className="h-11 rounded-xl flex-1 sm:flex-none" onClick={() => setImportOpen(true)}>
+            <FileUp className="h-4 w-4 mr-1.5" /> 청구서 PDF
           </Button>
-          <Button onClick={() => setRepairOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> 수리 등록
+          <Button className="h-11 rounded-xl flex-1 sm:flex-none px-5" onClick={() => setRepairOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> 수리 등록
           </Button>
         </div>
-
       </div>
 
       <Tabs defaultValue="history" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="history">수리 이력</TabsTrigger>
-          <TabsTrigger value="mechanic-input">정비 입력 (기사)</TabsTrigger>
-          <TabsTrigger value="mechanic-history">정비 이력</TabsTrigger>
+        <TabsList className="h-11 rounded-xl p-1 w-full sm:w-auto grid grid-cols-3 sm:inline-flex">
+          <TabsTrigger value="history" className="rounded-lg h-9">수리 이력</TabsTrigger>
+          <TabsTrigger value="mechanic-input" className="rounded-lg h-9">정비 입력</TabsTrigger>
+          <TabsTrigger value="mechanic-history" className="rounded-lg h-9">정비 이력</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="history">
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <div className="relative max-w-xs flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <TabsContent value="history" className="space-y-3">
+          {/* 필터 막대 */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+            <div className="relative flex-1 lg:max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="제조번호, 수리내용, 담당기사 검색..."
+                placeholder="기계, 제조번호, 고객, 수리내용, 담당기사"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
+                className="pl-10 h-11 rounded-xl bg-card"
               />
             </div>
 
-            <Popover open={techOpen} onOpenChange={setTechOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-10 justify-between min-w-[140px]">
-                  {technicianFilter || "전체 기사"}
-                  <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0">
-                <Command>
-                  <CommandInput placeholder="기사 검색..." />
-                  <CommandList>
-                    <CommandEmpty>결과 없음</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        onSelect={() => {
-                          setTechnicianFilter("");
-                          setTechOpen(false);
-                        }}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", technicianFilter === "" ? "opacity-100" : "opacity-0")} />
-                        전체 기사
-                      </CommandItem>
-                      {employees?.map((emp: any) => (
+            <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+              <Popover open={techOpen} onOpenChange={setTechOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("h-11 rounded-xl justify-between min-w-[128px] shrink-0 bg-card", technicianFilter && "border-primary text-primary")}
+                  >
+                    {technicianFilter || "담당 기사"}
+                    <ChevronDown className="ml-2 h-4 w-4 opacity-60" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[220px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="기사 검색..." />
+                    <CommandList>
+                      <CommandEmpty>결과 없음</CommandEmpty>
+                      <CommandGroup>
                         <CommandItem
-                          key={emp.id}
                           onSelect={() => {
-                            setTechnicianFilter(emp.name);
+                            setTechnicianFilter("");
                             setTechOpen(false);
                           }}
                         >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              technicianFilter === emp.name ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {emp.name}
+                          <Check className={cn("mr-2 h-4 w-4", technicianFilter === "" ? "opacity-100" : "opacity-0")} />
+                          전체 기사
                         </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+                        {employees?.map((emp: any) => (
+                          <CommandItem
+                            key={emp.id}
+                            onSelect={() => {
+                              setTechnicianFilter(emp.name);
+                              setTechOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                technicianFilter === emp.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {emp.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
 
-            <div className="flex items-center gap-1 bg-muted rounded-md p-1">
-              <Button
-                variant={accountingFilter === "all" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setAccountingFilter("all")}
-              >
-                전체
-              </Button>
-              <Button
-                variant={accountingFilter === "unposted" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setAccountingFilter("unposted")}
-              >
-                미기표
-              </Button>
-              <Button
-                variant={accountingFilter === "posted" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setAccountingFilter("posted")}
-              >
-                기표완료
-              </Button>
+              <div className="flex items-center h-11 shrink-0 rounded-xl bg-muted p-1" role="group" aria-label="기표 상태">
+                {([["all", "전체"], ["unposted", "미기표"], ["posted", "기표완료"]] as const).map(([v, label]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={accountingFilter === v}
+                    onClick={() => setAccountingFilter(v)}
+                    className={cn(
+                      "h-9 px-3.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
+                      accountingFilter === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {activeFilters && (
+                <Button
+                  variant="ghost"
+                  className="h-11 rounded-xl shrink-0 text-muted-foreground"
+                  onClick={() => {
+                    setTechnicianFilter("");
+                    setAccountingFilter("all");
+                    setSearch("");
+                  }}
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" /> 초기화
+                </Button>
+              )}
             </div>
-
-            {activeFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setTechnicianFilter("");
-                  setAccountingFilter("all");
-                  setSearch("");
-                }}
-              >
-                <RotateCcw className="h-3.5 w-3.5 mr-1" /> 초기화
-              </Button>
-            )}
           </div>
 
+          {activeFilters && !isLoading && (
+            <p className="text-sm text-muted-foreground px-1">{filtered.length.toLocaleString("ko-KR")}건 찾았어요</p>
+          )}
+
           {isLoading ? (
-            <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
-          ) : filtered?.length === 0 ? (
-            <Card className="shadow-card border-0">
-              <CardContent className="py-12 text-center text-muted-foreground">수리 이력이 없습니다.</CardContent>
-            </Card>
+            <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)}</div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-2xl bg-card border border-border/70 py-16 text-center text-muted-foreground">
+              {activeFilters ? "조건에 맞는 수리 이력이 없어요." : "수리 이력이 없습니다."}
+            </div>
           ) : (
-            <Card className="shadow-card border-0 overflow-hidden">
-              <div className="overflow-x-auto">
+            <>
+              {/* PC: 표 */}
+              <div className="hidden md:block rounded-2xl bg-card border border-border/70 card-shadow overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-muted/30">
-                      <th className="text-left p-3 font-medium text-muted-foreground">수리일</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">기계</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">기계 주인</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">수리내용</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">담당</th>
-                      <th className="text-center p-3 font-medium text-muted-foreground w-[80px]">기표</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">공임비</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">총비용</th>
-                      <th className="p-3 w-10"></th>
+                    <tr className="border-b text-[13px]">
+                      <th className="text-left font-medium px-5 py-3 w-[110px]">수리일</th>
+                      <th className="text-left font-medium px-3 py-3 w-[190px]">기계 · 고객</th>
+                      <th className="text-left font-medium px-3 py-3">수리내용</th>
+                      <th className="text-left font-medium px-3 py-3 w-[90px]">담당</th>
+                      <th className="text-left font-medium px-3 py-3 w-[110px]">기표</th>
+                      <th className="text-right font-medium px-3 py-3 w-[120px]">총비용</th>
+                      <th className="px-3 py-3 w-[56px]"><span className="sr-only">메뉴</span></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered?.map((r: any) => (
-                      <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 whitespace-nowrap">{formatDate(r.repair_date)}</td>
-                        <td className="p-3">
-                          <Link to={`/machines/${r.machines?.id}`} className="hover:text-primary">
-                            <span className="font-medium">{r.machines?.model_name}</span>
-                            <span className="block text-xs text-muted-foreground font-mono">{r.machines?.serial_number}</span>
+                    {visible.map((r: any) => (
+                      <tr
+                        key={r.id}
+                        className="border-b border-border/60 last:border-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => setEditRepair(r)}
+                      >
+                        <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground tabular-nums">{formatDate(r.repair_date)}</td>
+                        <td className="px-3 py-3.5">
+                          <Link
+                            to={`/machines/${r.machines?.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-semibold hover:text-primary"
+                          >
+                            {r.machines?.model_name}
                           </Link>
+                          <div className="text-xs text-muted-foreground truncate max-w-[180px]">
+                            {r.machines?.customers?.name ? (
+                              <Link
+                                to={`/customers/${r.machines.customer_id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="hover:text-primary"
+                              >
+                                {r.machines.customers.name}
+                              </Link>
+                            ) : (
+                              <span className="font-mono">{r.machines?.serial_number}</span>
+                            )}
+                          </div>
                         </td>
-                        <td className="p-3 text-muted-foreground">
-                          {r.machines?.customers?.name ? (
-                            <Link to={`/customers/${r.machines.customer_id}`} className="hover:text-primary">
-                              {r.machines.customers.name}
-                            </Link>
-                          ) : (
-                            "-"
-                          )}
+                        <td className="px-3 py-3.5">
+                          <p className="line-clamp-2 leading-snug">{r.repair_content}</p>
                         </td>
-                        <td className="p-3">{r.repair_content}</td>
-                        <td className="p-3 text-muted-foreground">{r.technician || "-"}</td>
-                        <td className="p-3 text-center">
-                          <Checkbox
-                            checked={r.accounting_posted === true}
-                            onCheckedChange={(checked) =>
-                              toggleAccountingMutation.mutate({ id: r.id, value: !!checked })
-                            }
+                        <td className="px-3 py-3.5 text-muted-foreground whitespace-nowrap">{r.technician}</td>
+                        <td className="px-3 py-3.5">
+                          <AccountingBadge
+                            posted={r.accounting_posted === true}
                             disabled={toggleAccountingMutation.isPending}
-                            aria-label="전산 기표 여부"
+                            onToggle={() => toggleAccountingMutation.mutate({ id: r.id, value: r.accounting_posted !== true })}
                           />
                         </td>
-                        <td className="p-3 text-right tabular-nums">{r.labor_cost > 0 ? formatPrice(r.labor_cost) : "-"}</td>
-                        <td className="p-3 text-right tabular-nums font-medium">{r.total_cost > 0 ? formatPrice(r.total_cost) : "-"}</td>
-                        <td className="p-3">
-                           <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-primary"
-                              onClick={() => setDiagramRepair(r)}
-                              title="도면에서 사용 부품 보기"
-                              aria-label="도면에서 사용 부품 보기"
-                            >
-                              <MapIcon className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-amber-400"
-                              onClick={() => setErrorCodeRepair(r)}
-                              title="에러코드 기록"
-                            >
-                              <AlertTriangle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-primary"
-                              onClick={() => setEditRepair(r)}
-                              title="수정"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                if (confirm("이 수리 이력을 삭제하시겠습니까?")) deleteMutation.mutate(r.id);
-                              }}
-                              title="삭제"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                        <td className="px-3 py-3.5 text-right tabular-nums whitespace-nowrap">
+                          {r.total_cost > 0 && <span className="font-bold">{formatPrice(r.total_cost)}</span>}
+                          {r.labor_cost > 0 && (
+                            <span className="block text-xs text-muted-foreground">공임 {formatPrice(r.labor_cost)}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-3.5" onClick={(e) => e.stopPropagation()}>
+                          <RowMenu
+                            onEdit={() => setEditRepair(r)}
+                            onDiagram={() => setDiagramRepair(r)}
+                            onErrorCode={() => setErrorCodeRepair(r)}
+                            onDelete={() => askDelete(r)}
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </Card>
+
+              {/* 휴대폰: 카드 목록 */}
+              <ul className="md:hidden space-y-2">
+                {visible.map((r: any) => (
+                  <li
+                    key={r.id}
+                    className="rounded-2xl bg-card border border-border/70 p-4 active:bg-muted/40"
+                    onClick={() => setEditRepair(r)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[15px] font-bold truncate">
+                          {r.machines?.model_name}
+                          {r.machines?.customers?.name && (
+                            <span className="font-normal text-muted-foreground"> · {r.machines.customers.name}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatDate(r.repair_date)}
+                          {r.technician && ` · ${r.technician}`}
+                        </p>
+                      </div>
+                      <div className="-mr-2 -mt-1" onClick={(e) => e.stopPropagation()}>
+                        <RowMenu
+                          onEdit={() => setEditRepair(r)}
+                          onDiagram={() => setDiagramRepair(r)}
+                          onErrorCode={() => setErrorCodeRepair(r)}
+                          onDelete={() => askDelete(r)}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-sm mt-2 line-clamp-2 leading-snug">{r.repair_content}</p>
+                    <div className="flex items-center justify-between mt-3">
+                      <AccountingBadge
+                        posted={r.accounting_posted === true}
+                        disabled={toggleAccountingMutation.isPending}
+                        onToggle={() => toggleAccountingMutation.mutate({ id: r.id, value: r.accounting_posted !== true })}
+                      />
+                      {r.total_cost > 0 && <span className="text-base font-extrabold tabular-nums">{formatPrice(r.total_cost)}</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {filtered.length > shown && (
+                <Button variant="outline" className="w-full h-12 rounded-xl bg-card" onClick={() => setShown((n) => n + PAGE)}>
+                  더 보기 ({shown.toLocaleString("ko-KR")} / {filtered.length.toLocaleString("ko-KR")}건)
+                </Button>
+              )}
+            </>
           )}
         </TabsContent>
 

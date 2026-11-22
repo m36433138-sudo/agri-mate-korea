@@ -1,36 +1,41 @@
-import {
-  LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package,
-  ListChecks, LogOut, UserCog, User, Cpu, Home, MessageSquare,
-  ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin, Landmark, FileText,
-  BookOpen, ShieldCheck, Wallet, Map,
-  AlertTriangle, Receipt, ShoppingCart,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { LogOut, ChevronDown, Tractor } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUnreadCount } from "@/hooks/useMessenger";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
-  SidebarSeparator,
+  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { customerNavItems, isActivePath, staffNavGroups, type NavGroup, type NavItem } from "@/components/nav/navItems";
 
-type NavItem = { title: string; url: string; icon: any; badge?: number };
+const OPEN_KEY = "agrimate-nav-open";
+
+function readOpenGroups(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(OPEN_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
-  const { role, isAdmin, isEmployee, isCustomer, hasPermission, profile } = useUserRole();
+  const { pathname } = useLocation();
+  const { role, isAdmin, isCustomer, hasPermission, profile } = useUserRole();
   const unreadMessages = useUnreadCount();
 
   const handleLogout = async () => {
@@ -38,159 +43,121 @@ export function AppSidebar() {
     navigate("/auth");
   };
 
-  // 고객 전용 메뉴
-  if (isCustomer) {
-    const customerItems: NavItem[] = [
-      { title: "홈", url: "/", icon: Home },
-      { title: "마이페이지", url: "/my-page", icon: User },
-      { title: "AI 정비 상담", url: "/chat", icon: MessageSquare },
-    ];
-    return (
-      <Sidebar collapsible="icon">
-        <SidebarContent>
-          <LogoHeader collapsed={collapsed} />
-          <NavGroup label="메뉴" items={customerItems} collapsed={collapsed} />
-        </SidebarContent>
-        <SidebarFooter>
-          <FooterMenu collapsed={collapsed} profile={profile} role={role} onLogout={handleLogout} />
-        </SidebarFooter>
-      </Sidebar>
-    );
-  }
+  const groups: NavGroup[] = isCustomer
+    ? [{ id: "customer", label: "메뉴", items: customerNavItems }]
+    : staffNavGroups({ isAdmin, hasPermission, unreadMessages });
 
-  // 업무 그룹
-  const workItems: NavItem[] = [
-    { title: "대시보드", url: "/", icon: LayoutDashboard },
-    { title: "내 업무", url: "/workspace", icon: Briefcase },
-    { title: "사내 메신저", url: "/messenger", icon: MessageSquare, badge: unreadMessages },
-    ...(hasPermission("view_operations") ? [{ title: "작업현황판", url: "/dashboard/operations", icon: ClipboardList }] : []),
-    ...(hasPermission("view_onsite") ? [{ title: "방문수리", url: "/onsite-repairs", icon: Truck }] : []),
-    ...(hasPermission("view_stats") ? [{ title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 }] : []),
-    ...(hasPermission("view_overtime") ? [{ title: "초과근무 현황", url: "/dashboard/overtime", icon: Clock }] : []),
-  ];
+  // 묶음 펼침 상태는 기기에 기억한다. 처음엔 홈·수리 묶음만 펼친다.
+  const [open, setOpen] = useState<Record<string, boolean>>(() => ({ home: true, field: true, customer: true, ...readOpenGroups() }));
+  const toggle = (id: string) =>
+    setOpen((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem(OPEN_KEY, JSON.stringify(next)); } catch { /* 저장 못 해도 화면은 동작 */ }
+      return next;
+    });
 
-  // 데이터관리 그룹
-  const dataItems: NavItem[] = [
-    ...(hasPermission("view_machines") ? [{ title: "기계관리", url: "/machines", icon: Tractor }] : []),
-    ...(hasPermission("view_attachments") ? [{ title: "작업기 관리", url: "/attachments", icon: Tractor }] : []),
-    ...(hasPermission("view_customers") ? [{ title: "고객관리", url: "/customers", icon: Users }] : []),
-    ...(hasPermission("view_receivables") ? [{ title: "미수금 관리", url: "/receivables", icon: Wallet }] : []),
-    ...(hasPermission("view_expenses") ? [{ title: "지출 관리", url: "/expenses", icon: Receipt }] : []),
-    ...(hasPermission("view_repairs") || hasPermission("manage_repairs") ? [{ title: "수리이력", url: "/repairs", icon: Wrench }] : []),
-    ...(hasPermission("view_repairs") ? [{ title: "에러코드 기록", url: "/error-codes", icon: AlertTriangle }] : []),
-    ...(hasPermission("view_parts") ? [{ title: "부품관리", url: "/parts", icon: Package }] : []),
-    ...(hasPermission("view_part_sales") ? [{ title: "부품 판매", url: "/part-sales", icon: ShoppingCart }] : []),
-    ...(hasPermission("view_parts") ? [{ title: "부품 도면", url: "/diagrams", icon: Map }] : []),
-    ...(hasPermission("view_repair_templates") ? [{ title: "수리 템플릿", url: "/repair-templates", icon: ListChecks }] : []),
-    ...(hasPermission("view_vendors") ? [{ title: "업체관리", url: "/vendors", icon: Building2 }] : []),
-    ...(hasPermission("view_assets") ? [{ title: "자산관리", url: "/assets", icon: Landmark }] : []),
-    ...(hasPermission("view_insurance") ? [{ title: "보험수리 관리", url: "/insurance-repairs", icon: ShieldCheck }] : []),
-    ...(hasPermission("view_quotes") ? [{ title: "견적서 관리", url: "/quotes", icon: FileText }] : []),
-  ];
-
-  // 시스템 그룹
-  const systemItems: NavItem[] = [
-    { title: "AI 어시스턴트", url: "/chat", icon: Sparkles },
-    ...(hasPermission("view_knowledge") ? [{ title: "지식베이스", url: "/knowledge", icon: BookOpen }] : []),
-    ...(isAdmin ? [{ title: "위치 이력", url: "/location-history", icon: MapPin }] : []),
-    ...(isAdmin ? [{ title: "사용자 관리", url: "/users", icon: UserCog }] : []),
-  ];
-
+  // 지금 보고 있는 화면이 든 묶음은 항상 펼친다
+  const activeGroup = groups.find((g) => g.items.some((it) => isActivePath(pathname, it.url)))?.id;
+  useEffect(() => {
+    if (activeGroup && !open[activeGroup]) setOpen((prev) => ({ ...prev, [activeGroup]: true }));
+  }, [activeGroup]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarContent>
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+      <SidebarHeader className="px-3 pt-4 pb-2">
         <LogoHeader collapsed={collapsed} />
-        <NavGroup label="업무" items={workItems} collapsed={collapsed} />
-        {dataItems.length > 0 && (
-          <>
-            <SidebarSeparator className="mx-3 opacity-30" />
-            <NavGroup label="데이터 관리" items={dataItems} collapsed={collapsed} />
-          </>
-        )}
-        {systemItems.length > 0 && (
-          <>
-            <SidebarSeparator className="mx-3 opacity-30" />
-            <NavGroup label="시스템" items={systemItems} collapsed={collapsed} />
-          </>
-        )}
+      </SidebarHeader>
+      <SidebarContent className="gap-0 px-1">
+        {groups.map((g, i) => (
+          <NavSection
+            key={g.id}
+            group={g}
+            collapsed={collapsed}
+            open={!!open[g.id] || groups.length === 1}
+            onToggle={() => toggle(g.id)}
+            first={i === 0}
+          />
+        ))}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="p-2">
         <FooterMenu collapsed={collapsed} profile={profile} role={role} onLogout={handleLogout} />
       </SidebarFooter>
     </Sidebar>
   );
 }
 
-// 로고 헤더
 function LogoHeader({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className={`px-3 py-4 ${collapsed ? "px-2" : ""}`}>
-      {!collapsed ? (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #2563EB, #1D4ED8)", boxShadow: "0 0 12px #2563EB44" }}>
-            <Cpu className="h-4 w-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-[13px] font-bold text-sidebar-foreground leading-none tracking-tight">AgriMate</h1>
-            <span className="text-[9px] font-semibold tracking-[0.15em] uppercase"
-              style={{ color: "#3B82F6" }}>광문농기</span>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-center">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #2563EB, #1D4ED8)", boxShadow: "0 0 10px #2563EB33" }}>
-            <Cpu className="h-4 w-4 text-white" />
-          </div>
+    <div className={cn("flex items-center gap-2.5", collapsed && "justify-center")}>
+      <div className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center bg-primary text-primary-foreground shadow-sm">
+        <Tractor className="h-5 w-5" strokeWidth={2.2} />
+      </div>
+      {!collapsed && (
+        <div className="min-w-0">
+          <p className="text-[15px] font-extrabold tracking-tight text-sidebar-foreground leading-tight">AgriMate</p>
+          <p className="text-[11px] font-medium text-muted-foreground leading-tight">광문농기</p>
         </div>
       )}
     </div>
   );
 }
 
-// 네비게이션 그룹
-function NavGroup({ label, items, collapsed }: { label: string; items: NavItem[]; collapsed: boolean }) {
+function NavSection({ group, collapsed, open, onToggle, first }: {
+  group: NavGroup; collapsed: boolean; open: boolean; onToggle: () => void; first: boolean;
+}) {
   // 핸드폰에서는 메뉴를 고르면 서랍을 닫아 바뀐 화면이 바로 보이게 한다
   const { isMobile, setOpenMobile } = useSidebar();
+  const showItems = collapsed || open;
   return (
-    <SidebarGroup className="py-1">
+    <SidebarGroup className={cn("py-0.5", !first && collapsed && "border-t border-sidebar-border mt-1 pt-1.5")}>
       {!collapsed && (
-        <SidebarGroupLabel className="text-sidebar-foreground/55 text-[10px] uppercase tracking-widest font-semibold px-4 mb-1">
-          {label}
-        </SidebarGroupLabel>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[12px] font-semibold text-muted-foreground hover:text-sidebar-foreground transition-colors"
+        >
+          {group.label}
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+        </button>
       )}
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
-                <NavLink
-                  to={item.url}
-                  end={item.url === "/" || item.url === "/my-page"}
-                  onClick={() => { if (isMobile) setOpenMobile(false); }}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg mx-1 hover:bg-sidebar-accent transition-colors duration-150 text-sidebar-foreground/85 hover:text-sidebar-foreground"
-                  activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold shadow-[inset_3px_0_0_hsl(var(--sidebar-primary))]"
-                >
-                  <item.icon className="h-[17px] w-[17px] shrink-0" style={{ strokeWidth: 1.8 }} />
-                  {!collapsed && <span className="text-sm leading-none flex-1">{item.title}</span>}
-                  {!!item.badge && item.badge > 0 && (
-                    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                      {item.badge > 99 ? "99+" : item.badge}
-                    </span>
-                  )}
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
+      {showItems && (
+        <SidebarGroupContent>
+          <SidebarMenu className="gap-0.5">
+            {group.items.map((item) => (
+              <NavRow key={item.url} item={item} collapsed={collapsed} onPick={() => { if (isMobile) setOpenMobile(false); }} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      )}
     </SidebarGroup>
   );
 }
 
-// 하단 프로필 + 로그아웃
+function NavRow({ item, collapsed, onPick }: { item: NavItem; collapsed: boolean; onPick: () => void }) {
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined} className="h-10">
+        <NavLink
+          to={item.url}
+          end={item.url === "/" || item.url === "/my-page"}
+          onClick={onPick}
+          className="flex items-center gap-3 px-3 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-colors duration-150"
+          activeClassName="bg-sidebar-accent !text-sidebar-accent-foreground font-semibold"
+        >
+          <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.9} />
+          {!collapsed && <span className="text-[14px] leading-none flex-1 truncate">{item.title}</span>}
+          {!!item.badge && item.badge > 0 && (
+            <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-white text-[11px] font-bold flex items-center justify-center">
+              {item.badge > 99 ? "99+" : item.badge}
+            </span>
+          )}
+        </NavLink>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
 function FooterMenu({ collapsed, profile, role, onLogout }: {
   collapsed: boolean;
   profile: any;
@@ -198,36 +165,35 @@ function FooterMenu({ collapsed, profile, role, onLogout }: {
   onLogout: () => void;
 }) {
   const roleLabel = role === "admin" ? "관리자" : role === "employee" ? "직원" : "고객";
-
-  return (
-    <SidebarMenu>
-      {!collapsed && profile && (
+  if (collapsed) {
+    return (
+      <SidebarMenu>
         <SidebarMenuItem>
-          <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-sidebar-accent/60 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-sidebar-primary/20 flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-sidebar-primary">
-                {profile.display_name?.[0] ?? "?"}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-sidebar-foreground/90 truncate leading-none">
-                {profile.display_name}
-              </p>
-              <p className="text-[11px] text-sidebar-primary font-medium mt-0.5">{roleLabel}</p>
-            </div>
-          </div>
+          <SidebarMenuButton onClick={onLogout} tooltip="로그아웃" className="h-10">
+            <LogOut className="h-[18px] w-[18px]" strokeWidth={1.9} />
+          </SidebarMenuButton>
         </SidebarMenuItem>
-      )}
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          onClick={onLogout}
-          tooltip={collapsed ? "로그아웃" : undefined}
-          className="flex items-center gap-2.5 mx-1 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/65 hover:text-sidebar-foreground/90 transition-colors duration-150"
-        >
-          <LogOut className="h-[17px] w-[17px] shrink-0" style={{ strokeWidth: 1.8 }} />
-          {!collapsed && <span className="text-sm">로그아웃</span>}
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    </SidebarMenu>
+      </SidebarMenu>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl border border-sidebar-border px-2.5 py-2">
+      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+        <span className="text-sm font-bold text-primary">{profile?.display_name?.[0] ?? "?"}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-sidebar-foreground truncate leading-tight">{profile?.display_name ?? "-"}</p>
+        <p className="text-[11px] text-muted-foreground leading-tight">{roleLabel}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onLogout}
+        title="로그아웃"
+        aria-label="로그아웃"
+        className="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+      >
+        <LogOut className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
