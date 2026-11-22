@@ -148,7 +148,7 @@ export default function PartTipsDialog({
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-amber-400" /> 부품 팁 · 사진
+              <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" /> 부품 팁 · 사진
             </DialogTitle>
             <p className="text-sm text-muted-foreground font-mono">{partCode} — {partName}</p>
           </DialogHeader>

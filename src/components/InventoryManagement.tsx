@@ -11,7 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes, Lightbulb, MapPin } from "lucide-react";
+import { Plus, Search, FileSpreadsheet, Trash2, Download, Pencil, Package, AlertTriangle, CloudDownload, Boxes, Lightbulb, MapPin, MoreHorizontal } from "lucide-react";
+import { SearchField, Segmented } from "@/components/page/PageParts";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { inventorySearchFilter } from "@/lib/partSearch";
 import { yanmarSalesPrice, normalizePartCode, missingPriceFields, type PartOrigin } from "@/lib/partPricing";
 import * as XLSX from "xlsx";
@@ -152,107 +154,86 @@ export default function InventoryManagement() {
     XLSX.writeFile(wb, `재고_템플릿_${branch}.xlsx`);
   };
 
+  const syncSheet = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: { action: "syncInventory", branch },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      qc.invalidateQueries({ queryKey: ["inventory-stats"] });
+      qc.invalidateQueries({ queryKey: ["inventory-search"] });
+      toast({ title: `${branch} 재고 동기화 완료`, description: `${data?.synced ?? 0}건 동기화됨` });
+    } catch (e: any) {
+      toast({ title: "동기화 실패", description: e.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* 지점 선택 + 액션 버튼 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant={branch === "장흥" ? "default" : "outline"} size="sm" onClick={() => { setBranch("장흥"); setSearch(""); }}>
-            장흥
-          </Button>
-          <Button variant={branch === "강진" ? "default" : "outline"} size="sm" onClick={() => { setBranch("강진"); setSearch(""); }}>
-            강진
-          </Button>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={async () => {
-            try {
-              const { data, error } = await supabase.functions.invoke("google-sheets", {
-                body: { action: "syncInventory", branch },
-              });
-              if (error) throw new Error(error.message);
-              if (data?.error) throw new Error(data.error);
-              qc.invalidateQueries({ queryKey: ["inventory-stats"] });
-              qc.invalidateQueries({ queryKey: ["inventory-search"] });
-              toast({ title: `${branch} 재고 동기화 완료`, description: `${data?.synced ?? 0}건 동기화됨` });
-            } catch (e: any) {
-              toast({ title: "동기화 실패", description: e.message, variant: "destructive" });
-            }
-          }}>
+      <div className="flex items-center justify-between gap-2">
+        <Segmented
+          label="지점"
+          value={branch}
+          onChange={(b) => { setBranch(b); setSearch(""); }}
+          options={[{ value: "장흥", label: "장흥" }, { value: "강진", label: "강진" }]}
+        />
+        <div className="flex gap-2">
+          <Button variant="outline" className="h-11 rounded-full bg-card hidden md:inline-flex" onClick={syncSheet}>
             <CloudDownload className="h-4 w-4 mr-1" /> 시트 동기화
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
+          <Button variant="outline" className="h-11 rounded-full bg-card hidden md:inline-flex" onClick={() => setBulkOpen(true)}>
             <FileSpreadsheet className="h-4 w-4 mr-1" /> 엑셀 등록
           </Button>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-11 w-11 p-0 rounded-full bg-card md:hidden" aria-label="더 보기">
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={syncSheet}><CloudDownload className="h-4 w-4 mr-2" /> 시트 동기화</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setBulkOpen(true)}><FileSpreadsheet className="h-4 w-4 mr-2" /> 엑셀 등록</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button className="h-11 rounded-full px-4 sm:px-5" onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> 재고 등록
           </Button>
         </div>
       </div>
 
       {/* 요약 카드 - 항상 표시 */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="shadow-card border-0">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Package className="h-4 w-4 text-primary" />
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+        {([
+          { label: "총 품목", icon: Package, value: stats?.totalItems ?? 0, unit: "종", tone: "" },
+          { label: "총 수량", icon: Boxes, value: stats?.totalQty ?? 0, unit: "개", tone: "" },
+          { label: "재고 부족", icon: AlertTriangle, value: stats?.lowStockCount ?? 0, unit: "건", tone: "warn" },
+        ] as const).map((c) => (
+          <div key={c.label} className="rounded-3xl border border-border/70 bg-card card-shadow p-3.5 sm:p-5">
+            <div className="flex items-center gap-2">
+              <span className={`hidden sm:flex w-9 h-9 rounded-full items-center justify-center ${c.tone ? "bg-destructive/10 text-destructive" : "bg-foreground/[0.06] text-foreground/80"}`}>
+                <c.icon className="h-[18px] w-[18px]" />
+              </span>
+              <span className="text-[13px] sm:text-sm font-medium text-muted-foreground">{c.label}</span>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">총 품목</p>
-              {statsLoading ? (
-                <Skeleton className="h-6 w-12 mt-0.5" />
-              ) : (
-                <p className="text-lg font-bold tabular-nums">{stats?.totalItems ?? 0}<span className="text-xs font-normal text-muted-foreground ml-1">종</span></p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-card border-0">
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-info/10">
-              <Boxes className="h-4 w-4 text-info" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">총 수량</p>
-              {statsLoading ? (
-                <Skeleton className="h-6 w-12 mt-0.5" />
-              ) : (
-                <p className="text-lg font-bold tabular-nums">{stats?.totalQty ?? 0}<span className="text-xs font-normal text-muted-foreground ml-1">개</span></p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className={`shadow-card border-0 ${(stats?.lowStockCount ?? 0) > 0 ? "border-l-2 border-l-destructive" : ""}`}>
-          <CardContent className="p-3 flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-destructive/10">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">재고 부족</p>
-              {statsLoading ? (
-                <Skeleton className="h-6 w-12 mt-0.5" />
-              ) : (
-                <p className="text-lg font-bold tabular-nums text-destructive">
-                  {stats?.lowStockCount ?? 0}<span className="text-xs font-normal ml-1">건</span>
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            {statsLoading ? (
+              <Skeleton className="h-8 w-16 mt-3 rounded-lg" />
+            ) : (
+              <p className={`mt-2.5 sm:mt-3 flex items-baseline gap-1 ${c.tone && c.value > 0 ? "text-destructive" : ""}`}>
+                <span className="text-[22px] sm:text-[30px] leading-none font-extrabold tracking-tight tabular-nums">{c.value.toLocaleString("ko-KR")}</span>
+                <span className="text-xs sm:text-sm font-semibold text-muted-foreground">{c.unit}</span>
+              </p>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* 검색창 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="부품코드 또는 부품명을 2글자 이상 입력하면 검색됩니다..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 max-w-md"
-          autoComplete="off"
-        />
+      <div className="flex items-center gap-3">
+        <SearchField value={search} onChange={setSearch} placeholder="부품코드 또는 부품명 (2글자 이상)" className="max-w-xl" />
         {hasSearch && searchResults && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
             {searchResults.length}건{searchResults.length === 50 ? " (최대)" : ""}
           </span>
         )}
@@ -261,9 +242,9 @@ export default function InventoryManagement() {
       {/* 결과 영역 */}
       {!hasSearch ? (
         /* 검색 전 안내 */
-        <Card className="shadow-card border-0 border-dashed border-2">
+        <Card className="border-dashed border-2 shadow-none bg-card/60">
           <CardContent className="py-14 text-center">
-            <Search className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
+            <Search className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
             <p className="text-sm font-medium text-muted-foreground">부품코드 또는 부품명으로 검색하세요</p>
             <p className="text-xs text-muted-foreground/60 mt-1">{branch} 지점 · 총 {statsLoading ? "..." : stats?.totalItems ?? 0}개 품목</p>
           </CardContent>
@@ -273,7 +254,7 @@ export default function InventoryManagement() {
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
         </div>
       ) : !searchResults || searchResults.length === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <p className="text-sm">"{debouncedSearch}"에 해당하는 부품이 없습니다.</p>
           </CardContent>
@@ -286,8 +267,8 @@ export default function InventoryManagement() {
             const isLow = (item.quantity ?? 0) < (item.min_stock ?? 1);
             const loc = [item.location_main, item.location_sub].filter(Boolean);
             return (
-              <Card key={item.id} className={`shadow-card border-0 ${isLow ? "bg-destructive/5" : ""}`}>
-                <CardContent className="p-3 space-y-2">
+              <Card key={item.id} className={isLow ? "border-destructive/40" : ""}>
+                <CardContent className="p-4 space-y-3">
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-xs text-muted-foreground">{item.part_code}{item.alt_part_code ? ` · ${item.alt_part_code}` : ""}</p>
@@ -300,12 +281,12 @@ export default function InventoryManagement() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className={`flex-1 min-w-0 flex items-center gap-1.5 rounded-lg px-2.5 py-2 ${loc.length ? "bg-primary/10 text-primary" : "bg-muted/40 text-muted-foreground"}`}>
+                    <div className={`flex-1 min-w-0 flex items-center gap-1.5 rounded-xl px-3 py-2.5 ${loc.length ? "bg-primary/10 text-primary" : "bg-muted/40 text-muted-foreground"}`}>
                       <MapPin className="h-4 w-4 shrink-0" />
                       <span className="text-sm font-semibold truncate">{loc.length ? loc.join(" · ") : "위치 미지정"}</span>
                     </div>
                     <Button variant="ghost" size="icon" className="h-9 w-9 relative shrink-0" onClick={() => setTipsItem(item)} aria-label="부품 팁·사진">
-                      <Lightbulb className={`h-4 w-4 ${tipCounts[item.part_code] ? "text-amber-400" : "text-muted-foreground"}`} />
+                      <Lightbulb className={`h-4 w-4 ${tipCounts[item.part_code] ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setEditItem(item)} aria-label="수정">
                       <Pencil className="h-4 w-4 text-muted-foreground" />
@@ -316,12 +297,12 @@ export default function InventoryManagement() {
             );
           })}
         </div>
-        <Card className="shadow-card border-0 overflow-hidden hidden sm:block">
+        <Card className="overflow-hidden hidden sm:block">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs">부품코드</th>
+                <tr className="border-b">
+                  <th className="text-left p-3 pl-5 font-medium text-muted-foreground text-xs">부품코드</th>
                   <th className="text-left p-3 font-medium text-muted-foreground text-xs">부품명(한글)</th>
                   <th className="text-left p-3 font-medium text-muted-foreground text-xs hidden md:table-cell">부품명(영문)</th>
                   <th className="text-left p-3 font-medium text-muted-foreground text-xs hidden lg:table-cell">설계변경코드</th>
@@ -338,9 +319,9 @@ export default function InventoryManagement() {
                   return (
                     <tr
                       key={item.id}
-                      className={`border-b last:border-0 transition-colors ${isLow ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/25"}`}
+                      className={`border-b border-border/60 last:border-0 transition-colors ${isLow ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-foreground/[0.03]"}`}
                     >
-                      <td className="p-3 font-mono text-xs">{item.part_code}</td>
+                      <td className="p-3 pl-5 font-mono text-xs">{item.part_code}</td>
                       <td className="p-3 font-medium">
                         <span>{item.part_name}</span>
                         {isLow && (
@@ -360,15 +341,17 @@ export default function InventoryManagement() {
                       <td className="p-3 text-right text-muted-foreground hidden sm:table-cell tabular-nums">
                         {item.sales_price?.toLocaleString() ?? "-"}
                       </td>
-                      <td className="p-3 text-xs font-medium text-primary whitespace-nowrap">
-                        {[item.location_main, item.location_sub].filter(Boolean).join(" / ") || <span className="text-muted-foreground">-</span>}
+                      <td className="p-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1">
+                        {[item.location_main, item.location_sub].filter(Boolean).join(" / ") || "위치 없음"}
+                        </span>
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => setTipsItem(item)} title="부품 팁·사진">
-                            <Lightbulb className={`h-3.5 w-3.5 ${tipCounts[item.part_code] ? "text-amber-400" : "text-muted-foreground"}`} />
+                            <Lightbulb className={`h-3.5 w-3.5 ${tipCounts[item.part_code] ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} />
                             {!!tipCounts[item.part_code] && (
-                              <span className="absolute -top-0.5 -right-0.5 text-[9px] bg-amber-400/20 text-amber-400 rounded-full px-1 leading-3">
+                              <span className="absolute -top-0.5 -right-0.5 text-[9px] bg-amber-400/20 text-amber-600 dark:text-amber-400 rounded-full px-1 leading-3">
                                 {tipCounts[item.part_code]}
                               </span>
                             )}

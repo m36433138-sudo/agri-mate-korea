@@ -114,7 +114,7 @@ export default function BulkPriceUpdate() {
 
   return (
     <div className="space-y-4">
-      <Card className="shadow-card border-0">
+      <Card>
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -146,7 +146,7 @@ export default function BulkPriceUpdate() {
           </label>
         </div>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="flex items-center justify-between p-3 border-b bg-muted/20">
             <span className="text-sm">
               전체 {rows.length}건 · 유효 <b className="text-primary">{validRows.length}</b>건

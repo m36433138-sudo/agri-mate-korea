@@ -12,10 +12,10 @@ export function KPICards({ data, activeFilter, onFilter }: KPICardsProps) {
   data.forEach(row => { counts[getStatus(row)]++; });
 
   const cards = [
-    { status: "입고대기" as OperationStatus, icon: Package, color: "text-orange-600 bg-orange-100", count: counts.입고대기 },
-    { status: "수리중" as OperationStatus, icon: Wrench, color: "text-blue-600 bg-blue-100", count: counts.수리중 },
-    { status: "출고대기" as OperationStatus, icon: Truck, color: "text-green-600 bg-green-100", count: counts.출고대기 },
-    { status: "완료" as OperationStatus, icon: CheckCircle2, color: "text-gray-500 bg-gray-100", count: counts.완료 },
+    { status: "입고대기" as OperationStatus, icon: Package, color: "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/15", count: counts.입고대기 },
+    { status: "수리중" as OperationStatus, icon: Wrench, color: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/15", count: counts.수리중 },
+    { status: "출고대기" as OperationStatus, icon: Truck, color: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-500/15", count: counts.출고대기 },
+    { status: "완료" as OperationStatus, icon: CheckCircle2, color: "text-gray-500 bg-gray-100 dark:bg-gray-500/15", count: counts.완료 },
   ];
 
   return (

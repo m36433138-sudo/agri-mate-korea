@@ -22,8 +22,8 @@ type Photo = { id: string; dataUrl: string; status: Status; description?: string
 const PARALLEL = 2;
 
 const confClass: Record<string, string> = {
-  높음: "bg-emerald-950/60 text-emerald-400 border-emerald-800",
-  보통: "bg-amber-950/60 text-amber-400 border-amber-800",
+  높음: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  보통: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
   낮음: "bg-muted text-muted-foreground",
 };
 
@@ -260,7 +260,7 @@ export default function RepairPhotoPartsDialog({ open, onOpenChange, machineMode
                         {p.status === "run" && <p className="flex items-center gap-1 text-primary"><Loader2 className="h-3 w-3 animate-spin" /> 도면과 비교 중…</p>}
                         {p.status === "done" && (
                           <>
-                            <p className="flex items-center gap-1 text-emerald-400"><CheckCircle2 className="h-3 w-3" /> 후보 {p.matches?.length ?? 0}개</p>
+                            <p className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3 w-3" /> 후보 {p.matches?.length ?? 0}개</p>
                             {p.description && <p className="text-muted-foreground line-clamp-2">{p.description}</p>}
                           </>
                         )}

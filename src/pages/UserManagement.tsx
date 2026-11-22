@@ -30,9 +30,9 @@ const ROLE_ICONS: Record<string, typeof Shield> = {
 };
 
 const TEAM_CONFIG: Record<TeamType, { color: string; bg: string; icon: typeof Briefcase }> = {
-  영업팀: { color: "text-blue-700", bg: "bg-blue-50", icon: Briefcase },
-  기사팀: { color: "text-orange-700", bg: "bg-orange-50", icon: Wrench },
-  사무팀: { color: "text-purple-700", bg: "bg-purple-50", icon: ClipboardList },
+  영업팀: { color: "text-blue-700", bg: "bg-blue-50 dark:bg-blue-500/15", icon: Briefcase },
+  기사팀: { color: "text-orange-700", bg: "bg-orange-50 dark:bg-orange-500/15", icon: Wrench },
+  사무팀: { color: "text-purple-700", bg: "bg-purple-50 dark:bg-purple-500/15", icon: ClipboardList },
 };
 
 
@@ -60,7 +60,7 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">사용자 관리</h1>
+      <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">사용자 관리</h1>
       <Tabs value={tab} onValueChange={v => setTab(v as any)}>
         <TabsList>
           <TabsTrigger value="accounts" className="gap-1.5">
@@ -188,7 +188,7 @@ function AccountsTab() {
           {(Object.entries(TEAM_CONFIG) as [TeamType, typeof TEAM_CONFIG[TeamType]][]).map(([team, cfg]) => {
             const Icon = cfg.icon;
             return (
-              <Card key={team} className="border-0 shadow-card">
+              <Card key={team}>
                 <CardContent className="p-3 flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${cfg.bg} shrink-0`}>
                     <Icon className={`h-4 w-4 ${cfg.color}`} />
@@ -212,7 +212,7 @@ function AccountsTab() {
       {isLoading ? (
         <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -263,7 +263,7 @@ function AccountsTab() {
                         {u.role === "employee" && (
                           u.linkedEmployee ? (
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] flex items-center gap-0.5 text-green-700 bg-green-50 px-1.5 py-0.5 rounded-md">
+                              <span className="text-[11px] flex items-center gap-0.5 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/15 px-1.5 py-0.5 rounded-md">
                                 <Link2 className="h-3 w-3" /> {u.linkedEmployee.name}
                               </span>
                               <button
@@ -458,7 +458,7 @@ function EmployeesTab() {
           {(Object.entries(TEAM_CONFIG) as [TeamType, typeof TEAM_CONFIG[TeamType]][]).map(([team, cfg]) => {
             const Icon = cfg.icon;
             return (
-              <Card key={team} className="border-0 shadow-card">
+              <Card key={team}>
                 <CardContent className="p-3 flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${cfg.bg} shrink-0`}><Icon className={`h-4 w-4 ${cfg.color}`} /></div>
                   <div>
@@ -480,7 +480,7 @@ function EmployeesTab() {
       {isLoading ? (
         <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
       ) : filtered.length === 0 ? (
-        <Card className="border-0 shadow-card">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
             {search ? `"${search}"에 해당하는 직원이 없습니다.` : "등록된 직원이 없습니다."}
           </CardContent>
@@ -493,7 +493,7 @@ function EmployeesTab() {
             const isResidentVisible = showResidentNumber === emp.id;
 
             return (
-              <Card key={emp.id} className="border-0 shadow-card overflow-hidden">
+              <Card key={emp.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     {/* 아바타 + 기본정보 */}
@@ -519,13 +519,13 @@ function EmployeesTab() {
                             </span>
                           )}
                           {linkedProfile ? (
-                            <span className="text-[11px] flex items-center gap-0.5 text-green-700 bg-green-50 px-1.5 py-0.5 rounded-md">
+                            <span className="text-[11px] flex items-center gap-0.5 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/15 px-1.5 py-0.5 rounded-md">
                               <Link2 className="h-3 w-3" /> 계정연동 ({linkedProfile.email})
                             </span>
                           ) : (
                             <Button
                               variant="ghost" size="sm"
-                              className="h-6 text-[11px] px-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-md"
+                              className="h-6 text-[11px] px-2 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 hover:bg-amber-100 rounded-md"
                               onClick={() => setCreateAccountFor(emp)}
                             >
                               <UserPlus className="h-3 w-3 mr-0.5" /> 계정 생성

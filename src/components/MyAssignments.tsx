@@ -8,11 +8,11 @@ import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 
 const STATUS_COLORS: Record<string, string> = {
-  입고대기: "bg-amber-500/15 text-amber-400 ring-amber-500/30",
+  입고대기: "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30",
   수리대기: "bg-blue-500/15 text-blue-400 ring-blue-500/30",
-  수리중:   "bg-sky-500/15 text-sky-400 ring-sky-500/30",
-  수리완료: "bg-teal-500/15 text-teal-400 ring-teal-500/30",
-  출고대기: "bg-green-500/15 text-green-400 ring-green-500/30",
+  수리중:   "bg-sky-500/15 text-sky-600 dark:text-sky-400 ring-sky-500/30",
+  수리완료: "bg-teal-500/15 text-teal-600 dark:text-teal-400 ring-teal-500/30",
+  출고대기: "bg-green-500/15 text-green-600 dark:text-green-400 ring-green-500/30",
   보류:     "bg-muted text-muted-foreground ring-border",
 };
 
@@ -44,7 +44,7 @@ export function MyAssignments({ employeeId }: Props) {
   ) ?? [];
 
   return (
-    <Card className="shadow-card border-0 mb-6">
+    <Card className="mb-6">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
           <ClipboardList className="h-4 w-4" /> 배정된 작업

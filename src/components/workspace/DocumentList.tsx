@@ -62,21 +62,21 @@ export function DocumentList({ filters, onAdd, onEdit, onCreateFinance }: Props)
 
   const getRowStyle = (doc: Document): string => {
     if (doc.doc_type !== "quotation" || !doc.valid_until) return "";
-    if (doc.valid_until < today) return "bg-slate-50 opacity-60";
+    if (doc.valid_until < today) return "bg-slate-50 dark:bg-slate-500/15 opacity-60";
     const daysLeft = differenceInDays(parseISO(doc.valid_until), new Date());
-    if (daysLeft <= 3) return "bg-yellow-50";
+    if (daysLeft <= 3) return "bg-yellow-50 dark:bg-yellow-500/15";
     return "";
   };
 
   const getValidUntilBadge = (doc: Document) => {
     if (doc.doc_type !== "quotation" || !doc.valid_until) return null;
     if (doc.valid_until < today) {
-      return <Badge variant="outline" className="text-[10px] bg-slate-100 text-slate-500">만료</Badge>;
+      return <Badge variant="outline" className="text-[10px] bg-slate-100 dark:bg-slate-500/15 text-slate-500">만료</Badge>;
     }
     const daysLeft = differenceInDays(parseISO(doc.valid_until), new Date());
     if (daysLeft <= 3) {
       return (
-        <Badge variant="outline" className="text-[10px] bg-yellow-100 text-yellow-700">
+        <Badge variant="outline" className="text-[10px] bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400">
           D-{daysLeft}
         </Badge>
       );

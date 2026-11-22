@@ -1,16 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useListFilter } from "@/hooks/useListFilter";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/StatusBadge";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Plus, Search, Upload, Trash2, FileSpreadsheet, Zap } from "lucide-react";
+import { Plus, Upload, Trash2, FileSpreadsheet, Zap, MoreHorizontal, Tractor } from "lucide-react";
+import { PageHeader, SearchField, ShowMore, Segmented } from "@/components/page/PageParts";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -30,6 +34,8 @@ export default function MachinesList() {
   const [statusTab, setStatusTab] = useState("전체");
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [shown, setShown] = useState(100);
+  const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -80,101 +86,164 @@ export default function MachinesList() {
     searchFields: ["model_name", "serial_number", "customers.name", "manufacturer"],
     tabFilters: { status: statusTab },
   });
+  useEffect(() => setShown(100), [search, typeTab, statusTab]);
+
+  const classLabel = (c: any) => (c ? (c === "농업용트랙터" ? "트랙터" : c) : "");
+  const inStockCount = machines?.filter((m) => m.status === "재고중").length ?? 0;
+  const askDelete = (m: any) => { if (confirm("이 기계를 삭제하시겠습니까?")) deleteMutation.mutate(m.id); };
+  const visible = (filtered ?? []).slice(0, shown);
+  const RowMenu = ({ m }: { m: any }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground" aria-label="더 보기" onClick={(e) => e.stopPropagation()}>
+          <MoreHorizontal className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem asChild><Link to={`/machines/${m.id}`}>상세 보기</Link></DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => askDelete(m)} className="text-destructive focus:text-destructive">
+          <Trash2 className="h-4 w-4 mr-2" /> 삭제
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+  const Ecu = ({ m }: { m: any }) => m.ecu_mapped ? (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-blue-600 to-violet-600 text-white whitespace-nowrap">
+      <Zap className="h-2.5 w-2.5" />ECU{m.ecu_hp ? ` ${m.ecu_hp}HP` : ""}
+    </span>
+  ) : null;
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold">기계관리</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setBulkOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" /> 일괄 등록
-          </Button>
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> 기계 등록
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="기계관리"
+        sub={isLoading ? "불러오는 중…" : <>전체 {(machines?.length ?? 0).toLocaleString("ko-KR")}대 · 재고 {inStockCount.toLocaleString("ko-KR")}대{filtered && filtered.length !== machines?.length && <> · 찾은 기계 {filtered.length.toLocaleString("ko-KR")}대</>}</>}
+        actions={
+          <>
+            <Button variant="outline" className="h-11 rounded-full bg-card" onClick={() => setBulkOpen(true)}>
+              <Upload className="h-4 w-4 mr-1.5" /> 일괄 등록
+            </Button>
+            <Button className="h-11 rounded-full px-5" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> 기계 등록
+            </Button>
+          </>
+        }
+      />
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <Tabs value={typeTab} onValueChange={setTypeTab}>
-          <TabsList>
-            <TabsTrigger value="전체">전체</TabsTrigger>
-            <TabsTrigger value="농업용트랙터">트랙터</TabsTrigger>
-            <TabsTrigger value="콤바인">콤바인</TabsTrigger>
-            <TabsTrigger value="이앙기">이앙기</TabsTrigger>
-            <TabsTrigger value="기타">기타</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Tabs value={statusTab} onValueChange={setStatusTab}>
-          <TabsList>
-            <TabsTrigger value="전체">전체</TabsTrigger>
-            <TabsTrigger value="재고중">재고중</TabsTrigger>
-            <TabsTrigger value="판매완료">판매완료</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="모델명 또는 제조번호 검색..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-col xl:flex-row xl:items-center gap-2">
+        <SearchField value={search} onChange={setSearch} placeholder="모델명, 제조번호로 찾기" className="xl:max-w-md" />
+        <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 xl:mx-0 xl:px-0">
+          <Segmented
+            label="기종"
+            value={typeTab}
+            onChange={setTypeTab}
+            options={[
+              { value: "전체", label: "전체 기종" },
+              { value: "농업용트랙터", label: "트랙터" },
+              { value: "콤바인", label: "콤바인" },
+              { value: "이앙기", label: "이앙기" },
+              { value: "기타", label: "기타" },
+            ]}
+          />
+          <Segmented
+            label="상태"
+            value={statusTab}
+            onChange={setStatusTab}
+            options={[
+              { value: "전체", label: "전체" },
+              { value: "재고중", label: "재고중" },
+              { value: "판매완료", label: "판매완료" },
+            ]}
+          />
         </div>
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)}</div>
       ) : filtered?.length === 0 ? (
-        <Card className="shadow-card border-0"><CardContent className="py-12 text-center text-muted-foreground">등록된 기계가 없습니다. 새로운 기계를 등록하여 관리를 시작하세요.</CardContent></Card>
+        <div className="rounded-3xl border border-border/70 bg-card py-16 text-center text-muted-foreground text-sm">
+          {search || typeTab !== "전체" || statusTab !== "전체" ? "조건에 맞는 기계가 없어요." : "등록된 기계가 없습니다. 새로운 기계를 등록하여 관리를 시작하세요."}
+        </div>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
-          <div className="overflow-x-auto">
+        <>
+          {/* PC: 표 */}
+          <div className="hidden lg:block rounded-3xl border border-border/70 bg-card card-shadow overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">제조사</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">모델명</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">제조번호</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">기종</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">구분</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">상태</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">입고일</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">판매일</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">고객명</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">매입가</th>
-                  <th className="p-3 w-10"></th>
+                <tr className="border-b text-[13px]">
+                  <th className="text-left font-medium px-5 py-3">모델 · 제조번호</th>
+                  <th className="text-left font-medium px-3 py-3">기종</th>
+                  <th className="text-left font-medium px-3 py-3">구분 · 상태</th>
+                  <th className="text-left font-medium px-3 py-3">고객</th>
+                  <th className="text-left font-medium px-3 py-3">입고 · 판매</th>
+                  <th className="text-right font-medium px-3 py-3">매입가</th>
+                  <th className="px-3 py-3 w-[56px]"><span className="sr-only">메뉴</span></th>
                 </tr>
               </thead>
               <tbody>
-                {filtered?.map((m: any) => (
-                  <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                    <td className="p-3 text-muted-foreground">{m.manufacturer || "-"}</td>
-                    <td className="p-3">
+                {visible.map((m: any) => (
+                  <tr
+                    key={m.id}
+                    className="border-b border-border/60 last:border-0 hover:bg-foreground/[0.03] transition-colors cursor-pointer"
+                    onClick={() => navigate(`/machines/${m.id}`)}
+                  >
+                    <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
-                        <Link to={`/machines/${m.id}`} className="font-medium text-foreground hover:text-primary">{m.model_name}</Link>
-                        {(m as any).ecu_mapped && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-blue-600 to-violet-600 text-white whitespace-nowrap">
-                            <Zap className="h-2.5 w-2.5" />ECU{(m as any).ecu_hp ? ` ${(m as any).ecu_hp}HP` : ""}
-                          </span>
-                        )}
+                        <span className="font-semibold">{m.model_name}</span>
+                        <Ecu m={m} />
                       </div>
+                      <div className="text-xs text-muted-foreground font-mono">{m.manufacturer ? `${m.manufacturer} · ` : ""}{m.serial_number}</div>
                     </td>
-                    <td className="p-3 font-mono text-xs text-muted-foreground">{m.serial_number}</td>
-                    <td className="p-3 text-muted-foreground">{(m as any).classification ? ((m as any).classification === "농업용트랙터" ? "트랙터" : (m as any).classification) : "-"}</td>
-                    <td className="p-3"><TypeBadge type={m.machine_type} /></td>
-                    <td className="p-3"><StatusBadge status={m.status} /></td>
-                    <td className="p-3 text-muted-foreground">{formatDate(m.entry_date)}</td>
-                    <td className="p-3 text-muted-foreground">{m.sale_date ? formatDate(m.sale_date) : "-"}</td>
-                    <td className="p-3 text-muted-foreground">{m.customers?.name || "-"}</td>
-                    <td className="p-3 text-right tabular-nums font-medium">{formatPrice(m.purchase_price)}</td>
-                    <td className="p-3">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); if (confirm("이 기계를 삭제하시겠습니까?")) deleteMutation.mutate(m.id); }}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <td className="px-3 py-3 text-muted-foreground">{classLabel(m.classification) || "-"}</td>
+                    <td className="px-3 py-3"><div className="flex items-center gap-1.5"><TypeBadge type={m.machine_type} /><StatusBadge status={m.status} /></div></td>
+                    <td className="px-3 py-3">
+                      {m.customers?.name ? (
+                        <Link to={`/customers/${m.customer_id}`} onClick={(e) => e.stopPropagation()} className="hover:text-primary">{m.customers.name}</Link>
+                      ) : <span className="text-muted-foreground">-</span>}
                     </td>
+                    <td className="px-3 py-3 text-muted-foreground whitespace-nowrap tabular-nums">
+                      {formatDate(m.entry_date)}
+                      {m.sale_date && <span className="block text-xs">판매 {formatDate(m.sale_date)}</span>}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums font-semibold whitespace-nowrap">{m.purchase_price ? formatPrice(m.purchase_price) : ""}</td>
+                    <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}><RowMenu m={m} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </Card>
+
+          {/* 휴대폰 · 태블릿: 카드 */}
+          <ul className="lg:hidden grid gap-2 md:grid-cols-2">
+            {visible.map((m: any) => (
+              <li key={m.id} className="rounded-3xl border border-border/70 bg-card p-4 active:bg-foreground/[0.03]" onClick={() => navigate(`/machines/${m.id}`)}>
+                <div className="flex items-start gap-3">
+                  <div className="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Tractor className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[16px] font-bold truncate">{m.model_name}</p>
+                      <Ecu m={m} />
+                    </div>
+                    <p className="text-xs text-muted-foreground font-mono truncate">{m.manufacturer ? `${m.manufacturer} · ` : ""}{m.serial_number}</p>
+                  </div>
+                  <div className="-mr-2 -mt-1" onClick={(e) => e.stopPropagation()}><RowMenu m={m} /></div>
+                </div>
+                <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+                  <TypeBadge type={m.machine_type} />
+                  <StatusBadge status={m.status} />
+                  {classLabel(m.classification) && <span className="text-xs text-muted-foreground">{classLabel(m.classification)}</span>}
+                </div>
+                <div className="flex items-center justify-between mt-3 text-sm">
+                  <span className="text-muted-foreground truncate">{m.customers?.name ?? "고객 없음"} · {formatDate(m.entry_date)}</span>
+                  {m.purchase_price ? <span className="font-bold tabular-nums shrink-0">{formatPrice(m.purchase_price)}</span> : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <ShowMore shown={shown} total={filtered?.length ?? 0} onMore={() => setShown((n) => n + 100)} />
+        </>
       )}
 
       <AddMachineDialog open={open} onOpenChange={setOpen} />

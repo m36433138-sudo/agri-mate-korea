@@ -206,7 +206,7 @@ export default function MechanicRepairForm() {
   const canSubmit = mechanicName && description;
 
   return (
-    <Card className="shadow-card border-0">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Wrench className="h-5 w-5 text-primary" />

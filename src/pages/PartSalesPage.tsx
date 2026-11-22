@@ -11,6 +11,7 @@ import { usePartSales } from "@/components/partSales/usePartSales";
 import type { PartSaleRow } from "@/components/partSales/types";
 import { buyerOf, PAYMENT_MODE_LABELS } from "@/components/partSales/types";
 import { ShoppingCart, Plus, Search } from "lucide-react";
+import { PageHeader, SearchField, Segmented } from "@/components/page/PageParts";
 
 type Period = "today" | "month" | "last" | "all";
 
@@ -60,55 +61,55 @@ export default function PartSalesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-bold">부품 판매</h1>
-        </div>
-        {canManage && (
-          <Button onClick={() => setNewOpen(true)} className="w-full sm:w-auto">
+      <PageHeader
+        title="부품 판매"
+        sub="카운터 판매 · 외상은 미수금으로 자동 등록"
+        actions={canManage ? (
+          <Button onClick={() => setNewOpen(true)} className="h-11 rounded-full px-5">
             <Plus className="h-4 w-4 mr-1" /> 부품 판매 등록
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="border-0 shadow-card"><CardContent className="p-4">
+        <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">판매 금액</p>
-          <p className="text-lg font-extrabold tabular-nums mt-1">{isLoading ? "–" : formatPrice(total)}</p>
+          <p className="text-[20px] sm:text-[24px] leading-tight font-extrabold tracking-tight tabular-nums mt-1.5">{isLoading ? "–" : formatPrice(total)}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{filtered.length}건</p>
         </CardContent></Card>
-        <Card className="border-0 shadow-card"><CardContent className="p-4">
+        <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">받은 금액</p>
-          <p className="text-lg font-extrabold tabular-nums mt-1 text-green-500">{isLoading ? "–" : formatPrice(total - credit)}</p>
+          <p className="text-[20px] sm:text-[24px] leading-tight font-extrabold tracking-tight tabular-nums mt-1.5 text-green-500">{isLoading ? "–" : formatPrice(total - credit)}</p>
         </CardContent></Card>
-        <Card className="border-0 shadow-card"><CardContent className="p-4">
+        <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">외상으로 판매</p>
-          <p className="text-lg font-extrabold tabular-nums mt-1 text-amber-500">{isLoading ? "–" : formatPrice(credit)}</p>
+          <p className="text-[20px] sm:text-[24px] leading-tight font-extrabold tracking-tight tabular-nums mt-1.5 text-amber-500">{isLoading ? "–" : formatPrice(credit)}</p>
         </CardContent></Card>
-        <Card className="border-0 shadow-card"><CardContent className="p-4">
+        <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">판매 수량</p>
-          <p className="text-lg font-extrabold tabular-nums mt-1">{isLoading ? "–" : `${qty.toLocaleString("ko-KR")}개`}</p>
+          <p className="text-[20px] sm:text-[24px] leading-tight font-extrabold tracking-tight tabular-nums mt-1.5">{isLoading ? "–" : `${qty.toLocaleString("ko-KR")}개`}</p>
         </CardContent></Card>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {([["today", "오늘"], ["month", "이번 달"], ["last", "지난 달"], ["all", "전체"]] as [Period, string][]).map(([k, label]) => (
-          <Button key={k} size="sm" variant={period === k ? "default" : "outline"} onClick={() => setPeriod(k)}>{label}</Button>
-        ))}
-        <span className="w-px h-5 bg-border mx-1 hidden sm:block" />
-        {(["all", "장흥", "강진"] as const).map((b) => (
-          <Button key={b} size="sm" variant={branch === b ? "secondary" : "ghost"} onClick={() => setBranch(b)}>
-            {b === "all" ? "두 지점" : b}
-          </Button>
-        ))}
-        <div className="relative w-full sm:w-64 sm:ml-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="고객·전화·부품번호·품명" className="pl-9" />
+      <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+          <Segmented<Period>
+            label="기간"
+            value={period}
+            onChange={setPeriod}
+            options={[{ value: "today", label: "오늘" }, { value: "month", label: "이번 달" }, { value: "last", label: "지난 달" }, { value: "all", label: "전체" }]}
+          />
+          <Segmented<"all" | "장흥" | "강진">
+            label="지점"
+            value={branch}
+            onChange={setBranch}
+            options={[{ value: "all", label: "두 지점" }, { value: "장흥", label: "장흥" }, { value: "강진", label: "강진" }]}
+          />
         </div>
+        <SearchField value={q} onChange={setQ} placeholder="고객, 전화, 부품번호, 품명" className="lg:max-w-sm lg:ml-auto" />
       </div>
 
-      <Card className="border-0 shadow-card">
+      <Card>
         <CardContent className="p-0 divide-y divide-border/40">
           {isLoading ? (
             <p className="p-8 text-center text-sm text-muted-foreground">불러오는 중...</p>
@@ -129,7 +130,7 @@ export default function PartSalesPage() {
                     <Badge variant="outline" className="text-[11px]">{s.branch}</Badge>
                     <span className="text-sm font-semibold truncate">{buyerOf(s)}</span>
                     {!s.customer_id && <span className="text-[11px] text-muted-foreground">미등록</span>}
-                    <Badge className={`text-[11px] ${s.payment_mode === "paid" ? "bg-green-950/60 text-green-400" : "bg-amber-950/60 text-amber-400"}`}>
+                    <Badge className={`text-[11px] ${s.payment_mode === "paid" ? "bg-green-500/15 text-green-700 dark:text-green-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
                       {PAYMENT_MODE_LABELS[s.payment_mode]}
                     </Badge>
                   </div>

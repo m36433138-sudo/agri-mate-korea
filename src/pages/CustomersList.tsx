@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2, Users, ChevronRight, UserMinus } from "lucide-react";
+import { Plus, Upload, Trash2, FileSpreadsheet, CloudDownload, Loader2, ChevronRight, UserMinus, Phone, MoreHorizontal } from "lucide-react";
+import { PageHeader, SearchField, ShowMore } from "@/components/page/PageParts";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import * as XLSX from "xlsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -141,6 +145,10 @@ export default function CustomersList() {
   };
 
   // 이름 이니셜용 색상
+  // 천 명이 넘어도 휴대폰에서 가볍게: 100명씩 그린다
+  const [shown, setShown] = useState(100);
+  useEffect(() => setShown(100), [search]);
+
   const getAvatarColor = (name: string) => {
     const colors = ["bg-primary/80", "bg-info/80", "bg-warning/80", "bg-success/80", "bg-purple-500/80", "bg-pink-500/80"];
     let hash = 0;
@@ -149,102 +157,94 @@ export default function CustomersList() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* 액션 버튼 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Users className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold">
-              {isLoading ? "..." : `전체 ${customers?.length ?? 0}명`}
-            </p>
-            {search && !isLoading && (
-              <p className="text-xs text-muted-foreground">검색결과 {filtered?.length ?? 0}명</p>
-            )}
-          </div>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handleSheetImport} disabled={importing}>
-            {importing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CloudDownload className="h-4 w-4 mr-1" />}
-            {importing ? "가져오는 중..." : "시트 가져오기"}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" /> 일괄 등록
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setCleanupConfirm(true)} disabled={cleaning || isLoading}>
-            <UserMinus className="h-4 w-4 mr-1" /> 불완전 고객 정리
-          </Button>
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> 고객 등록
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="고객관리"
+        sub={isLoading ? "불러오는 중…" : <>전체 {(customers?.length ?? 0).toLocaleString("ko-KR")}명{search && <> · 찾은 고객 {(filtered?.length ?? 0).toLocaleString("ko-KR")}명</>}</>}
+        actions={
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-11 rounded-full bg-card px-4" disabled={importing || cleaning}>
+                  {importing || cleaning ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <MoreHorizontal className="h-4 w-4 mr-1.5" />}
+                  {importing ? "가져오는 중…" : cleaning ? "정리 중…" : "관리"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={() => setBulkOpen(true)}><Upload className="h-4 w-4 mr-2" /> 일괄 등록 (엑셀)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleSheetImport}><CloudDownload className="h-4 w-4 mr-2" /> 시트 가져오기</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setCleanupConfirm(true)} disabled={isLoading} className="text-destructive focus:text-destructive">
+                  <UserMinus className="h-4 w-4 mr-2" /> 불완전 고객 정리
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button className="h-11 rounded-full px-5" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> 고객 등록
+            </Button>
+          </>
+        }
+      />
 
-      {/* 검색창 */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="이름 또는 연락처 검색..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-          autoComplete="off"
-        />
-      </div>
+      <SearchField value={search} onChange={setSearch} placeholder="이름, 연락처, 주소로 찾기" className="max-w-xl" />
 
       {/* 고객 목록 */}
       {isLoading ? (
-        <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}</div>
+        <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)}</div>
       ) : filtered?.length === 0 ? (
-        <Card className="shadow-card border-0">
-          <CardContent className="py-12 text-center text-muted-foreground text-sm">
-            {search ? `"${search}"에 해당하는 고객이 없습니다.` : "등록된 고객이 없습니다."}
-          </CardContent>
-        </Card>
+        <div className="rounded-3xl border border-border/70 bg-card py-16 text-center text-muted-foreground text-sm">
+          {search ? `"${search}"에 해당하는 고객이 없습니다.` : "등록된 고객이 없습니다."}
+        </div>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
-          <div>
-            {filtered?.map((c, idx) => (
-              <div
-                key={c.id}
-                className={`flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 transition-colors group ${idx !== 0 ? "border-t" : ""}`}
-              >
+        <>
+          <div className="rounded-3xl border border-border/70 bg-card card-shadow overflow-hidden p-1.5 sm:p-2 grid lg:grid-cols-2 gap-x-2">
+            {filtered?.slice(0, shown).map((c) => (
+              <div key={c.id} className="flex items-center gap-2 px-2.5 py-2.5 rounded-2xl hover:bg-foreground/[0.04] transition-colors group">
                 <Link to={`/customers/${c.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                  {/* 아바타 이니셜 */}
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${getAvatarColor(c.name)}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-[15px] font-bold shrink-0 ${getAvatarColor(c.name)}`}>
                     {c.name.charAt(0)}
                   </div>
-                  {/* 정보 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-sm truncate">{c.name}</p>
+                      <p className="font-semibold text-[15px] truncate">{c.name}</p>
                       {c.grade && <CustomerGradeBadge grade={c.grade} />}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-[13px] text-muted-foreground truncate">
                       {c.phone}
                       {c.address ? ` · ${c.address}` : ""}
                     </p>
                   </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors shrink-0 hidden sm:block" />
                 </Link>
-                {/* 삭제 버튼 */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                  onClick={(e) => { e.preventDefault(); setDeleteTarget(c); }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                {/* 화살표 */}
-                <Link to={`/customers/${c.id}`}>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/40 transition-colors shrink-0" />
-                </Link>
+                {c.phone && (
+                  <a
+                    href={`tel:${c.phone}`}
+                    className="h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-primary bg-primary/10 hover:bg-primary/15 transition-colors"
+                    aria-label={`${c.name}님께 전화`}
+                    title="전화 걸기"
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full text-muted-foreground" aria-label="더 보기">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild><Link to={`/customers/${c.id}`}>상세 보기</Link></DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setDeleteTarget(c)} className="text-destructive focus:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" /> 삭제
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))}
           </div>
-        </Card>
+          <ShowMore shown={shown} total={filtered?.length ?? 0} onMore={() => setShown((n) => n + 100)} />
+        </>
       )}
 
       <AddCustomerDialog open={open} onOpenChange={setOpen} />

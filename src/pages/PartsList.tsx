@@ -5,14 +5,15 @@ import LowStockList from "@/components/LowStockList";
 import BranchInventoryCompare from "@/components/BranchInventoryCompare";
 import BulkPriceUpdate from "@/components/BulkPriceUpdate";
 import PartProcurement from "@/components/PartProcurement";
+import { PageHeader } from "@/components/page/PageParts";
 import { Package, ArrowUpDown, AlertTriangle, GitCompare, Tag, Truck } from "lucide-react";
 
 export default function PartsList() {
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">부품관리</h1>
+      <PageHeader title="부품관리" sub="재고 찾기 · 조달 · 지점 비교 · 재고조정" className="mb-5" />
       <Tabs defaultValue="inventory" className="w-full">
-        <TabsList className="mb-4 flex-wrap h-auto">
+        <TabsList className="mb-5">
           <TabsTrigger value="inventory" className="gap-1.5">
             <Package className="h-4 w-4" /> 부품현황
           </TabsTrigger>

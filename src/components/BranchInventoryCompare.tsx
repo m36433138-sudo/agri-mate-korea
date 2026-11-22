@@ -88,7 +88,7 @@ export default function BranchInventoryCompare() {
       </div>
 
       {!hasSearch ? (
-        <Card className="shadow-card border-0 border-dashed border-2">
+        <Card className="border-dashed border-2">
           <CardContent className="py-14 text-center">
             <GitCompare className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
             <p className="text-sm font-medium text-muted-foreground">장흥·강진 재고를 한 화면에서 비교</p>
@@ -100,13 +100,13 @@ export default function BranchInventoryCompare() {
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
         </div>
       ) : rows.length === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <p className="text-sm">"{debounced}"에 해당하는 부품이 없습니다.</p>
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-card border-0 overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

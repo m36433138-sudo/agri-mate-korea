@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Plus, Search, Package, Building2, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Package, Building2, Trash2, FileText, MoreHorizontal, ChevronRight } from "lucide-react";
+import { PageHeader, SearchField } from "@/components/page/PageParts";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { won } from "@/lib/quoteTypes";
 import { toast } from "sonner";
 
@@ -12,6 +15,7 @@ export default function QuotesList() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const [authors, setAuthors] = useState<Record<string, string>>({});
 
@@ -22,6 +26,7 @@ export default function QuotesList() {
       .order("quote_date", { ascending: false })
       .limit(200);
     setRows(data || []);
+    setLoading(false);
     const ids = [...new Set((data || []).map((r: any) => r.created_by).filter(Boolean))];
     if (ids.length) {
       const { data: profs } = await (supabase as any).from("profiles").select("id,display_name").in("id", ids);
@@ -43,52 +48,83 @@ export default function QuotesList() {
     load();
   };
 
+  const total = filtered.reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0);
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap justify-between items-center gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">견적서 관리</h1>
-          <p className="text-sm text-muted-foreground mt-1">발행한 견적서 목록</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/quotes/companies")}><Building2 className="w-4 h-4 mr-1" />사업자</Button>
-          <Button variant="outline" onClick={() => navigate("/quotes/products")}><Package className="w-4 h-4 mr-1" />제품</Button>
-          <Button onClick={() => navigate("/quotes/new")}><Plus className="w-4 h-4 mr-1" />견적서 작성</Button>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="견적서 관리"
+        sub={loading ? "불러오는 중…" : <>최근 {rows.length}건{q && <> · 찾은 견적 {filtered.length}건</>} · 합계 {won(total)}</>}
+        actions={
+          <>
+            <Button variant="outline" className="h-11 rounded-full bg-card hidden sm:inline-flex" onClick={() => navigate("/quotes/companies")}><Building2 className="w-4 h-4 mr-1.5" />사업자</Button>
+            <Button variant="outline" className="h-11 rounded-full bg-card hidden sm:inline-flex" onClick={() => navigate("/quotes/products")}><Package className="w-4 h-4 mr-1.5" />제품</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-11 w-11 p-0 rounded-full bg-card sm:hidden" aria-label="더 보기"><MoreHorizontal className="h-5 w-5" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => navigate("/quotes/companies")}><Building2 className="w-4 h-4 mr-2" />사업자 관리</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate("/quotes/products")}><Package className="w-4 h-4 mr-2" />제품 관리</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button className="h-11 rounded-full px-5" onClick={() => navigate("/quotes/new")}><Plus className="w-4 h-4 mr-1" />견적서 작성</Button>
+          </>
+        }
+      />
 
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="견적번호/고객명/전화 검색" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
-      </div>
+      <SearchField value={q} onChange={setQ} placeholder="견적번호, 고객명, 전화번호로 찾기" className="max-w-xl" />
 
-      <div className="grid gap-2">
-        {filtered.map((r) => (
-          <Card key={r.id} className="p-4 hover:bg-accent/40 cursor-pointer flex items-center justify-between" onClick={() => navigate(`/quotes/${r.id}`)}>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-sm text-primary">{r.quote_number}</span>
-                <span className="text-sm text-muted-foreground">{r.quote_date}</span>
-                {r.companies?.company_name && <span className="text-xs bg-secondary px-2 py-0.5 rounded">{r.companies.company_name}</span>}
-                {r.created_by && authors[r.created_by] && (
-                  <span className="text-xs text-muted-foreground">작성: {authors[r.created_by]}</span>
-                )}
+      {loading ? (
+        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)}</div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-3xl border border-border/70 bg-card py-16 text-center text-sm text-muted-foreground">
+          {q ? "조건에 맞는 견적서가 없어요." : "견적서가 없습니다"}
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-border/70 bg-card card-shadow p-1.5 sm:p-2">
+          {filtered.map((r) => (
+            <div
+              key={r.id}
+              className="group flex items-center gap-3 px-2.5 py-3 rounded-2xl hover:bg-foreground/[0.04] cursor-pointer transition-colors"
+              onClick={() => navigate(`/quotes/${r.id}`)}
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <FileText className="h-[18px] w-[18px]" />
               </div>
-              <div className="mt-1 flex items-center gap-3">
-                <span className="font-medium">{r.customer_name || "-"}</span>
-                <span className="text-xs text-muted-foreground">{r.customer_phone}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-[15px] truncate">{r.customer_name || "고객 미지정"}</span>
+                  {r.customer_phone && <span className="text-xs text-muted-foreground truncate hidden sm:inline">{r.customer_phone}</span>}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 min-w-0 whitespace-nowrap overflow-hidden">
+                  <span className="font-mono">{r.quote_number}</span>
+                  <span className="hidden sm:inline">· {r.quote_date}</span>
+                  <span className="sm:hidden">· {r.quote_date?.slice(5)}</span>
+                  {r.companies?.company_name && <span className="truncate hidden sm:inline">· {r.companies.company_name}</span>}
+                  {r.created_by && authors[r.created_by] && <span className="truncate hidden md:inline">· 작성 {authors[r.created_by]}</span>}
+                </div>
+              </div>
+              <span className="text-sm sm:text-base font-bold tabular-nums whitespace-nowrap">{won(Number(r.total_amount))}</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors shrink-0 hidden sm:block" />
+              <div onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground" aria-label="더 보기"><MoreHorizontal className="h-5 w-5" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => navigate(`/quotes/${r.id}`)}>열기 · 수정</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => remove(r.id)} className="text-destructive focus:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" /> 삭제
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-lg font-bold text-primary tabular-nums">{won(Number(r.total_amount))}</span>
-              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); remove(r.id); }}>
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </Card>
-        ))}
-        {filtered.length === 0 && <div className="text-center text-muted-foreground py-12">견적서가 없습니다</div>}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

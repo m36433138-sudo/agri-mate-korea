@@ -117,10 +117,10 @@ export function getTechnicianColor(name: string): string {
 }
 
 export function getMachineTypeColor(type: string): { bg: string; text: string } {
-  if (type?.includes("트랙터")) return { bg: "bg-green-100", text: "text-green-700" };
-  if (type?.includes("콤바인")) return { bg: "bg-blue-100", text: "text-blue-700" };
-  if (type?.includes("이앙기")) return { bg: "bg-orange-100", text: "text-orange-700" };
-  return { bg: "bg-gray-100", text: "text-gray-600" };
+  if (type?.includes("트랙터")) return { bg: "bg-green-500/15", text: "text-green-700 dark:text-green-400" };
+  if (type?.includes("콤바인")) return { bg: "bg-blue-500/15", text: "text-blue-700 dark:text-blue-400" };
+  if (type?.includes("이앙기")) return { bg: "bg-orange-500/15", text: "text-orange-700 dark:text-orange-400" };
+  return { bg: "bg-gray-500/15", text: "text-gray-600 dark:text-gray-300" };
 }
 
 export function parseRows(values: string[][], branch: "장흥" | "강진"): SheetRow[] {

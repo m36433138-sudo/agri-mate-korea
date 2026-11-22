@@ -83,7 +83,7 @@ export function RepairNoteModal({ open, onClose, row }: Props) {
               조달 필요 ({pending.length})
             </p>
             {pending.map(note => (
-              <div key={note.id} className="flex items-center gap-2 rounded-lg bg-orange-50 border border-orange-100 px-3 py-2">
+              <div key={note.id} className="flex items-center gap-2 rounded-lg bg-orange-50 dark:bg-orange-500/15 border border-orange-100 dark:border-orange-500/30 px-3 py-2">
                 <button onClick={() => handleToggle(note)} className="shrink-0 text-muted-foreground hover:text-green-600 transition-colors">
                   <Circle className="h-4 w-4" />
                 </button>

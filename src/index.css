@@ -5,47 +5,58 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 
 @layer base {
-  /* ── 라이트 모드 (기본) ── */
+  /* ── 라이트 모드 ──
+     회색 바탕 위에 흰 카드를 올려 구역이 한눈에 나뉘게 하고, 파랑은 누르는 곳에만 쓴다 */
   :root {
     --diagram-paper: 0 0% 100%;
-    --background: 210 40% 98%;         /* #F6F9FC */
-    --foreground: 222 47% 11%;         /* #0F172A */
+    --background: 220 14% 96%;         /* #F2F4F6 */
+    --foreground: 215 22% 13%;         /* #191F28 */
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 215 22% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 215 22% 13%;
 
-    --primary: 217 91% 55%;
+    --primary: 215 91% 58%;            /* #3182F6 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 94%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 220 14% 95%;
+    --secondary-foreground: 215 22% 13%;
 
-    --muted: 210 40% 94%;
-    --muted-foreground: 215 16% 42%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 215 10% 45%;   /* #6B7684 */
 
-    --accent: 210 40% 92%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 220 14% 93%;
+    --accent-foreground: 215 22% 13%;
 
-    --destructive: 0 84% 55%;
+    --destructive: 0 80% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 88%;
-    --input: 214 32% 88%;
-    --ring: 217 91% 55%;
+    --border: 220 13% 90%;
+    --input: 220 13% 88%;
+    --ring: 215 91% 58%;
 
-    --radius: 0.625rem;
+    --radius: 0.875rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 15%;
-    --sidebar-primary: 217 91% 55%;
+    --sidebar-foreground: 215 18% 22%;
+    --sidebar-primary: 215 91% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 94%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 88%;
-    --sidebar-ring: 217 91% 55%;
+    --sidebar-accent: 215 90% 97%;
+    --sidebar-accent-foreground: 215 91% 45%;
+    --sidebar-border: 220 13% 92%;
+    --sidebar-ring: 215 91% 58%;
+
+    /* 그래프 · AI 카드 */
+    --chart-1: 215 91% 58%;            /* 진한 파랑 */
+    --chart-2: 205 95% 72%;            /* 하늘색 */
+    --chart-3: 152 60% 45%;
+    --chart-4: 262 75% 65%;
+    --ai-from: 226 90% 60%;
+    --ai-to: 258 80% 62%;
+    --up: 152 60% 38%;
+    --down: 0 72% 52%;
 
     --status-stock: 142 76% 36%;
     --status-sold: 215 16% 47%;
@@ -60,56 +71,56 @@
     --success-foreground: 0 0% 100%;
   }
 
-  /* ── 다크 모드 ── */
+  /* ── 다크 모드 ── 거의 검정 바탕 + 살짝 밝은 카드, 그래프는 초록·보라로 빛나게 */
   .dark {
-    /* ── 배경 / 텍스트 ── */
-    --background: 222 47% 7%;          /* #060F1E */
-    --foreground: 210 40% 96%;         /* 거의 흰색 #F0F4FA */
+    --diagram-paper: 0 0% 100%;
+    --background: 240 6% 6%;           /* #0E0E11 */
+    --foreground: 0 0% 96%;
 
-    /* ── 카드 ── */
-    --card: 220 55% 10%;               /* #0B1A2E */
-    --card-foreground: 210 40% 96%;
+    --card: 240 5% 10%;                /* #18181B */
+    --card-foreground: 0 0% 96%;
 
-    /* ── 팝오버 ── */
-    --popover: 220 60% 9%;
-    --popover-foreground: 210 40% 96%;
+    --popover: 240 5% 12%;
+    --popover-foreground: 0 0% 96%;
 
-    /* ── 주요 색상: 블루 ── */
-    --primary: 217 91% 58%;            /* #3B82F6 */
+    --primary: 215 91% 62%;
     --primary-foreground: 0 0% 100%;
 
-    /* ── 보조 ── */
-    --secondary: 220 52% 14%;
-    --secondary-foreground: 210 40% 96%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 96%;
 
-    /* ── 음소거 ── */
-    --muted: 220 45% 16%;
-    --muted-foreground: 215 20% 64%;   /* 46%→64% 명도 대폭 상향 */
+    --muted: 240 4% 15%;
+    --muted-foreground: 240 5% 62%;
 
-    /* ── 강조 ── */
-    --accent: 220 52% 18%;
-    --accent-foreground: 210 40% 96%;
+    --accent: 240 4% 17%;
+    --accent-foreground: 0 0% 96%;
 
-    /* ── 위험 ── */
-    --destructive: 0 84% 60%;
+    --destructive: 0 75% 62%;
     --destructive-foreground: 0 0% 100%;
 
-    /* ── 테두리 / 입력 ── */
-    --border: 216 45% 20%;
-    --input: 216 45% 20%;
-    --ring: 217 91% 58%;
+    --border: 240 4% 18%;
+    --input: 240 4% 22%;
+    --ring: 215 91% 62%;
 
-    --radius: 0.625rem;
+    --radius: 0.875rem;
 
-    /* ── 사이드바 ── */
-    --sidebar-background: 222 52% 6%;
-    --sidebar-foreground: 210 30% 92%;  /* 밝게 */
-    --sidebar-primary: 217 91% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 52% 13%;
-    --sidebar-accent-foreground: 210 30% 92%;
-    --sidebar-border: 216 40% 15%;
-    --sidebar-ring: 217 91% 58%;
+    --sidebar-background: 240 5% 11%;
+    --sidebar-foreground: 240 5% 80%;
+    --sidebar-primary: 0 0% 96%;
+    --sidebar-primary-foreground: 240 6% 8%;
+    --sidebar-accent: 0 0% 96%;          /* 선택된 메뉴: 흰 알약 */
+    --sidebar-accent-foreground: 240 6% 8%;
+    --sidebar-border: 240 4% 17%;
+    --sidebar-ring: 215 91% 62%;
+
+    --chart-1: 145 68% 62%;            /* 형광 초록 */
+    --chart-2: 250 82% 70%;            /* 보라 */
+    --chart-3: 205 90% 65%;
+    --chart-4: 38 92% 60%;
+    --ai-from: 250 60% 32%;
+    --ai-to: 262 70% 48%;
+    --up: 145 68% 62%;
+    --down: 0 85% 70%;
 
     /* ── 상태 색상 ── */
     --status-stock: 142 76% 36%;
@@ -245,14 +256,32 @@
 
 /* ── 카드 표준 그림자 ── */
 .card-shadow {
-  box-shadow:
-    0 1px 3px hsl(var(--foreground) / 0.08),
-    0 0 0 1px hsl(var(--border) / 0.8);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+}
+/* 다크: 카드 윗선에 아주 옅은 빛 → 유리판처럼 떠 보이게 */
+.dark .card-shadow {
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 8px 24px hsl(0 0% 0% / 0.25);
+}
+/* 선택된 메뉴: 알약 안의 아이콘 원을 반대색으로 (밝은 모드 파랑 원, 어두운 모드 검은 원) */
+.nav-active .nav-icon {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.dark .nav-active .nav-icon {
+  background: hsl(var(--sidebar-accent-foreground));
+  color: hsl(var(--sidebar-accent));
+}
+
+/* AI 카드 배경 */
+.ai-gradient {
+  background:
+    radial-gradient(120% 80% at 50% 110%, hsl(var(--ai-to) / 0.95), transparent 70%),
+    linear-gradient(160deg, hsl(var(--ai-from)), hsl(var(--ai-to)));
 }
 
 /* ── 유리 효과 헤더 ── */
 .glass-header {
-  background: hsl(var(--background) / 0.85);
+  background: hsl(var(--card) / 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid hsl(var(--border));

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, BookOpen, CheckCircle2, ClipboardList, Loader2, Plus, Search, Wrench } from "lucide-react";
+import { PageHeader } from "@/components/page/PageParts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchAllRows } from "@/lib/pagination";
 import { buildRecordIndex, type CatalogEntry } from "@/lib/errorCodeCatalog";
@@ -170,20 +171,15 @@ export default function ErrorCodeLog() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <AlertTriangle className="h-6 w-6 text-amber-400" />
-            에러코드
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            얀마 TTS 2025·QR 자료의 전체 에러코드 {catalog.length.toLocaleString()}개. 코드를 누르면 매뉴얼 조치와 우리 수리 기록(누가·언제·어떤 기계·어떻게)을 함께 봅니다.
-          </p>
-        </div>
-        <Button className="shrink-0 gap-1.5 w-full sm:w-auto" onClick={() => startAdd("")}>
-          <Plus className="h-4 w-4" /> 에러코드 등록
-        </Button>
-      </div>
+      <PageHeader
+        title="에러코드"
+        sub={<>얀마 TTS 2025·QR 자료 {catalog.length.toLocaleString()}개<span className="hidden sm:inline"> · 코드를 누르면 매뉴얼 조치와 우리 수리 기록을 함께 봐요</span></>}
+        actions={
+          <Button className="h-11 rounded-full px-5 gap-1.5" onClick={() => startAdd("")}>
+            <Plus className="h-4 w-4" /> 에러코드 등록
+          </Button>
+        }
+      />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid grid-cols-2 w-full sm:w-auto sm:inline-grid">
@@ -197,22 +193,22 @@ export default function ErrorCodeLog() {
 
         <TabsContent value="records" className="mt-4 space-y-5">
       <div className="grid grid-cols-3 gap-3">
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">전체 기록</p>
-            <p className="text-xl font-bold tabular-nums">{rows.length}</p>
+            <p className="text-[24px] leading-tight font-extrabold tabular-nums mt-1">{rows.length}</p>
           </CardContent>
         </Card>
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">미조치</p>
-            <p className="text-xl font-bold tabular-nums text-amber-400">{unresolved}</p>
+            <p className="text-[24px] leading-tight font-extrabold tabular-nums mt-1 text-amber-600 dark:text-amber-400">{unresolved}</p>
           </CardContent>
         </Card>
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">조치완료</p>
-            <p className="text-xl font-bold tabular-nums text-emerald-400">{rows.length - unresolved}</p>
+            <p className="text-[24px] leading-tight font-extrabold tabular-nums mt-1 text-emerald-600 dark:text-emerald-400">{rows.length - unresolved}</p>
           </CardContent>
         </Card>
       </div>
@@ -249,7 +245,7 @@ export default function ErrorCodeLog() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center space-y-3">
             <p className="text-muted-foreground text-sm">기록된 에러코드가 없습니다.</p>
             <Button className="gap-1.5" onClick={() => startAdd("")}>
@@ -261,19 +257,19 @@ export default function ErrorCodeLog() {
       ) : (
         <div className="grid gap-2">
           {filtered.map((r) => (
-            <Card key={r.id} className="shadow-card border-0">
+            <Card key={r.id}>
               <CardContent className="p-3 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <button type="button" onClick={() => openRecordCode(r.error_code)} title="매뉴얼 설명 보기">
                     <Badge variant="outline" className="font-mono hover:border-primary hover:text-primary cursor-pointer">{r.error_code}</Badge>
                   </button>
                   {r.is_resolved ? (
-                    <Badge variant="outline" className="gap-1 text-emerald-400 border-emerald-400/40">
+                    <Badge variant="outline" className="gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-400/40">
                       <CheckCircle2 className="h-3 w-3" /> 조치완료
                       {r.resolved_at && <span className="ml-1">{formatDate(r.resolved_at)}</span>}
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="gap-1 text-amber-400 border-amber-400/40">
+                    <Badge variant="outline" className="gap-1 text-amber-600 dark:text-amber-400 border-amber-400/40">
                       <AlertTriangle className="h-3 w-3" /> 미조치
                     </Badge>
                   )}

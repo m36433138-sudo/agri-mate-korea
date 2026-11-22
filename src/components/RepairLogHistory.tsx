@@ -201,7 +201,7 @@ export default function RepairLogHistory() {
       </div>
 
       {!filtered?.length ? (
-        <Card className="shadow-card border-0">
+        <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
             정비 기록이 없습니다.
@@ -211,7 +211,7 @@ export default function RepairLogHistory() {
         filtered.map((log: any) => {
           const parts = partsMap.get(log.id) || [];
           return (
-            <Card key={log.id} className="shadow-card border-0">
+            <Card key={log.id}>
               <CardHeader className="bg-muted/30 border-b pb-3">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-base">

@@ -2,10 +2,13 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import GlobalSearch from "@/components/GlobalSearch";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import CursorGlow from "@/components/CursorGlow";
+import { BottomTabBar } from "@/components/nav/BottomTabBar";
+import { staffNavGroups, type NavItem } from "@/components/nav/navItems";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUnreadCount } from "@/hooks/useMessenger";
 import { useLocation, Link } from "react-router-dom";
-import { useEffect, useRef } from "react";
-import { ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
+import { ChevronRight, Tractor } from "lucide-react";
 import { useMessengerNotifications } from "@/hooks/useMessengerNotifications";
 import { useReceivablesAlert } from "@/hooks/useReceivablesAlert";
 
@@ -58,7 +61,7 @@ function Breadcrumb() {
   if (!currentLabel) return null;
 
   return (
-    <div className="flex items-center gap-1.5 text-sm min-w-0">
+    <div className="hidden sm:flex items-center gap-1.5 text-sm min-w-0 whitespace-nowrap">
       {parentLabel && parentPath ? (
         <>
           <Link
@@ -82,38 +85,69 @@ function RouteProgress({ path }: { path: string }) {
   return <div key={path} className="route-progress" aria-hidden />;
 }
 
+// 휴대폰 아래쪽 탭에 올릴 메뉴 (권한 있는 것 중 앞에서 4개)와 짧은 이름
+const TAB_PREFERENCE: [string, string][] = [
+  ["/", "홈"],
+  ["/dashboard/operations", "작업현황"],
+  ["/repairs", "수리"],
+  ["/customers", "고객"],
+  ["/messenger", "메신저"],
+  ["/workspace", "내 업무"],
+];
+
+function useBottomTabs(): NavItem[] {
+  const { isAdmin, isCustomer, hasPermission } = useUserRole();
+  const unreadMessages = useUnreadCount();
+  return useMemo(() => {
+    if (isCustomer) return [];
+    const all = staffNavGroups({ isAdmin, hasPermission, unreadMessages }).flatMap((g) => g.items);
+    return TAB_PREFERENCE.flatMap(([url, title]) => {
+      const it = all.find((x) => x.url === url);
+      return it ? [{ ...it, title }] : [];
+    }).slice(0, 4);
+  }, [isAdmin, isCustomer, hasPermission, unreadMessages]);
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   useMessengerNotifications();
   useReceivablesAlert();
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
+  const tabs = useBottomTabs();
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
     window.scrollTo({ top: 0 });
   }, [location.pathname]);
   return (
     <SidebarProvider>
-      <CursorGlow />
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* 헤더 */}
-          <header className="h-13 flex items-center px-4 gap-3 sticky top-0 z-30 glass-header relative" style={{ height: 52 }}>
+          <header className="flex items-center px-3 sm:px-5 gap-2 sm:gap-3 sticky top-0 z-30 glass-header relative" style={{ height: 56 }}>
             <RouteProgress path={location.pathname} />
-            <SidebarTrigger className="shrink-0" />
-            <div className="w-px h-5 bg-border shrink-0" />
+            {/* 휴대폰은 아래 탭의 「전체 메뉴」로 연다 (탭이 없는 고객 화면은 여기서) */}
+            <SidebarTrigger className={`shrink-0 ${tabs.length ? "hidden md:inline-flex" : ""}`} />
+            <div className="w-px h-5 bg-border shrink-0 hidden md:block" />
+            <Link to="/" className="md:hidden shrink-0 w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center" aria-label="대시보드">
+              <Tractor className="h-[18px] w-[18px]" strokeWidth={2.2} />
+            </Link>
             <Breadcrumb />
-            <div className="flex-1" />
+            <div className="flex-1 hidden sm:block" />
             <GlobalSearch />
             <ThemeToggle />
           </header>
 
           {/* 메인 콘텐츠 */}
           <main ref={mainRef} className="flex-1 overflow-auto">
-            <div key={location.pathname} className="max-w-[1280px] mx-auto px-4 sm:px-8 py-6 sm:py-8 page-enter">
+            <div
+              key={location.pathname}
+              className={`max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 page-enter ${tabs.length ? "pb-24 md:pb-8" : ""}`}
+            >
               {children}
             </div>
           </main>
+          {tabs.length > 0 && <BottomTabBar items={tabs} />}
         </div>
       </div>
     </SidebarProvider>

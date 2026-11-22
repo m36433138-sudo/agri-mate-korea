@@ -75,7 +75,7 @@ export default function GlobalSearch() {
   let flatIndex = 0;
 
   return (
-    <div ref={ref} className="relative w-full max-w-sm">
+    <div ref={ref} className="relative w-full flex-1 sm:flex-none sm:w-80 lg:w-96">
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
       <Input
         value={query}
@@ -86,7 +86,7 @@ export default function GlobalSearch() {
         aria-expanded={open}
         onKeyDown={handleKeyDown}
         placeholder="검색 (기계, 고객, 수리, 부품)"
-        className="pl-9 h-9 bg-background border-border"
+        className="pl-9 h-10 rounded-xl bg-muted/60 border-transparent focus-visible:bg-background focus-visible:border-border"
       />
 
       {open && (

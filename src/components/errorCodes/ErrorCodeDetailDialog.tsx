@@ -39,7 +39,7 @@ export default function ErrorCodeDetailDialog({ entry, siblings, records, onOpen
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 flex-wrap pr-6">
-                <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
                 <span className="font-mono">{entry.code}</span>
               </DialogTitle>
               <div className="flex flex-wrap gap-1.5 pt-1">
@@ -106,11 +106,11 @@ export default function ErrorCodeDetailDialog({ entry, siblings, records, onOpen
                           </span>
                           <span className="flex-1" />
                           {r.is_resolved ? (
-                            <Badge variant="outline" className="gap-1 text-emerald-400 border-emerald-400/40">
+                            <Badge variant="outline" className="gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-400/40">
                               <CheckCircle2 className="h-3 w-3" /> 해결
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-amber-400 border-amber-400/40">미해결</Badge>
+                            <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-400/40">미해결</Badge>
                           )}
                         </div>
                         <div className="text-sm">
@@ -132,8 +132,8 @@ export default function ErrorCodeDetailDialog({ entry, siblings, records, onOpen
                         </div>
                         {r.symptom && <p className="text-sm break-words"><span className="text-muted-foreground">증상 </span>{r.symptom}</p>}
                         {r.action_taken ? (
-                          <p className="text-sm whitespace-pre-wrap break-words rounded-lg bg-emerald-950/40 border border-emerald-400/20 px-2.5 py-1.5">
-                            <span className="text-emerald-400 font-medium">해결 방법 </span>{r.action_taken}
+                          <p className="text-sm whitespace-pre-wrap break-words rounded-lg bg-emerald-500/15 border border-emerald-400/20 px-2.5 py-1.5">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">해결 방법 </span>{r.action_taken}
                           </p>
                         ) : r.repairs?.repair_content ? (
                           <p className="text-sm break-words"><span className="text-muted-foreground">수리 내용 </span>{r.repairs.repair_content}</p>

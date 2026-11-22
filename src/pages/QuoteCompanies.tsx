@@ -53,10 +53,10 @@ export default function QuoteCompanies() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-5">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">사업자 관리</h1>
+          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">사업자 관리</h1>
           <p className="text-sm text-muted-foreground mt-1">견적서 발행 시 선택할 자사 사업자 정보</p>
         </div>
         <Button onClick={() => { setEditing({}); setOpen(true); }}>

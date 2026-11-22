@@ -50,7 +50,7 @@ export function PartSaleDetailDialog({ sale, onClose, canManage }: {
             <DialogTitle className="flex flex-wrap items-center gap-2">
               부품 판매 · {sale.sale_date}
               <Badge variant="outline">{sale.branch}</Badge>
-              <Badge className={sale.payment_mode === "paid" ? "bg-green-950/60 text-green-400" : "bg-amber-950/60 text-amber-400"}>
+              <Badge className={sale.payment_mode === "paid" ? "bg-green-500/15 text-green-700 dark:text-green-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}>
                 {PAYMENT_MODE_LABELS[sale.payment_mode]}
               </Badge>
             </DialogTitle>

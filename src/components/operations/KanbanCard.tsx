@@ -16,11 +16,11 @@ const STATUS_TRANSITIONS: Record<OperationStatus, { label: string; next: Operati
 };
 
 const TRANSITION_STYLE: Record<string, string> = {
-  입고완료:    "text-amber-400   bg-amber-950/40  border-amber-800/60  hover:bg-amber-950/70",
-  수리시작:    "text-blue-400    bg-blue-950/40   border-blue-800/60   hover:bg-blue-950/70",
-  수리완료:    "text-teal-400    bg-teal-950/40   border-teal-800/60   hover:bg-teal-950/70",
-  "출고대기로": "text-green-400   bg-green-950/40  border-green-800/60  hover:bg-green-950/70",
-  출고완료:    "text-emerald-400 bg-emerald-950/40 border-emerald-800/60 hover:bg-emerald-950/70",
+  입고완료:    "text-amber-700 dark:text-amber-400   bg-amber-500/15  border-amber-500/30  hover:bg-amber-950/70",
+  수리시작:    "text-blue-700 dark:text-blue-400    bg-blue-500/15   border-blue-500/30   hover:bg-blue-950/70",
+  수리완료:    "text-teal-700 dark:text-teal-400    bg-teal-500/15   border-teal-500/30   hover:bg-teal-950/70",
+  "출고대기로": "text-green-700 dark:text-green-400   bg-green-500/15  border-green-500/30  hover:bg-green-950/70",
+  출고완료:    "text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 border-emerald-500/30 hover:bg-emerald-950/70",
 };
 
 interface Props {
@@ -63,8 +63,8 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
       <div className="flex items-center gap-1.5 px-3.5 pt-3 pb-0">
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${
           row._branch === "장흥"
-            ? "bg-emerald-950/60 text-emerald-400 ring-emerald-500/30"
-            : "bg-violet-950/60 text-violet-400 ring-violet-500/30"
+            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 ring-emerald-500/30"
+            : "bg-violet-500/15 text-violet-700 dark:text-violet-400 ring-violet-500/30"
         }`}>
           {row._branch}
         </span>
@@ -83,7 +83,7 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
           {onRepairDraft && (status === "수리중" || status === "수리완료" || status === "수리대기") && (
             <button
               onClick={() => onRepairDraft(row)}
-              className={`p-1.5 rounded-lg transition-colors ${hasDraft ? "text-blue-600 bg-blue-50 hover:bg-blue-100" : "text-muted-foreground/40 hover:bg-muted/50"}`}
+              className={`p-1.5 rounded-lg transition-colors ${hasDraft ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/15 hover:bg-blue-100" : "text-muted-foreground/40 hover:bg-muted/50"}`}
               title="수리내역 기록"
             >
               <FileText className="h-3.5 w-3.5" />
@@ -93,7 +93,7 @@ export function KanbanCard({ row, color, onMarkComplete, onEdit, onNotes, onRepa
           {onNotes && (
             <button
               onClick={() => onNotes(row)}
-              className={`p-1.5 rounded-lg transition-colors relative ${pendingNotes.length > 0 ? "text-orange-500 bg-orange-50 hover:bg-orange-100" : "text-muted-foreground/40 hover:bg-muted/50"}`}
+              className={`p-1.5 rounded-lg transition-colors relative ${pendingNotes.length > 0 ? "text-orange-500 bg-orange-50 dark:bg-orange-500/15 hover:bg-orange-100" : "text-muted-foreground/40 hover:bg-muted/50"}`}
               title="조달/필요사항"
             >
               <Package className="h-3.5 w-3.5" />
