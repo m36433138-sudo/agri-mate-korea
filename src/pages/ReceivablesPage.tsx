@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useFinance } from "@/hooks/useFinance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { FinanceModal } from "@/components/workspace/modals/FinanceModal";
+import { PageHeader, Segmented } from "@/components/page/PageParts";
 import { DepositInbox } from "@/components/deposits/DepositInbox";
 import type { FinanceRecord } from "@/types/workspace";
 import { outstandingOf, SOURCE_TYPE_LABELS } from "@/types/workspace";
@@ -98,106 +99,79 @@ export default function ReceivablesPage() {
 
   return (
     <div className="space-y-5">
-      {/* 헤더 */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-primary" />
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">미수금 관리</h1>
-        </div>
-        {canManage && (
-          <Button onClick={openNew} className="w-full sm:w-auto">
+      <PageHeader
+        title="미수금 관리"
+        sub={isLoading ? "불러오는 중…" : <>미결제 {unpaid.length}건{overdue.length > 0 && <> · <span className="text-destructive font-semibold">연체 {overdue.length}건</span></>}</>}
+        actions={canManage ? (
+          <Button onClick={openNew} className="h-11 rounded-full px-5">
             <Plus className="h-4 w-4 mr-1" /> 미수금 등록
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
-      {/* 요약 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="border-0 shadow-card">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">총 미수 잔액</p>
-            <p className="text-lg font-extrabold tabular-nums mt-1">
-              {isLoading ? "–" : fmt(totalOutstanding)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">{unpaid.length}건</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-card">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3 text-destructive" /> 연체
-            </p>
-            <p className="text-lg font-extrabold tabular-nums mt-1 text-destructive">
-              {isLoading ? "–" : fmt(overdueAmount)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">{overdue.length}건</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-card">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <CalendarClock className="h-3 w-3 text-amber-500" /> 만기 임박 (3일)
-            </p>
-            <p className="text-lg font-extrabold tabular-nums mt-1 text-amber-500">
-              {isLoading ? "–" : soon.length}건
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {isLoading ? "" : fmt(soon.reduce((s, f) => s + outstandingOf(f), 0))}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-card">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3 text-green-500" /> 이번 달 입금
-            </p>
-            <p className="text-lg font-extrabold tabular-nums mt-1 text-green-500">
-              {isLoading ? "–" : fmt(monthIncome)}
-            </p>
-          </CardContent>
-        </Card>
+      {/* 요약 카드 (누르면 거르기) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {([
+          { key: "all" as Filter, label: "총 미수 잔액", icon: Wallet, value: fmt(totalOutstanding), sub: `${unpaid.length}건`, tone: "" },
+          { key: "overdue" as Filter, label: "연체", icon: AlertTriangle, value: fmt(overdueAmount), sub: `${overdue.length}건`, tone: overdueAmount > 0 ? "text-destructive" : "" },
+          { key: "soon" as Filter, label: "만기 임박 (3일)", icon: CalendarClock, value: `${soon.length}건`, sub: fmt(soon.reduce((sum, f) => sum + outstandingOf(f), 0)), tone: soon.length > 0 ? "text-amber-600 dark:text-amber-400" : "" },
+          { key: "paid" as Filter, label: "이번 달 입금", icon: CheckCircle2, value: fmt(monthIncome), sub: `완납 ${paid.length}건`, tone: "text-up" },
+        ]).map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => setFilter(c.key)}
+            aria-pressed={filter === c.key}
+            className={`text-left rounded-3xl border bg-card card-shadow p-4 sm:p-5 transition-all ${
+              filter === c.key ? "border-transparent ring-2 ring-primary" : "border-border/70 hover:border-foreground/20"
+            }`}
+          >
+            <span className="flex items-center gap-2 text-[13px] sm:text-sm font-medium text-muted-foreground">
+              <span className="hidden sm:flex w-8 h-8 rounded-full bg-foreground/[0.06] items-center justify-center"><c.icon className="h-4 w-4" /></span>
+              {c.label}
+            </span>
+            <span className={`block mt-2.5 text-[20px] sm:text-[26px] leading-none font-extrabold tracking-tight tabular-nums ${c.tone}`}>
+              {isLoading ? "–" : c.value}
+            </span>
+            <span className="block mt-1.5 text-xs text-muted-foreground">{isLoading ? "" : c.sub}</span>
+          </button>
+        ))}
       </div>
 
       {/* 입금 문자 → 미수금 매칭 대기 */}
       <DepositInbox finance={finance} canManage={canManage} isAdmin={isAdmin} />
 
       {/* 필터 */}
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            { key: "all", label: `미결제 ${unpaid.length}` },
-            { key: "overdue", label: `연체 ${overdue.length}` },
-            { key: "soon", label: `만기 임박 ${soon.length}` },
-            { key: "paid", label: `완납 ${paid.length}` },
-          ] as { key: Filter; label: string }[]
-        ).map((f) => (
-          <Button
-            key={f.key}
-            size="sm"
-            variant={filter === f.key ? "default" : "outline"}
-            onClick={() => setFilter(f.key)}
-          >
-            {f.label}
-          </Button>
-        ))}
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+      <Segmented<Filter>
+          label="미수금 거르기"
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: "all", label: `미결제 ${unpaid.length}` },
+            { value: "overdue", label: `연체 ${overdue.length}` },
+            { value: "soon", label: `만기 임박 ${soon.length}` },
+            { value: "paid", label: `완납 ${paid.length}` },
+          ]}
+        />
       </div>
 
       {/* 고객별 목록 */}
       {isLoading ? (
-        <Card className="border-0 shadow-card">
+        <Card>
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
             불러오는 중...
           </CardContent>
         </Card>
       ) : groups.length === 0 ? (
-        <Card className="border-0 shadow-card">
+        <Card>
           <CardContent className="p-10 text-center text-sm text-muted-foreground">
             {filter === "paid" ? "완납된 미수금이 없습니다." : "미수금이 없습니다."}
           </CardContent>
         </Card>
       ) : (
         groups.map((g) => (
-          <Card key={g.customerId ?? "none"} className="border-0 shadow-card">
+          <Card key={g.customerId ?? "none"} className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 border-b border-border/40">
               <div className="flex items-center gap-2 min-w-0">
                 <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -238,13 +212,13 @@ export default function ReceivablesPage() {
                         </Badge>
                         <span className="text-sm font-medium truncate">{recordTitle(r)}</span>
                         {r.is_paid ? (
-                          <Badge className="text-[11px] bg-green-950/60 text-green-400 shrink-0">완납</Badge>
+                          <Badge className="text-[11px] bg-green-500/15 text-green-700 dark:text-green-400 shrink-0 hover:bg-green-500/15">완납</Badge>
                         ) : d !== null && d < 0 ? (
-                          <Badge className="text-[11px] bg-destructive/15 text-destructive shrink-0">
+                          <Badge className="text-[11px] bg-destructive/15 text-destructive shrink-0 hover:bg-destructive/15">
                             연체 {Math.abs(d)}일
                           </Badge>
                         ) : d !== null && d <= 3 ? (
-                          <Badge className="text-[11px] bg-amber-950/60 text-amber-400 shrink-0">
+                          <Badge className="text-[11px] bg-amber-500/15 text-amber-700 dark:text-amber-400 shrink-0 hover:bg-amber-500/15">
                             {d === 0 ? "오늘 만기" : `만기 ${d}일 전`}
                           </Badge>
                         ) : null}
