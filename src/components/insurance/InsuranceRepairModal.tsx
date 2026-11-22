@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
+import { SelectedCustomerCard } from "@/components/SelectedCustomerCard";
+import { FormDialogTopBar, formDialogBodyClass, formDialogContentClass } from "@/components/forms/FormDialogTopBar";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
 import { useTechnicians } from "@/hooks/useTechnicians";
 import InsurancePhotoManager from "./InsurancePhotoManager";
@@ -47,6 +50,11 @@ export default function InsuranceRepairModal({
 
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState<string | null>(null);
+  const [customerAddress, setCustomerAddress] = useState<string | null>(null);
+  // 이미 고른 고객은 카드로 고정하고, 「고객 변경」을 눌렀을 때만 검색을 연다
+  const [changingCustomer, setChangingCustomer] = useState(false);
+  const customerBackup = useRef<{ id: string | null; name: string; phone: string | null; address: string | null } | null>(null);
   const [machineId, setMachineId] = useState<string | null>(null);
   const [machineName, setMachineName] = useState("");
   const [companyId, setCompanyId] = useState("");
@@ -95,9 +103,13 @@ export default function InsuranceRepairModal({
 
   useEffect(() => {
     if (!open) return;
+    setChangingCustomer(false);
+    customerBackup.current = null;
     if (repair) {
       setCustomerId(repair.customer_id);
       setCustomerName(repair.customers?.name || "");
+      setCustomerPhone(repair.customers?.phone || null);
+      setCustomerAddress(repair.customers?.address || null);
       setMachineId(repair.machine_id);
       setMachineName(repair.machines?.model_name || "");
       setCompanyId(repair.insurance_company_id || "");
@@ -134,7 +146,8 @@ export default function InsuranceRepairModal({
         });
       return () => { cancelled = true; };
     } else {
-      setCustomerId(null); setCustomerName(""); setMachineId(null); setMachineName("");
+      setCustomerId(null); setCustomerName(""); setCustomerPhone(null); setCustomerAddress(null);
+      setMachineId(null); setMachineName("");
       setCompanyId(""); setBranch("장흥"); setTechnician(""); setStatus("수리대기");
       setAccidentDate(""); setClaimNumber(""); setDescription(""); setNotes("");
       setQuoteId(""); setEstimateAmount(""); setClaimAmount(""); setDeductible(""); setPaidAmount("");
@@ -142,6 +155,25 @@ export default function InsuranceRepairModal({
       setMachineModel(null); setItems([]); setItemsReady(true);
     }
   }, [open, repair]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const snapshot = JSON.stringify({
+    customerId, customerName, machineId, companyId, branch, technician, status, accidentDate, claimNumber,
+    description, notes, quoteId, estimateAmount, claimAmount, deductible, paidAmount,
+    items: items.map(({ key: _k, ...it }) => it),
+  });
+  const closeNow = useCallback(() => onOpenChange(false), [onOpenChange]);
+  const { markClean, requestClose } = useUnsavedGuard({ open, ready: itemsReady, snapshot, onClose: closeNow });
+
+  const startChangeCustomer = () => {
+    customerBackup.current = { id: customerId, name: customerName, phone: customerPhone, address: customerAddress };
+    setChangingCustomer(true);
+  };
+  const cancelChangeCustomer = () => {
+    const b = customerBackup.current;
+    if (b) { setCustomerId(b.id); setCustomerName(b.name); setCustomerPhone(b.phone); setCustomerAddress(b.address); }
+    customerBackup.current = null;
+    setChangingCustomer(false);
+  };
 
   // 견적서를 선택하면 견적금액을 자동으로 채운다
   useEffect(() => {
@@ -188,6 +220,7 @@ export default function InsuranceRepairModal({
         }
       }
       if (items.length > 0) setEstimateAmount(String(total));
+      markClean();
       toast({
         title: savedId ? "보험수리 건을 수정했습니다." : "보험수리 건을 등록했습니다.",
         description: savedId ? undefined : "이제 수리사진을 첨부할 수 있습니다.",
@@ -202,26 +235,56 @@ export default function InsuranceRepairModal({
   const selectedCompany = companies.find((c) => c.id === companyId);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()} className="max-w-4xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            {repair ? "보험수리 수정" : "보험수리 등록"}
-            <Badge variant="secondary">{status}</Badge>
-          </DialogTitle>
-        </DialogHeader>
+    <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : requestClose())}>
+      <DialogContent
+        hideClose
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => { e.preventDefault(); requestClose(); }}
+        className={`max-w-4xl max-h-[92vh] flex flex-col ${formDialogContentClass}`}
+      >
+        <FormDialogTopBar
+          title={<>
+            <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+            <span className="truncate">{repair ? "보험수리 수정" : "보험수리 등록"}</span>
+            <Badge variant="secondary" className="shrink-0">{status}</Badge>
+          </>}
+          onClose={requestClose}
+          onSave={handleSave}
+          saving={save.isPending}
+          saveLabel={savedId ? "저장" : "등록"}
+        />
 
-        <div className="space-y-4">
+        <div className={`flex-1 min-h-0 overflow-y-auto space-y-4 pb-2 ${formDialogBodyClass}`}>
           {/* 고객 · 기계 */}
           <div className="grid md:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">고객 *</Label>
-              <CustomerSearchInput
-                value={customerName}
-                onChange={(v) => { setCustomerName(v); if (!v) { setCustomerId(null); setMachineId(null); setMachineName(""); } }}
-                onSelect={(c) => { setCustomerId(c.id); setMachineId(null); setMachineName(""); setMachineModel(null); }}
-              />
+              {customerId && !changingCustomer ? (
+                <SelectedCustomerCard
+                  name={customerName}
+                  phone={customerPhone}
+                  address={customerAddress}
+                  onChange={startChangeCustomer}
+                />
+              ) : (
+                <div className="flex items-start gap-2">
+                  <CustomerSearchInput
+                    className="flex-1"
+                    autoFocus={changingCustomer}
+                    value={customerName}
+                    onChange={(v) => { setCustomerName(v); if (!v) { setCustomerId(null); setCustomerPhone(null); setCustomerAddress(null); setMachineId(null); setMachineName(""); } }}
+                    onSelect={(c) => {
+                      setCustomerId(c.id); setCustomerPhone(c.phone || null); setCustomerAddress(c.address || null);
+                      setMachineId(null); setMachineName(""); setMachineModel(null);
+                      setChangingCustomer(false); customerBackup.current = null;
+                    }}
+                  />
+                  {changingCustomer && (
+                    <Button type="button" variant="ghost" className="h-10 shrink-0" onClick={cancelChangeCustomer}>취소</Button>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-xs">기계</Label>
@@ -311,7 +374,7 @@ export default function InsuranceRepairModal({
             machineModel={machineModel}
             onPrint={() => printInsuranceEstimate(items, {
               customerName: customerName || "-",
-              customerPhone: repair?.customers?.phone,
+              customerPhone: customerPhone ?? undefined,
               machine: machineName || null,
               insuranceCompany: selectedCompany?.name,
               claimNumber, accidentDate, technician, branch, description,
@@ -382,12 +445,6 @@ export default function InsuranceRepairModal({
             )}
           </div>
 
-          <div className="flex gap-2 pt-1">
-            <Button onClick={handleSave} disabled={save.isPending} className="flex-1">
-              {save.isPending ? "저장 중..." : savedId ? "수정 저장" : "등록"}
-            </Button>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>닫기</Button>
-          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -11,9 +11,10 @@ interface Props {
   onSelect?: (customer: Customer) => void;
   placeholder?: string;
   className?: string;
+  autoFocus?: boolean;
 }
 
-export function CustomerSearchInput({ value, onChange, onSelect, placeholder = "고객 검색 또는 직접 입력", className }: Props) {
+export function CustomerSearchInput({ value, onChange, onSelect, placeholder = "고객 검색 또는 직접 입력", className, autoFocus }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -73,6 +74,7 @@ export function CustomerSearchInput({ value, onChange, onSelect, placeholder = "
             onChange(e.target.value);
           }}
           onFocus={() => setOpen(true)}
+          autoFocus={autoFocus}
           placeholder={placeholder}
           className="pl-8 pr-8"
         />
