@@ -18,7 +18,7 @@ import { useTechnicians } from "@/hooks/useTechnicians";
 import InsurancePhotoManager from "./InsurancePhotoManager";
 import InsuranceEstimateEditor from "./InsuranceEstimateEditor";
 import { estimateTotals, newKey, type EstimateItem } from "@/lib/insuranceEstimate";
-import { printInsuranceEstimate } from "@/lib/printInsuranceEstimate";
+import EstimatePrintDialog from "./EstimatePrintDialog";
 import {
   INSURANCE_STATUSES,
   useInsuranceCompanies,
@@ -31,6 +31,13 @@ import { ExternalLink, FileText, ShieldCheck } from "lucide-react";
 
 const selectCls =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+/** 견적번호: INS-연월일-건 번호 앞 4자리 (같은 건은 늘 같은 번호) */
+const estimateDocNumber = (id: string | null, createdAt: string | null) => {
+  const d = createdAt ? new Date(createdAt) : new Date();
+  const ymd = `${String(d.getFullYear() % 100).padStart(2, "0")}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  return `INS-${ymd}${id ? `-${id.slice(0, 4).toUpperCase()}` : ""}`;
+};
 
 const num = (v: string) => (v.trim() === "" ? null : Math.round(Number(v.replace(/[^0-9-]/g, "")) || 0));
 
@@ -77,15 +84,7 @@ export default function InsuranceRepairModal({
   const [itemsReady, setItemsReady] = useState(false);
   const total = estimateTotals(items).total;
 
-  const { data: defaultCompany } = useQuery({
-    queryKey: ["quote-companies-default"],
-    enabled: open,
-    staleTime: 1000 * 60 * 10,
-    queryFn: async () => {
-      const { data } = await (supabase as any).from("companies").select("*").order("is_default", { ascending: false }).order("sort_order").limit(1);
-      return (data?.[0] ?? null) as any;
-    },
-  });
+  const [printOpen, setPrintOpen] = useState(false);
 
   const { data: quotes = [] } = useQuery({
     queryKey: ["quotes-picker"],
@@ -372,14 +371,20 @@ export default function InsuranceRepairModal({
             items={items}
             setItems={setItems}
             machineModel={machineModel}
-            onPrint={() => printInsuranceEstimate(items, {
+            onPrint={() => setPrintOpen(true)}
+          />
+          <EstimatePrintDialog
+            open={printOpen}
+            onOpenChange={setPrintOpen}
+            items={items}
+            info={{
               customerName: customerName || "-",
               customerPhone: customerPhone ?? undefined,
               machine: machineName || null,
               insuranceCompany: selectedCompany?.name,
               claimNumber, accidentDate, technician, branch, description,
-              company: defaultCompany,
-            })}
+              docNumber: estimateDocNumber(savedId, repair?.created_at ?? null),
+            }}
           />
 
           {/* 판매 견적서 연결 (선택) */}
