@@ -27,8 +27,11 @@ const BUCKET = "receipts";
 const won = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}원`;
 const todayStr = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 
+/** 휴대폰 파일 선택기는 PDF 종류를 비워 보내기도 해서 확장자로도 본다 */
+const isPdf = (file: File) => file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+
 async function toDataUrl(file: File): Promise<{ dataUrl: string; blob: Blob; ext: string; type: string }> {
-  if (file.type === "application/pdf") {
+  if (isPdf(file)) {
     const buf = await file.arrayBuffer();
     let bin = "";
     const bytes = new Uint8Array(buf);
@@ -116,7 +119,7 @@ export default function ExpensesPage() {
     try {
       if (file.size > 10 * 1024 * 1024) throw new Error("10MB 이하 파일만 올릴 수 있습니다.");
       // 얀마 거래명세서 PDF는 글자층을 바로 읽는다 (AI 없이, 부품번호·수량·금액이 정확)
-      if (file.type === "application/pdf") {
+      if (isPdf(file)) {
         try {
           const pages = await readPdfText(file, 10);
           if (isYanmarStatement(pages)) {
@@ -127,7 +130,7 @@ export default function ExpensesPage() {
               return;
             }
           }
-        } catch { /* 글자층이 없는 스캔 PDF 등은 AI로 읽는다 */ }
+        } catch (e) { console.warn("[expenses] PDF 글자층 읽기 실패, AI로 읽기", e); /* 글자층이 없는 스캔 PDF 등은 AI로 읽는다 */ }
       }
       const { dataUrl, blob, ext, type } = await toDataUrl(file);
       const { data: u } = await supabase.auth.getUser();

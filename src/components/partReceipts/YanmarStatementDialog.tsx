@@ -68,8 +68,8 @@ export default function YanmarStatementDialog({
     let receiptId: string | null = null;
     try {
       const { data: u } = await supabase.auth.getUser();
-      path = `${u.user?.id ?? "anon"}/${date}-yanmar-${statement.docNumber ?? Math.random().toString(36).slice(2, 8)}.pdf`;
-      const up = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file, { contentType: "application/pdf", upsert: true });
+      path = `${u.user?.id ?? "anon"}/${date}-yanmar-${statement.docNumber ?? "doc"}-${Math.random().toString(36).slice(2, 8)}.pdf`;
+      const up = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file, { contentType: "application/pdf" });
       if (up.error) throw up.error;
 
       const vendor = await ensureVendor(data.vendors, { name: "얀마", business_number: null, yanmar: true });
