@@ -153,7 +153,9 @@ export default function KnowledgeBase() {
 
       // 큰 PDF는 클라이언트에서 분할 후 각각 업로드 (서버 메모리 보호)
       let parts: { name: string; blob: Blob; type: string }[] = [];
-      if (file.type === "application/pdf" && file.size > SERVER_SAFE_SIZE) {
+      // 휴대폰 파일 선택기는 PDF 종류를 비워 보내기도 해서 확장자로도 본다
+      const fileType = file.type || (/\.pdf$/i.test(file.name) ? "application/pdf" : "");
+      if (fileType === "application/pdf" && file.size > SERVER_SAFE_SIZE) {
         try {
           const srcBytes = new Uint8Array(await file.arrayBuffer());
           const src = await PDFDocument.load(srcBytes, { ignoreEncryption: true });
@@ -185,7 +187,7 @@ export default function KnowledgeBase() {
           continue;
         }
       } else {
-        parts = [{ name: file.name, blob: file, type: file.type }];
+        parts = [{ name: file.name, blob: file, type: fileType }];
       }
 
       // 여러 조각으로 나뉜 경우에만 그룹으로 묶어서 표시
