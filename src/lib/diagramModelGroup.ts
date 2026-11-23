@@ -12,8 +12,32 @@ const SHARED_BOOKS: Record<string, string[]> = {
   "AW465 / AW473 / AW573": ["AW465 / AW573", "AW473"],
 };
 
+const FULL_MODEL = /^([A-Z]{1,4})\s?(\d{1,5}[A-Z0-9-]*)$/;
+const BARE_MODEL = /^\d{2,5}[A-Z0-9-]*$/;
+
+/**
+ * 기종명 쓰는 방식을 하나로: 「YH6140/7140」·「YH6140, 7140」·「yh6140 / yh7140」 → 「YH6140 / YH7140」.
+ * 앞 기종의 영문자를 숫자만 쓴 기종에 이어 붙인다. 기종 번호가 아닌 이름(「어라운드 뷰 카메라」 등)은 그대로 둔다.
+ */
+export function canonicalModelName(name?: string | null): string {
+  const raw = (name ?? "").trim();
+  if (!raw) return "";
+  const parts = raw.toUpperCase().split(/\s*[/,·、]\s*|\s+(?=[A-Z]{1,4}\d)/).map((t) => t.trim()).filter(Boolean);
+  if (parts.length < 2) return raw;
+  const out: string[] = [];
+  let prefix = "";
+  for (const t of parts) {
+    const full = FULL_MODEL.exec(t);
+    if (full) { prefix = full[1]; out.push(full[1] + full[2]); continue; }
+    if (prefix && BARE_MODEL.test(t)) { out.push(prefix + t); continue; }
+    return raw;
+  }
+  return out.join(" / ");
+}
+
 /** 공용 엔진(YT488·490·5101·5113)처럼 여러 기종에 걸친 도면이면 해당 기종들을 펼쳐 반환 */
-export function modelsOf(name?: string | null): string[] {
+export function modelsOf(rawName?: string | null): string[] {
+  const name = canonicalModelName(rawName);
   if (!name) return [];
   if (SHARED_BOOKS[name]) return SHARED_BOOKS[name];
   // YT488·490 묶음이 들어간 공용 책만 펼친다. 「YT6135 / YT6145」 같은 한 권짜리 책은 버튼 하나로 둔다.

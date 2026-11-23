@@ -117,3 +117,25 @@ export function splitSmsBatch(raw: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+/** 전달 앱마다 본문을 담는 칸 이름이 달라서: 흔한 이름 → 「입금」이 든 아무 글자 칸(안쪽까지) → 원문 */
+const TEXT_KEYS = ["text", "message", "msg", "body", "content", "sms", "smsBody", "sms_body", "messageBody", "Text", "Message", "Body", "Content"];
+export function pickSmsText(body: unknown, raw = ""): string {
+  if (typeof body === "string") return body;
+  if (body && typeof body === "object") {
+    const b = body as Record<string, unknown>;
+    for (const k of TEXT_KEYS) if (typeof b[k] === "string" && (b[k] as string).trim()) return b[k] as string;
+    const strings: string[] = [];
+    const walk = (v: unknown, depth: number) => {
+      if (depth > 4) return;
+      if (typeof v === "string") strings.push(v);
+      else if (Array.isArray(v)) v.forEach((x) => walk(x, depth + 1));
+      else if (v && typeof v === "object") Object.values(v).forEach((x) => walk(x, depth + 1));
+    };
+    walk(b, 0);
+    const hit = strings.filter((x) => /입금/.test(x)).sort((a, c) => c.length - a.length)[0];
+    if (hit) return hit;
+  }
+  return /입금/.test(raw) ? raw : "";
+}
+

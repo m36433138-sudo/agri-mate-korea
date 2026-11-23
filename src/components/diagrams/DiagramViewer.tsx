@@ -8,6 +8,8 @@ import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
 import PartDetailSheet from "@/components/diagrams/PartDetailSheet";
 import { ArrowLeft, Pencil, Check, Trash2, MousePointerClick, Link2, ZoomIn, ZoomOut, CheckSquare, Printer, Copy, MapPin, FilePlus2 } from "lucide-react";
 import PartsStockList from "@/components/diagrams/PartsStockList";
+import CalloutAutoFind from "@/components/diagrams/CalloutAutoFind";
+import { canonicalModelName } from "@/lib/diagramModelGroup";
 import { printCheckedDiagram } from "@/lib/printDiagram";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,7 +47,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
     .filter((d) => d.id !== diagram.id)
     .filter((d) => {
       const q = linkSearch.trim().toLowerCase();
-      if (!q) return !diagram.model_name || d.model_name === diagram.model_name;
+      if (!q) return !diagram.model_name || canonicalModelName(d.model_name) === canonicalModelName(diagram.model_name);
       return `${d.title} ${d.model_name ?? ""}`.toLowerCase().includes(q);
     })
     .slice(0, 50);
@@ -297,6 +299,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
           빈 곳을 드래그하면 새 상자, 상자를 끌면 이동, 오른쪽 아래 점을 끌면 크기 조절, 상자를 탭하면 부품번호나 연결할 사진·도면을 바꿉니다. 왼쪽 위 버튼으로 삭제합니다.
         </p>
       )}
+      {editing && !isPhoto && <CalloutAutoFind diagramId={diagram.id} imageUrl={imageUrl} hotspots={rawHotspots} />}
 
       {/* 도면 이미지 */}
       <div className="w-full overflow-auto rounded-xl border bg-card max-h-[75vh] sm:max-h-none overscroll-contain">

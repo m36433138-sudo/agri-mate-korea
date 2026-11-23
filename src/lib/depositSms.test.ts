@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDepositSms, splitSmsBatch } from "./depositSms";
+import { parseDepositSms, splitSmsBatch, pickSmsText } from "./depositSms";
 import { suggestMatches, allocateDeposit, normalizePersonName, type OpenReceivable } from "./depositMatch";
 
 const NOW = new Date("2026-11-20T12:00:00+09:00");
@@ -65,5 +65,22 @@ describe("미수금 후보 추천", () => {
   });
   it("관계없는 이름·금액은 후보에 넣지 않는다", () => {
     expect(suggestMatches({ amount: 12345, depositorName: "홍길동" }, list)).toEqual([]);
+  });
+});
+
+describe("pickSmsText (전달 앱마다 다른 본문 칸)", () => {
+  const sms = "[Web발신]\n농협 입금610,000원\n11/20 11:26 301-****-1052-31 최영필 잔액128,549,964원";
+  it("흔한 칸 이름", () => {
+    expect(pickSmsText({ msg: sms })).toBe(sms);
+    expect(pickSmsText({ smsBody: sms, from: "15882100" })).toBe(sms);
+  });
+  it("모르는 칸·안쪽 칸이어도 「입금」이 든 글자를 찾는다", () => {
+    expect(pickSmsText({ from: "15882100", payload: { sms_text: sms } })).toBe(sms);
+    expect(pickSmsText({ data: [{ content2: "광고" }, { c: sms }] })).toBe(sms);
+  });
+  it("평문은 그대로, 비었으면 빈 글자", () => {
+    expect(pickSmsText(sms)).toBe(sms);
+    expect(pickSmsText({ from: "15882100" })).toBe("");
+    expect(pickSmsText({ from: "x" }, `{"broken": "${sms}`)).toContain("입금");
   });
 });

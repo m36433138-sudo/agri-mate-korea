@@ -23,6 +23,22 @@ const pct = (v: number, total: number) => Math.round((v / total) * 10000) / 100;
 const sameRow = (a: PageText, b: PageText) => Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) < Math.max(2.5, Math.min(a.h, b.h) * 0.6);
 
 export function extractPageHotspots(items: PageText[], vw: number, vh: number, opts: { loose?: boolean } = {}): ExtractedHotspot[] {
+  return extractPageTable(items, vw, vh, opts).hotspots;
+}
+
+export type PageTable = {
+  hotspots: ExtractedHotspot[];
+  /** 부품표 「번호」 → 부품번호 (같은 번호가 여러 줄이면 첫 줄) */
+  refs: Map<string, string>;
+  /** 부품표 왼쪽 끝(화면 좌표). 그림은 이보다 왼쪽에 있다 */
+  tableLeft: number;
+  /** 부품번호 글자 높이(화면 좌표) — 그림 번호 크기 짐작용 */
+  textHeight: number;
+  /** 그림에 글자로 박힌 번호가 있었는지 (없으면 그림 번호가 선으로 그려진 책) */
+  textCallouts: number;
+};
+
+export function extractPageTable(items: PageText[], vw: number, vh: number, opts: { loose?: boolean } = {}): PageTable {
   const clean = items.map((i) => ({ ...i, str: i.str.trim() })).filter((i) => i.str);
   const header = clean.find((i) => HEADER_RE.test(i.str));
   const noHeader = header ? clean.filter((i) => NO_HEADER_RE.test(i.str) && sameRow(i, header) && i.x < header.x).sort((a, b) => b.x - a.x)[0] : undefined;
@@ -35,8 +51,12 @@ export function extractPageHotspots(items: PageText[], vw: number, vh: number, o
     return i.y > header.y && i.x > header.x - header.w * 1.5 && i.x < header.x + header.w * 2.5;
   };
   const codes = clean.filter(isCode);
-  if (codes.length === 0) return [];
-  const tableLeft = Math.min(...codes.map((c) => c.x), header?.x ?? Infinity, noHeader?.x ?? Infinity) - 4;
+  if (codes.length === 0) return { hotspots: [], refs: new Map(), tableLeft: vw, textHeight: 0, textCallouts: 0 };
+  // 표 밖(그림 아래 문서번호 등)에 번호 형식 글자가 있어도 표 왼쪽 끝이 끌려가지 않게, 부품번호 칸에 모인 것만 본다
+  const xs = codes.map((c) => c.x).sort((a, b) => a - b);
+  const medX = xs[xs.length >> 1];
+  const colXs = xs.filter((x) => Math.abs(x - medX) < vw * 0.08);
+  const tableLeft = Math.min(...colXs, header?.x ?? Infinity, noHeader?.x ?? Infinity) - 4;
 
   const pad = 0.3;
   const out: ExtractedHotspot[] = [];
@@ -61,6 +81,7 @@ export function extractPageHotspots(items: PageText[], vw: number, vh: number, o
   }
 
   // 그림 쪽(부품표 왼쪽)에 글자로 박힌 번호가 있으면 그 번호도 눌러지게 한다
+  let textCallouts = 0;
   if (rowNo.size > 0) {
     for (const i of clean) {
       if (i.x + i.w >= tableLeft || !CALLOUT_RE.test(i.str)) continue;
@@ -76,9 +97,11 @@ export function extractPageHotspots(items: PageText[], vw: number, vh: number, o
         w: pct(r * 2, vw),
         h: pct(r * 2, vh),
       });
+      textCallouts++;
     }
   }
-  return out;
+  const heights = codes.map((c) => c.h).sort((a, b) => a - b);
+  return { hotspots: out, refs: rowNo, tableLeft, textHeight: heights[heights.length >> 1], textCallouts };
 }
 
 export type PdfPageReport = { page: number; textCount: number; yanmarCodes: number; looseCodes: number };

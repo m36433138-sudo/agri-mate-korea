@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractPageHotspots, diagnosePdf, type PageText } from "./pdfDiagramExtract";
+import { extractPageHotspots, extractPageTable, diagnosePdf, type PageText } from "./pdfDiagramExtract";
 
 const t = (str: string, x: number, y: number, w = 40, h = 7): PageText => ({ str, x, y, w, h });
 
@@ -10,6 +10,13 @@ describe("PDF 부품표 읽기", () => {
     t("2", 446, 90, 4), t("1C7100-51050", 495, 90), t("칼러", 560, 90),
     t("2", 300, 300, 5, 8), // 그림 속 번호
   ];
+  it("번호표·표 왼쪽 끝·글자 높이를 알려 준다 (그림 아래 문서번호가 있어도 표 왼쪽은 그대로)", () => {
+    const r = extractPageTable([...page, t("0CNP7-M01460", 20, 20, 50)], 842, 595);
+    expect([...r.refs]).toEqual([["1", "1C7100-51013"], ["2", "1C7100-51050"]]);
+    expect(r.tableLeft).toBe(436);
+    expect(r.textHeight).toBe(7);
+    expect(r.textCallouts).toBe(1);
+  });
   it("부품번호 옆 이름과 같은 줄을 붙인다", () => {
     const h = extractPageHotspots(page, 842, 595).filter((x) => !x.callout_no);
     expect(h.map((x) => [x.part_code, x.part_name])).toEqual([["1C7100-51013", "컨트롤레버"], ["1C7100-51050", "칼러"]]);
