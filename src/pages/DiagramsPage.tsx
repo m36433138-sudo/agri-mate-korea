@@ -529,7 +529,7 @@ export default function DiagramsPage() {
       </Dialog>
       <LabelPhotoDialog open={labelOpen} onOpenChange={setLabelOpen} />
       <PhotoPartFinderDialog open={finderOpen} onOpenChange={setFinderOpen} diagrams={diagrams} defaultModel={modelFilter} onOpen={openDiagram} />
-      {isAdmin && <PdfDiagramImportDialog open={pdfOpen} onOpenChange={setPdfOpen} />}
+      {isAdmin && <PdfDiagramImportDialog open={pdfOpen} onOpenChange={setPdfOpen} modelNames={diagrams.map((d) => d.model_name)} />}
     </div>
     </>
   );

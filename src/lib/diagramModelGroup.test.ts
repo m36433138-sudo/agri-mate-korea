@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { categoryOf, modelGroup, modelsOf } from "./diagramModelGroup";
+import { canonicalModelName, categoryOf, modelGroup, modelsOf } from "./diagramModelGroup";
 describe("modelGroup", () => {
   it("keeps YT357 separate", () => expect(modelGroup("YT357")).toBe("YT357"));
   it("groups YT490 family", () => expect(modelGroup("YT5101")).toBe("YT490 / YT5101 / YT5113"));
@@ -38,5 +38,27 @@ describe("categoryOf", () => {
     expect(categoryOf("EL 로타리", "로타리")).toBe("부속장치");
     expect(categoryOf("RVHC650W", "방제기")).toBe("부속장치");
     expect(categoryOf(null, null)).toBe("부속장치");
+  });
+});
+
+describe("canonicalModelName (같은 책을 여러 방식으로 적어도 한 기종 버튼으로)", () => {
+  it("숫자만 쓴 기종에 앞 기종 영문자를 붙인다", () => {
+    expect(canonicalModelName("YH6140/7140")).toBe("YH6140 / YH7140");
+    expect(canonicalModelName("YH6140, 7140")).toBe("YH6140 / YH7140");
+    expect(canonicalModelName("yh6140 / yh7140")).toBe("YH6140 / YH7140");
+    expect(canonicalModelName("EG765,775,782")).toBe("EG765 / EG775 / EG782");
+    expect(canonicalModelName("MXK2000,2200")).toBe("MXK2000 / MXK2200");
+    expect(canonicalModelName("PS6D,PS8D")).toBe("PS6D / PS8D");
+    expect(canonicalModelName("WLZ5700NX / WLZ6100NX / WLZ6500NW")).toBe("WLZ5700NX / WLZ6100NX / WLZ6500NW");
+  });
+  it("기종 번호가 아닌 이름과 한 기종은 그대로", () => {
+    expect(canonicalModelName("어라운드 뷰 카메라")).toBe("어라운드 뷰 카메라");
+    expect(canonicalModelName("EL 로타리")).toBe("EL 로타리");
+    expect(canonicalModelName("YR06")).toBe("YR06");
+    expect(canonicalModelName("SRF5000 / SRF6000 / SRF7000")).toBe("SRF5000 / SRF6000 / SRF7000");
+  });
+  it("「YH6140/7140」로 올린 책도 기존 「YH6140 / YH7140」 버튼에 들어간다", () => {
+    expect(modelsOf("YH6140/7140")).toEqual(modelsOf("YH6140 / YH7140"));
+    expect(modelsOf("YH470/570/5101")).toEqual(["YH470 / YH570", "YH5101"]);
   });
 });
