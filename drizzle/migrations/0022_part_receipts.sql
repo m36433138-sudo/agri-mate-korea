@@ -31,7 +31,7 @@ CREATE TABLE public.part_receipt_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   receipt_id uuid NOT NULL REFERENCES public.part_receipts(id) ON DELETE CASCADE,
   line_no integer NOT NULL DEFAULT 0,
-  part_code text NOT NULL,
+  part_code text NOT NULL CHECK (btrim(part_code) <> ''),
   alt_part_code text,
   part_name text NOT NULL DEFAULT '',
   quantity integer NOT NULL CHECK (quantity > 0),
@@ -52,7 +52,7 @@ CREATE INDEX part_receipt_items_code_idx ON public.part_receipt_items (part_code
 CREATE TABLE public.inventory_location_photos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   branch text NOT NULL CHECK (branch IN ('장흥','강진')),
-  part_code text NOT NULL,
+  part_code text NOT NULL CHECK (btrim(part_code) <> ''),
   location text,
   photo_path text NOT NULL,
   note text,

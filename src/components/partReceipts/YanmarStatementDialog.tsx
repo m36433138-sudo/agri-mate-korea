@@ -57,10 +57,12 @@ export default function YanmarStatementDialog({
     || hint;
   const knownCount = data ? statement.lines.filter((l) => data.stock.some((s) => s.part_code === l.partCode && s.branch === chosen)).length : 0;
   const total = statement.grandTotal ?? statement.lines.reduce((s, l) => s + l.total, 0);
+  // 부품번호나 수량을 못 읽은 줄이 있으면 저장하지 않는다 (빈 번호로 재고가 생기지 않게)
+  const unreadable = statement.lines.filter((l) => !l.partCode.trim() || l.quantity <= 0);
   const date = statement.date ?? new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 
   const save = async () => {
-    if (!data) return;
+    if (!data || unreadable.length) return;
     setSaving(true);
     let path: string | null = null;
     let receiptId: string | null = null;
@@ -131,6 +133,12 @@ export default function YanmarStatementDialog({
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> 이미 올린 명세서예요. 같은 입고가 두 번 생기지 않도록 저장을 막았어요.
               </p>
             )}
+            {unreadable.length > 0 && (
+              <p className="rounded-2xl border border-destructive/40 bg-destructive/10 text-destructive px-4 py-3 text-sm flex gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                {unreadable.map((l) => `${l.lineNo}번`).join(", ")} 줄의 부품번호나 수량을 읽지 못해 저장을 막았어요. 명세서 원본을 다시 받아 올리거나, 이 명세서는 「직접 입력」으로 등록해 주세요.
+              </p>
+            )}
             {statement.problems.length > 0 && (
               <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 px-4 py-3 text-sm space-y-1">
                 <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="h-4 w-4" /> 명세서에서 확인할 점</p>
@@ -193,7 +201,7 @@ export default function YanmarStatementDialog({
 
         <DialogFooter className="gap-2 pt-2">
           <Button variant="outline" onClick={() => onDone(null)} disabled={saving}>취소</Button>
-          <Button onClick={save} disabled={!data || data.duplicate || saving || statement.lines.length === 0}>
+          <Button onClick={save} disabled={!data || data.duplicate || saving || statement.lines.length === 0 || unreadable.length > 0}>
             {saving ? "저장 중…" : `지출 등록 + 입고 대기 (${statement.lines.length}줄)`}
           </Button>
         </DialogFooter>
