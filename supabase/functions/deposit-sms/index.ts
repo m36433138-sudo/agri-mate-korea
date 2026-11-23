@@ -2,21 +2,13 @@
 // 로그인 없이 호출되므로 관리자 화면에서 만든 비밀 키(token)가 맞아야만 저장한다.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { parseDepositSms } from "../_shared/depositSms.ts";
+import { parseDepositSms, pickSmsText } from "../_shared/depositSms.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-function pickText(body: unknown): string {
-  if (typeof body === "string") return body;
-  if (body && typeof body === "object") {
-    const b = body as Record<string, unknown>;
-    for (const k of ["text", "message", "msg", "body", "content", "sms", "Text", "Message", "Body"]) {
-      if (typeof b[k] === "string" && b[k]) return b[k] as string;
-    }
-  }
-  return "";
-}
+const keysOf = (body: unknown) =>
+  body && typeof body === "object" && !Array.isArray(body) ? Object.keys(body as object).slice(0, 20).join(",") : typeof body;
 
 function safeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
@@ -27,13 +19,14 @@ function safeEqual(a: string, b: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "POST only" }, 405);
+  if (req.method !== "POST" && req.method !== "GET") return json({ error: "POST or GET only" }, 405);
 
+  // 전달 앱이 GET(주소 뒤 ?text=...)으로 보내도 받는다
   const url = new URL(req.url);
-  const raw = await req.text();
-  let body: unknown = raw;
-  const ctype = req.headers.get("content-type") ?? "";
-  try {
+  const raw = req.method === "POST" ? await req.text() : "";
+  let body: unknown = req.method === "GET" ? Object.fromEntries(url.searchParams) : raw;
+  const ctype = req.headers.get("content-type") ?? (req.method === "GET" ? "GET" : "");
+  if (req.method === "POST") try {
     if (ctype.includes("application/json") || raw.trim().startsWith("{")) body = JSON.parse(raw);
     else if (ctype.includes("application/x-www-form-urlencoded")) body = Object.fromEntries(new URLSearchParams(raw));
   } catch { /* 평문으로 처리 */ }
@@ -46,13 +39,37 @@ Deno.serve(async (req) => {
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false },
   });
+  // 받은 요청은 결과와 함께 모두 남긴다 (설정 화면 「최근 받은 기록」). 실패해도 응답은 그대로.
+  const log = async (result: string, text: string | null, depositId: string | null = null) => {
+    const { error } = await admin.from("deposit_sms_inbox").insert({
+      result, raw_text: text?.slice(0, 2000) ?? null, content_type: ctype.slice(0, 100) || null, body_keys: keysOf(body), deposit_id: depositId,
+    });
+    if (error) console.error("inbox log failed", error.message);
+    if (Math.random() < 0.05) await admin.from("deposit_sms_inbox").delete().lt("received_at", new Date(Date.now() - 30 * 86_400_000).toISOString());
+  };
+
   const { data: settings, error: sErr } = await admin.from("deposit_sms_settings").select("token").eq("id", true).maybeSingle();
   if (sErr || !settings?.token) return json({ error: "not configured" }, 503);
-  if (!token || !safeEqual(String(token), settings.token)) return json({ error: "unauthorized" }, 401);
+  if (!token || !safeEqual(String(token), settings.token)) {
+    // 키가 틀린 요청은 내용을 남기지 않는다 (아무나 보낼 수 있으므로)
+    await log("unauthorized", null);
+    return json({ error: "unauthorized" }, 401);
+  }
 
-  const text = pickText(body).slice(0, 2000);
+  const text = pickSmsText(body, raw).slice(0, 2000);
+  if (!text.trim()) {
+    await log("empty", raw.slice(0, 500) || null);
+    return json({ ok: true, saved: false, reason: "본문이 비어 있음 — 전달 앱의 보낼 내용에 문자 본문을 넣어 주세요" });
+  }
+  if (text.startsWith("[연결 시험]")) {
+    await log("test", text);
+    return json({ ok: true, saved: false, reason: "연결 시험 성공" });
+  }
   const parsed = parseDepositSms(text);
-  if (!parsed) return json({ ok: true, saved: false, reason: "입금 문자가 아님" });
+  if (!parsed) {
+    await log("not_deposit", text);
+    return json({ ok: true, saved: false, reason: "입금 문자가 아님" });
+  }
 
   const { data: saved, error } = await admin.from("bank_deposits").upsert({
     source: "sms",
@@ -66,8 +83,13 @@ Deno.serve(async (req) => {
   }, { onConflict: "dedupe_key", ignoreDuplicates: true }).select("id");
   if (error) {
     console.error("deposit insert failed", error.message);
+    await log("error", text);
     return json({ error: "save failed" }, 500);
   }
-  if (!saved || saved.length === 0) return json({ ok: true, saved: false, reason: "이미 받은 문자" });
+  if (!saved || saved.length === 0) {
+    await log("duplicate", text);
+    return json({ ok: true, saved: false, reason: "이미 받은 문자" });
+  }
+  await log("saved", text, saved[0].id);
   return json({ ok: true, saved: true, amount: parsed.amount, depositor: parsed.depositorName });
 });
