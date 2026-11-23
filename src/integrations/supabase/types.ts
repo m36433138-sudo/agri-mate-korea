@@ -697,6 +697,44 @@ export type Database = {
         }
         Relationships: []
       }
+      deposit_sms_inbox: {
+        Row: {
+          body_keys: string | null
+          content_type: string | null
+          deposit_id: string | null
+          id: string
+          raw_text: string | null
+          received_at: string
+          result: string
+        }
+        Insert: {
+          body_keys?: string | null
+          content_type?: string | null
+          deposit_id?: string | null
+          id?: string
+          raw_text?: string | null
+          received_at?: string
+          result: string
+        }
+        Update: {
+          body_keys?: string | null
+          content_type?: string | null
+          deposit_id?: string | null
+          id?: string
+          raw_text?: string | null
+          received_at?: string
+          result?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposit_sms_inbox_deposit_id_fkey"
+            columns: ["deposit_id"]
+            isOneToOne: false
+            referencedRelation: "bank_deposits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deposit_sms_settings: {
         Row: {
           id: boolean
@@ -1555,6 +1593,39 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_location_photos: {
+        Row: {
+          branch: string
+          created_at: string
+          created_by: string | null
+          id: string
+          location: string | null
+          note: string | null
+          part_code: string
+          photo_path: string
+        }
+        Insert: {
+          branch: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location?: string | null
+          note?: string | null
+          part_code: string
+          photo_path: string
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location?: string | null
+          note?: string | null
+          part_code?: string
+          photo_path?: string
+        }
+        Relationships: []
+      }
       knowledge_chunks: {
         Row: {
           chunk_index: number
@@ -2326,6 +2397,148 @@ export type Database = {
           },
           {
             foreignKeyName: "part_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_receipt_items: {
+        Row: {
+          alt_part_code: string | null
+          amount: number
+          created_at: string
+          id: string
+          line_no: number
+          location: string | null
+          part_code: string
+          part_name: string
+          quantity: number
+          receipt_id: string
+          received_at: string | null
+          received_by: string | null
+          received_location: string | null
+          received_qty: number | null
+          status: string
+          unit_price: number
+        }
+        Insert: {
+          alt_part_code?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          line_no?: number
+          location?: string | null
+          part_code: string
+          part_name?: string
+          quantity: number
+          receipt_id: string
+          received_at?: string | null
+          received_by?: string | null
+          received_location?: string | null
+          received_qty?: number | null
+          status?: string
+          unit_price?: number
+        }
+        Update: {
+          alt_part_code?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          line_no?: number
+          location?: string | null
+          part_code?: string
+          part_name?: string
+          quantity?: number
+          receipt_id?: string
+          received_at?: string | null
+          received_by?: string | null
+          received_location?: string | null
+          received_qty?: number | null
+          status?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "part_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_receipts: {
+        Row: {
+          branch: string
+          business_number: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          doc_date: string
+          doc_number: string | null
+          expense_group: string | null
+          file_path: string | null
+          id: string
+          notes: string | null
+          source: string
+          status: string
+          supply_amount: number | null
+          total_amount: number | null
+          updated_at: string
+          vat_amount: number | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          branch?: string
+          business_number?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_date?: string
+          doc_number?: string | null
+          expense_group?: string | null
+          file_path?: string | null
+          id?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          supply_amount?: number | null
+          total_amount?: number | null
+          updated_at?: string
+          vat_amount?: number | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          branch?: string
+          business_number?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_date?: string
+          doc_number?: string | null
+          expense_group?: string | null
+          file_path?: string | null
+          id?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          supply_amount?: number | null
+          total_amount?: number | null
+          updated_at?: string
+          vat_amount?: number | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_receipts_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
@@ -3578,6 +3791,10 @@ export type Database = {
         }[]
       }
       next_quote_number: { Args: never; Returns: string }
+      receive_part_receipt: {
+        Args: { _items: Json; _receipt_id: string }
+        Returns: Json
+      }
       replace_insurance_estimate_items: {
         Args: { _items: Json; _repair_id: string }
         Returns: number
