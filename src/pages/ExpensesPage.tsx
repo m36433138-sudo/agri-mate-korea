@@ -116,6 +116,7 @@ export default function ExpensesPage() {
     const file = queue.current.shift();
     if (!file) { setBusy(null); return; }
     setBusy(`「${file.name}」 읽는 중… (AI가 항목을 나누고 분류합니다)${queue.current.length ? ` · 남은 ${queue.current.length}장` : ""}`);
+    let notYanmarPdf = false;
     try {
       if (file.size > 10 * 1024 * 1024) throw new Error("10MB 이하 파일만 올릴 수 있습니다.");
       // 얀마 거래명세서 PDF는 글자층을 바로 읽는다 (AI 없이, 부품번호·수량·금액이 정확)
@@ -131,6 +132,7 @@ export default function ExpensesPage() {
             }
           }
         } catch (e) { console.warn("[expenses] PDF 글자층 읽기 실패, AI로 읽기", e); /* 글자층이 없는 스캔 PDF 등은 AI로 읽는다 */ }
+        notYanmarPdf = true;
       }
       const { dataUrl, blob, ext, type } = await toDataUrl(file);
       const { data: u } = await supabase.auth.getUser();
@@ -150,7 +152,8 @@ export default function ExpensesPage() {
       setBusy(null);
       setReview({ rows: drafts, fileName: file.name, total: read.total, vendor: read.vendor });
     } catch (e: any) {
-      toast({ title: "영수증을 읽지 못했습니다", description: e.message, variant: "destructive" });
+      const hint = notYanmarPdf ? " (얀마 거래명세서 형식이 아니어서 AI로 읽으려 했습니다. 얀마 사이트에서 받은 원본 PDF는 AI 없이 바로 읽힙니다.)" : "";
+      toast({ title: "영수증을 읽지 못했습니다", description: `${e.message}${hint}`, variant: "destructive" });
       readNext();
     }
   };
