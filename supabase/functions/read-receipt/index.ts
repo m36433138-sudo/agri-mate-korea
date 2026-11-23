@@ -3,16 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createOpenAI } from "npm:@ai-sdk/openai@2";
 import { streamText, Output, jsonSchema } from "npm:ai@5";
 import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId } from "../_shared/run-id.ts";
-
-/** AI SDK 오류(감싼 cause 포함)에서 HTTP 상태를 찾는다 */
-function aiStatusOf(err: unknown): number | null {
-  for (let e: any = err, i = 0; e && i < 5; e = e.cause, i++) {
-    if (typeof e.statusCode === "number") return e.statusCode;
-    if (typeof e.status === "number") return e.status;
-    if (/payment required|not enough credits/i.test(String(e.message ?? ""))) return 402;
-  }
-  return null;
-}
+import { aiErrorMessage, aiStatusOf } from "../_shared/aiError.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -119,10 +110,7 @@ Deno.serve(async (req) => {
       text = await result.text;
     } catch (e) {
       const status = aiStatusOf(aiError) ?? aiStatusOf(e) ?? 502;
-      const msg = status === 402 ? "AI 크레딧이 부족합니다. 설정 → 요금제에서 충전 후 다시 시도해 주세요."
-        : status === 429 ? "AI 요청이 많아 잠시 후 다시 시도해 주세요."
-        : status === 403 ? "AI 사용이 막혀 있습니다. 관리자에게 문의해 주세요."
-        : "영수증을 읽지 못했습니다.";
+      const msg = aiErrorMessage(status) ?? "영수증을 읽지 못했습니다.";
       return json({ error: msg }, status);
     }
     if (!text.trim()) return json({ error: "영수증 내용을 읽지 못했습니다. 더 밝고 반듯하게 찍어 주세요." }, 422);

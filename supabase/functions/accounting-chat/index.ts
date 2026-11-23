@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { aiErrorMessage } from "../_shared/aiError.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,6 +42,13 @@ serve(async (req) => {
 
     if (!response.ok) {
       const t = await response.text();
+      const friendly = aiErrorMessage(response.status);
+      if (friendly) {
+        return new Response(JSON.stringify({ error: friendly }), {
+          status: response.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error(`AI gateway error ${response.status}: ${t}`);
     }
 

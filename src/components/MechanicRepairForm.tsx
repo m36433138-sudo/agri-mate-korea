@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { functionErrorMessage } from "@/lib/functionError";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -125,7 +126,7 @@ export default function MechanicRepairForm() {
       const { data, error } = await supabase.functions.invoke("recognize-parts", {
         body: { image: dataUrl, branch },
       });
-      if (error) throw error;
+      if (error) throw new Error(await functionErrorMessage(error, "사진 인식 실패"));
       if (data?.error) throw new Error(data.error);
 
       const found: Array<{ part_code: string; part_name: string; quantity: number }> = data?.parts || [];

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { functionErrorMessage } from "@/lib/functionError";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -137,7 +138,7 @@ export default function BillingPdfImportDialog({
       const { data, error } = await supabase.functions.invoke("parse-billing-pdf", {
         body: { file: dataUrl, mime: file.type, filename: file.name },
       });
-      if (error) throw error;
+      if (error) throw new Error(await functionErrorMessage(error, "청구서 판독 실패"));
       if (data?.error) throw new Error(data.error);
 
       const groups: ParsedGroup[] = data?.groups || [];

@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createResponsesCall } from "../_shared/responses.ts";
+import { aiErrorMessage, aiStatusOf } from "../_shared/aiError.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -27,7 +28,7 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return json({ error: "AI 설정이 없습니다." }, 500);
 
-    const { result } = createResponsesCall(
+    const { text: readText } = createResponsesCall(
       req,
       { baseURL: "https://ai.gateway.lovable.dev/v1", apiKey, model: "openai/gpt-6-astra" },
       [
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
         },
       ],
     );
-    const text = await result.text;
+    const text = await readText();
     const m = text.match(/\{[\s\S]*\}/);
     let codes: string[] = [];
     try { codes = (JSON.parse(m?.[0] ?? "{}").codes ?? []).filter((c: unknown) => typeof c === "string"); } catch { /* empty */ }
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
     }
     return json({ codes, matches });
   } catch (e) {
-    const status = (e as { statusCode?: number })?.statusCode;
-    return json({ error: e instanceof Error ? e.message : "판독 실패" }, status && status >= 400 ? status : 500);
+    const status = aiStatusOf(e);
+    return json({ error: aiErrorMessage(status) ?? (e instanceof Error ? e.message : "판독 실패") }, status && status >= 400 ? status : 500);
   }
 });

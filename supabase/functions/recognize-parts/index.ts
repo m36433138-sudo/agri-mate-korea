@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { aiErrorMessage } from "../_shared/aiError.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
 
 const corsHeaders = {
@@ -71,7 +72,7 @@ ${catalog || "(재고 없음)"}
     if (!aiRes.ok) {
       const errText = await aiRes.text();
       return new Response(
-        JSON.stringify({ error: `AI 호출 실패 (${aiRes.status}): ${errText}` }),
+        JSON.stringify({ error: aiErrorMessage(aiRes.status) ?? `AI 호출 실패 (${aiRes.status}): ${errText}` }),
         { status: aiRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

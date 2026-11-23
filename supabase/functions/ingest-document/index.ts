@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { aiErrorMessage } from "../_shared/aiError.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
 
 const corsHeaders = {
@@ -74,7 +75,7 @@ async function extractTextViaGemini(
 
   if (!resp.ok) {
     const t = await resp.text();
-    throw new Error(`Text extraction failed: ${resp.status} ${t}`);
+    throw new Error(aiErrorMessage(resp.status) ?? `Text extraction failed: ${resp.status} ${t}`);
   }
   const data = await resp.json();
   return data.choices?.[0]?.message?.content ?? "";
@@ -94,7 +95,7 @@ async function embedBatch(apiKey: string, inputs: string[]): Promise<number[][]>
   });
   if (!resp.ok) {
     const t = await resp.text();
-    throw new Error(`Embedding failed: ${resp.status} ${t}`);
+    throw new Error(aiErrorMessage(resp.status) ?? `Embedding failed: ${resp.status} ${t}`);
   }
   const data = await resp.json();
   return (data.data as Array<{ embedding: number[]; index: number }>)

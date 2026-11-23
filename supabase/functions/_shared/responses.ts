@@ -21,7 +21,11 @@ export function createResponsesCall(
     fetch: runIdFetch.fetch,
   });
   const reasoning = config.model !== "openai/chat-latest";
+  // streamText는 게이트웨이 오류(402 크레딧 부족 등)를 onError로만 넘기고 result.text는
+  // 상태 코드 없는 다른 오류로 끝난다 → 진짜 오류를 잡아 text()에서 다시 던진다.
+  let aiError: unknown = null;
   const result = streamText({
+    onError: ({ error }) => { aiError = error; console.error("[ai] gateway error", error); },
     model: provider.responses(config.model),
     // AI SDK 6 lacks `instructions`: rename this key to `system` there.
     ...(instructions ? { instructions } : {}),
@@ -43,6 +47,9 @@ export function createResponsesCall(
   });
   return {
     result,
+    text: async () => {
+      try { return await result.text; } catch (e) { throw aiError ?? e; }
+    },
     response: () =>
       withLovableAiGatewayRunIdHeader(result.toUIMessageStreamResponse({ sendReasoning: true }), runIdFetch),
   };

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { functionErrorMessage } from "@/lib/functionError";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export default function LabelPhotoDialog({ open, onOpenChange }: { open: boolean
     setReading(true);
     try {
       const { data, error } = await supabase.functions.invoke("read-part-label", { body: { image: dataUrl } });
-      if (error) throw error;
+      if (error) throw new Error(await functionErrorMessage(error, "라벨 판독 실패"));
       if (data?.error) throw new Error(data.error);
       setCodes(data.codes ?? []);
       setMatches(data.matches ?? []);

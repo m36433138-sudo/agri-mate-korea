@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createResponsesCall } from "../_shared/responses.ts";
+import { aiErrorMessage, aiStatusOf } from "../_shared/aiError.ts";
 
 // 부품 사진 + 모델 → ① 그 모델 도면 제목 중 어느 부분인지 후보 3장 ② 후보 도면 그림·부품표와 대조해 부품번호 후보
 // AI는 후보만 고른다. 돌려주는 부품번호는 반드시 그 도면에 실제 있는 번호만 남긴다 (데이터는 바꾸지 않음).
@@ -62,11 +63,11 @@ async function matchLabelCodes(db: any, codes: string[], diagrams: { id: string;
 }
 
 async function ask(req: Request, apiKey: string, system: string, content: any[]) {
-  const { result } = createResponsesCall(req, { baseURL: BASE, apiKey, model: MODEL }, [
+  const { text } = createResponsesCall(req, { baseURL: BASE, apiKey, model: MODEL }, [
     { role: "system", content: system },
     { role: "user", content },
   ]);
-  return parseJson(await result.text);
+  return parseJson(await text());
 }
 
 Deno.serve(async (req) => {
@@ -168,8 +169,8 @@ Deno.serve(async (req) => {
 
     return json({ description, areas, matches });
   } catch (e) {
-    const status = (e as { statusCode?: number })?.statusCode;
+    const status = aiStatusOf(e);
     const msg = e instanceof Error ? e.message : "인식 실패";
-    return json({ error: status === 402 ? "AI 크레딧이 부족합니다. 충전 후 다시 시도해 주세요." : status === 429 ? "요청이 많아요. 잠시 후 다시 시도해 주세요." : msg }, status && status >= 400 ? status : 500);
+    return json({ error: aiErrorMessage(status) ?? msg }, status && status >= 400 ? status : 500);
   }
 });
