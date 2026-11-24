@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, RefreshCw, Send, Loader2 } from "lucide-react";
+import { Copy, RefreshCw, Send, Loader2, CheckCircle2, Smartphone } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -90,21 +91,37 @@ export function DepositSetupDialog({ open, onOpenChange }: { open: boolean; onOp
           <DialogDescription>입금 문자가 오는 휴대폰에서 한 번만 설정하면, 문자가 올 때마다 확인 대기 목록에 자동으로 떠요.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 text-sm">
+          <PhoneStatus inbox={inbox} loading={inboxLoading} />
           <div className="space-y-1.5">
-            <p className="font-medium">받는 주소 (남에게 알려주지 마세요)</p>
+            <p className="font-medium">1. 받는 주소 (남에게 알려주지 마세요)</p>
             <div className="flex gap-2">
               <Input readOnly value={url || "불러오는 중..."} className="font-mono text-xs" onFocus={(e) => e.target.select()} />
               <Button size="icon" variant="outline" onClick={copy} disabled={!url} aria-label="주소 복사"><Copy className="h-4 w-4" /></Button>
             </div>
+            {url && (
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                <div className="rounded-md bg-background p-2 shrink-0" aria-label="받는 주소 QR 코드">
+                  <QRCodeSVG value={url} size={116} level="M" bgColor="transparent" fgColor="currentColor" className="text-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">컴퓨터에서 이 화면을 띄우고, 입금 문자가 오는 휴대폰 카메라로 찍으면 주소가 휴대폰으로 옮겨져요. 길게 눌러 복사한 뒤 전달 앱에 붙여넣으세요.</p>
+              </div>
+            )}
           </div>
-          <ol className="list-decimal pl-5 space-y-1.5 text-muted-foreground">
-            <li><b className="text-foreground">안드로이드</b>: Play 스토어에서 「SMS Forwarder」(문자 자동 전달) 같은 앱을 설치해요.</li>
-            <li>전달 규칙을 하나 만들고, 보내는 사람을 은행 번호(농협 1588-2100 / 1661-3000, 수협 1588-1515 등) 또는 내용에 「입금」이 들어간 문자로 정해요.</li>
-            <li>전달 방법은 <b className="text-foreground">웹훅(Webhook) · POST</b>, 주소에 위 주소를 붙여넣어요. 보낼 내용에는 문자 본문(예: <code>%text%</code> 또는 <code>{"{msg}"}</code>)만 넣으면 돼요.</li>
-            <li><b className="text-foreground">아이폰</b>: 단축어 앱 → 자동화 → 「메시지」(내용에 입금 포함) → 「URL의 콘텐츠 가져오기」에서 방법 POST, 주소 붙여넣기, 본문에 메시지 내용을 넣어요.</li>
-            <li><b className="text-foreground">배터리 최적화 끄기</b>: 설정 → 애플리케이션 → 전달 앱 → 배터리 → 「제한 없음」. 안 끄면 앱이 잠들어 몇 시간 늦게 보내거나 안 보내요.</li>
-            <li>설정 후 시험 입금 문자가 오면 30초 안에 이 화면 「입금 확인 대기」에 떠요. 안 뜨면 아래 「최근 받은 기록」을 보세요.</li>
-          </ol>
+          <div className="space-y-1.5">
+            <p className="font-medium">2. 휴대폰 설정 (안드로이드, 한 번만)</p>
+            <ol className="list-decimal pl-5 space-y-1.5 text-muted-foreground">
+              <li>Play 스토어에서 <b className="text-foreground">「SMS to URL Forwarder」</b>를 설치하고 문자 읽기 권한을 허용해요.</li>
+              <li>「+」로 규칙을 하나 만들어요. <b className="text-foreground">Sender(보내는 사람)</b>에 농협 문자 번호(보통 <code>15882100</code>)를 넣어요. 번호를 모르면 <code>*</code>로 두어도 돼요 — 입금 문자가 아니면 저장하지 않아요.</li>
+              <li><b className="text-foreground">Webhook URL</b>에 위 주소를 붙여넣어요. 아래쪽 JSON 내용은 <b className="text-foreground">고치지 말고 그대로</b> 두고 저장해요.</li>
+              <li><b className="text-foreground">배터리 최적화 끄기</b>: 설정 → 애플리케이션 → SMS to URL Forwarder → 배터리 → 「제한 없음」. 안 끄면 몇 시간 늦게 보내거나 안 보내요.</li>
+              <li>다른 전달 앱도 괜찮아요: 방법은 POST(웹훅), 보낼 내용에 문자 본문(<code>%text%</code>, <code>{"{msg}"}</code> 등)이 들어가면 돼요.</li>
+            </ol>
+            <p className="text-xs text-muted-foreground"><b className="text-foreground">아이폰</b>: 단축어 → 자동화 → 「메시지」(내용에 「입금」 포함) → 「URL의 콘텐츠 가져오기」 방법 POST, 주소 붙여넣기, 본문 JSON에 <code>text</code> = 메시지 내용.</p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="font-medium">3. 확인</p>
+            <p className="text-muted-foreground">다음 입금 문자가 오면 30초 안에 「입금 확인 대기」에 떠요. 맨 위 상태가 「휴대폰 연결됨」으로 바뀌면 끝이에요. 안 뜨면 아래 「최근 받은 기록」을 보세요.</p>
+          </div>
           <div className="space-y-2 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <p className="font-medium">최근 받은 기록</p>
@@ -145,5 +162,25 @@ export function DepositSetupDialog({ open, onOpenChange }: { open: boolean; onOp
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** 휴대폰에서 실제로 받은 적이 있는지 한눈에 (관리 화면의 「연결 시험」·틀린 주소는 제외) */
+function PhoneStatus({ inbox, loading }: { inbox: InboxRow[]; loading: boolean }) {
+  if (loading) return null;
+  const last = inbox.find((r) => r.result === "saved" || r.result === "duplicate" || r.result === "not_deposit" || r.result === "empty");
+  if (!last) {
+    return (
+      <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+        <Smartphone className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
+        <p><b>아직 휴대폰에서 받은 문자가 없어요.</b> 아래 1~3번대로 입금 문자가 오는 휴대폰을 설정해 주세요.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs">
+      <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-300" />
+      <p><b>휴대폰 연결됨</b> · 마지막으로 받은 때 {when(last.received_at)} ({RESULT[last.result]?.label ?? last.result})</p>
+    </div>
   );
 }

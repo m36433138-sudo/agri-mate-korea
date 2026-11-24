@@ -83,4 +83,9 @@ describe("pickSmsText (전달 앱마다 다른 본문 칸)", () => {
     expect(pickSmsText({ from: "15882100" })).toBe("");
     expect(pickSmsText({ from: "x" }, `{"broken": "${sms}`)).toContain("입금");
   });
+  it("줄바꿈이 그대로 들어가 깨진 JSON이어도 문자 본문만 꺼낸다", () => {
+    const broken = `{"from":"15882100","text":"${sms}","sentStamp":1795400000000}`;
+    expect(pickSmsText(broken)).toBe(sms);
+    expect(pickSmsText({ from: "x" }, broken)).toBe(sms);
+  });
 });

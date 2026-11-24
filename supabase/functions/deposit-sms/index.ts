@@ -67,7 +67,8 @@ Deno.serve(async (req) => {
   }
   const parsed = parseDepositSms(text);
   if (!parsed) {
-    await log("not_deposit", text);
+    // 입금 문자가 아닌 개인 문자일 수 있어 앞부분만 남긴다
+    await log("not_deposit", text.length > 60 ? text.slice(0, 60) + "…" : text);
     return json({ ok: true, saved: false, reason: "입금 문자가 아님" });
   }
 
