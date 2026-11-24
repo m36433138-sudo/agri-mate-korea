@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Tractor } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function Auth() {
   const [loginId, setLoginId] = useState("");
@@ -70,12 +70,12 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-2">
-            <div className="p-3 rounded-full bg-primary/10">
-              <Tractor className="h-8 w-8 text-primary" />
-            </div>
+          <div className="flex justify-center mb-3">
+            <span className="dark:bg-white dark:rounded-2xl dark:px-4 dark:py-3">
+              <img src="/brand/gwangmun-logo.png" alt="GWANGMUN 광문농기계" className="h-14 w-auto max-w-full" />
+            </span>
           </div>
-          <CardTitle className="text-2xl font-bold">얀마 관리 시스템</CardTitle>
+          <CardTitle className="text-2xl font-bold">CSGM 관리 시스템</CardTitle>
           <CardDescription>로그인하여 시스템에 접속하세요</CardDescription>
         </CardHeader>
         <CardContent>
