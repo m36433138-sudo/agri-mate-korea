@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, CheckSquare, BookOpen, FileText, TrendingUp, Calendar, X } from "lucide-react";
+import { Plus, CheckSquare, BookOpen, FileText, TrendingUp, Calendar, X, UserCheck } from "lucide-react";
+import { MyAssignedWork, useMyAssignedWork } from "./MyAssignedWork";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 
@@ -161,6 +162,8 @@ export default function WorkspacePage() {
 
   const todayStr = format(new Date(), "yyyy년 MM월 dd일 (E)", { locale: ko });
   const incompleteTasks = tasks.filter((t) => t.status !== "done").length;
+  const { data: assigned = [] } = useMyAssignedWork();
+  const assignedCount = assigned.length;
 
   return (
     <div className="space-y-4">
@@ -295,8 +298,15 @@ export default function WorkspacePage() {
 
         {/* 우측: 탭 */}
         <div className="flex-1 min-w-0">
-          <Tabs defaultValue="tasks">
-            <TabsList className="mb-4 h-9">
+          <Tabs defaultValue="assigned">
+            <TabsList className="mb-4 h-9 max-w-full overflow-x-auto justify-start">
+              <TabsTrigger value="assigned" className="gap-1.5 text-xs">
+                <UserCheck className="h-3.5 w-3.5" />
+                내 담당
+                {assignedCount > 0 && (
+                  <span className="bg-primary/10 text-primary text-[10px] rounded-full px-1.5">{assignedCount}</span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="tasks" className="gap-1.5 text-xs">
                 <CheckSquare className="h-3.5 w-3.5" />
                 할 일
@@ -322,6 +332,10 @@ export default function WorkspacePage() {
                 )}
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="assigned">
+              <MyAssignedWork />
+            </TabsContent>
 
             <TabsContent value="tasks">
               <TaskBoard

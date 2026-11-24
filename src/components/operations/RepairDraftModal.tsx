@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { SheetRow } from "@/types/operations";
 import { useRepairDrafts, RepairDraft, RepairDraftPart } from "@/hooks/useRepairDrafts";
-import { useTechnicians } from "@/hooks/useTechnicians";
+import { StaffPicker } from "@/components/StaffPicker";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import PartCodeAutocomplete from "@/components/PartCodeAutocomplete";
 import { Trash2, Save, Plus, Package, Wrench, ArrowRightCircle, GripVertical } from "lucide-react";
@@ -32,7 +31,6 @@ const reorderList = <T,>(items: T[], fromIndex: number, toIndex: number) => {
 
 export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Props) {
   const { fetchDraftWithParts, upsertDraft, addDraftPart, removeDraftPart } = useRepairDrafts();
-  const { data: technicians = [] } = useTechnicians();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -196,19 +194,7 @@ export function RepairDraftModal({ open, onClose, row, onTransferToRepair }: Pro
               </div>
               <div>
                 <Label className="text-xs">수리기사</Label>
-                <Select value={technician} onValueChange={setTechnician}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="기사 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {technicians.map((item) => (
-                      <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>
-                    ))}
-                    {technician && !technicians.find((item) => item.name === technician) && (
-                      <SelectItem value={technician}>{technician} (기존)</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <StaffPicker multiple value={technician} onChange={setTechnician} placeholder="기사 선택" className="h-9" />
               </div>
               <div>
                 <Label className="text-xs">사용시간 (Hr)</Label>

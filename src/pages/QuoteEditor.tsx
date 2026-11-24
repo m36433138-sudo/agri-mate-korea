@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import SignatureCanvas from "react-signature-canvas";
 import { CustomerPickerDialog, ProductPickerDialog } from "@/components/quotes/PickerDialogs";
 import { QuotePrintView } from "@/components/quotes/QuotePrintView";
+import { StaffPicker } from "@/components/StaffPicker";
+import { notifyAssignees } from "@/lib/assignments";
 import { productImageUrl } from "@/lib/productCatalog";
 import { ShareQuoteDialog } from "@/components/quotes/ShareQuoteDialog";
 import { won, calcLine } from "@/lib/quoteTypes";
@@ -50,6 +52,8 @@ export default function QuoteEditor() {
   const productById = new Map(usedProducts.map((p) => [p.id, p]));
   const [tradeIn, setTradeIn] = useState(0);
   const [memo, setMemo] = useState("");
+  const [assignee, setAssignee] = useState("");
+  const [prevAssignee, setPrevAssignee] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
   const [editingSig, setEditingSig] = useState(false);
 
@@ -92,6 +96,8 @@ export default function QuoteEditor() {
       setCustomerSsn(q.customer_ssn || "");
       setTradeIn(Number(q.trade_in_amount) || 0);
       setMemo(q.memo || "");
+      setAssignee(q.assignee || "");
+      setPrevAssignee(q.assignee || "");
       setSignature(q.signature_data || null);
       setEditingSig(false);
       const { data: its } = await (supabase as any).from("quote_items").select("*").eq("quote_id", id).order("sort_order");
@@ -146,7 +152,7 @@ export default function QuoteEditor() {
         company_id: companyId, customer_id: customerId,
         customer_name: customerName, customer_phone: customerPhone,
         customer_address: customerAddress, customer_ssn: customerSsn || null,
-        trade_in_amount: tradeIn, memo, signature_data: sig,
+        trade_in_amount: tradeIn, memo, signature_data: sig, assignee: assignee.trim() || null,
         subtotal: totals.subtotal, discount_total: totals.discount, total_amount: totals.total,
       };
       // created_by is set only on insert — never overwrite the original author on update
@@ -172,6 +178,9 @@ export default function QuoteEditor() {
         if (error) throw error;
       }
       toast.success("저장되었습니다");
+      // 담당자가 새로 정해지면 그 사람 휴대폰에 알림 (내 업무에도 뜬다)
+      void notifyAssignees(assignee, prevAssignee, { title: `견적서 담당 · ${customerName}`, body: `${quoteNumber} · ${totals.total.toLocaleString("ko-KR")}원`, url: `/quotes/${quoteId}`, tag: `quote-${quoteId}` });
+      setPrevAssignee(assignee);
       if (isNew && quoteId) navigate(`/quotes/${quoteId}`, { replace: true });
       return quoteId;
     } catch (e: any) {
@@ -225,6 +234,7 @@ export default function QuoteEditor() {
         <div className="grid md:grid-cols-2 gap-3">
           <div><Label>견적번호</Label><Input value={quoteNumber} onChange={(e) => setQuoteNumber(e.target.value)} /></div>
           <div><Label>견적일자</Label><Input type="date" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} /></div>
+          <div><Label>담당자</Label><StaffPicker value={assignee} onChange={setAssignee} placeholder="견적 담당자" /></div>
         </div>
       </Card>
 

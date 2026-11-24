@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
+import { StaffPicker } from "@/components/StaffPicker";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -190,7 +191,7 @@ export function OnsiteRowFormModal({ open, onClose, visit, defaults, canDelete, 
           </div>
           <div className="space-y-1.5">
             <Label>출장기사</Label>
-            <Input value={form.technician} onChange={(e) => set("technician", e.target.value)} />
+            <StaffPicker multiple value={form.technician} onChange={(v) => set("technician", v)} placeholder="출장기사 선택" />
           </div>
         </div>
 

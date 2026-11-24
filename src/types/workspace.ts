@@ -76,6 +76,8 @@ export interface FinancePayment {
 export interface FinanceRecord {
   id: string;
   created_by: string;
+  /** 수금 담당자 (직원 이름) — 내 업무에 뜬다 */
+  assignee?: string | null;
   record_type: FinanceRecordType;
   customer_id: string | null;
   document_id: string | null;

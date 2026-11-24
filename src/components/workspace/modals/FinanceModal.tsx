@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { StaffPicker } from "@/components/StaffPicker";
+import { notifyAssignees } from "@/lib/assignments";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -48,6 +50,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
     paid_date: "",
     is_paid: false,
     notes: "",
+    assignee: "",
   });
 
   // 부분 입금 입력 폼
@@ -72,6 +75,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
         paid_date: initialData.paid_date ?? "",
         is_paid: initialData.is_paid,
         notes: initialData.notes ?? "",
+        assignee: initialData.assignee ?? "",
       });
       setCustomerName(initialData.customers?.name ?? "");
     } else {
@@ -85,6 +89,7 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
         paid_date: "",
         is_paid: false,
         notes: "",
+        assignee: "",
       });
       setCustomerName("");
     }
@@ -117,15 +122,18 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
       paid_date: form.paid_date || null,
       is_paid: form.is_paid,
       notes: form.notes || null,
+      assignee: form.assignee.trim() || null,
     };
 
     try {
       if (initialData) {
         await updateFinance.mutateAsync({ id: initialData.id, ...payload });
         toast({ title: "미수금 기록이 수정됐어요." });
+        void notifyAssignees(payload.assignee, initialData.assignee, { title: `미수금 담당 · ${customerName || "고객"}`, body: `${payload.amount.toLocaleString("ko-KR")}원 — 수금을 챙겨 주세요`, url: "/receivables", tag: `recv-${initialData.id}` });
       } else {
         await addFinance.mutateAsync({ ...payload, paid_amount: 0, source_id: null } as any);
         toast({ title: "미수금이 저장됐어요." });
+        void notifyAssignees(payload.assignee, null, { title: `미수금 담당 · ${customerName || "고객"}`, body: `${payload.amount.toLocaleString("ko-KR")}원 — 수금을 챙겨 주세요`, url: "/receivables" });
       }
       onClose();
     } catch {
@@ -268,6 +276,11 @@ export function FinanceModal({ open, onClose, initialData, defaultDocumentId, de
               </Select>
             </div>
           )}
+
+          <div className="space-y-1.5">
+            <Label>담당자</Label>
+            <StaffPicker value={form.assignee} onChange={(v) => set("assignee", v)} placeholder="수금 담당자" />
+          </div>
 
           <div className="space-y-1.5">
             <Label>비고</Label>

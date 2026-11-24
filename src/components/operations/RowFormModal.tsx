@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { SheetRow, OperationStatus } from "@/types/operations";
 import { supabase } from "@/integrations/supabase/client";
-import { useTechnicians } from "@/hooks/useTechnicians";
+import { StaffPicker } from "@/components/StaffPicker";
+import { notifyAssignees } from "@/lib/assignments";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
@@ -113,7 +114,6 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const { data: technicians = [] } = useTechnicians();
   const { toast } = useToast();
   const isEdit = !!row;
 
@@ -195,6 +195,11 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
       if (!isEdit) {
         toast({ title: "추가 완료" });
       }
+      void notifyAssignees(form.technician, isEdit ? row?.수리기사 : null, {
+        title: `작업 배정 · ${form.name}`,
+        body: [form.machine, form.model, form.request].filter(Boolean).join(" · ").slice(0, 160),
+        url: "/dashboard/operations",
+      });
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -337,18 +342,7 @@ export function RowFormModal({ open, onClose, onSuccess, row, branch }: Props) {
           {/* 수리기사 */}
           <div>
             <Label>수리기사</Label>
-            <Select value={form.technician || "_none"} onValueChange={v => set("technician", v === "_none" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="기사 선택" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">선택 안함</SelectItem>
-                {technicians.map(t => (
-                  <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
-                ))}
-                {form.technician && !technicians.find(t => t.name === form.technician) && form.technician !== "" && (
-                  <SelectItem value={form.technician}>{form.technician} (기존)</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <StaffPicker multiple value={form.technician} onChange={v => set("technician", v)} placeholder="기사 선택 (여러 명 가능)" />
           </div>
 
           {/* 연락여부 */}
