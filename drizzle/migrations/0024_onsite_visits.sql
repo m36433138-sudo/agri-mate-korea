@@ -1,0 +1,51 @@
+-- 방문수리: 앱 DB가 원본. 구글 시트 「출장」 탭은 백업으로만 따라 쓰고, 처음 한 번(표가 비었을 때)과
+-- 관리자 「시트 가져오기」 때만 시트에서 읽어 온다 (작업현황판과 같은 방식).
+CREATE TABLE public.onsite_visits (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sheet_row integer UNIQUE,                 -- 「출장」 탭 줄 번호 (시트에 아직 없으면 NULL)
+  sheet_raw jsonb,                          -- 시트에서 읽은 줄 그대로: 앱이 모르는 칸을 백업 때 지우지 않게
+  status text NOT NULL DEFAULT '대기' CHECK (status IN ('대기','진행중','보류','완료')),
+  category text,                            -- 출장 / 50시간 A/S 등 (시트 「분류」)
+  branch text,
+  priority text,                            -- 시트 「우선순위」 (급함, 한가할 때 …)
+  requested text,                           -- 시트 「요구 날짜」 (자유 글: 내년에, 11/25 …)
+  customer_name text NOT NULL CHECK (btrim(customer_name) <> ''),
+  phone text,
+  address text,
+  detail text,
+  machine text,
+  model text,
+  technician text,
+  scheduled_on date,                        -- 가기로 한 날 (앱 전용)
+  completed_on date,
+  customer_id uuid REFERENCES public.customers(id) ON DELETE SET NULL,
+  lat double precision,
+  lng double precision,
+  geocoded_address text,                    -- 좌표를 찾은 주소 (주소가 바뀌면 다시 찾는다)
+  created_by uuid,
+  updated_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX onsite_visits_open_idx ON public.onsite_visits (status, scheduled_on, created_at DESC);
+CREATE INDEX onsite_visits_customer_idx ON public.onsite_visits (customer_id);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.onsite_visits TO authenticated;
+GRANT ALL ON public.onsite_visits TO service_role;
+ALTER TABLE public.onsite_visits ENABLE ROW LEVEL SECURITY;
+
+-- 메뉴 권한과 같게: 보기는 view_onsite, 등록·수정·삭제는 manage_onsite (관리자는 모두)
+CREATE POLICY "onsite viewers read" ON public.onsite_visits FOR SELECT TO authenticated
+  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')) OR (SELECT public.has_permission((SELECT auth.uid()), 'view_onsite')));
+CREATE POLICY "onsite managers insert" ON public.onsite_visits FOR INSERT TO authenticated
+  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin')) OR (SELECT public.has_permission((SELECT auth.uid()), 'manage_onsite')));
+CREATE POLICY "onsite managers update" ON public.onsite_visits FOR UPDATE TO authenticated
+  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')) OR (SELECT public.has_permission((SELECT auth.uid()), 'manage_onsite')))
+  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin')) OR (SELECT public.has_permission((SELECT auth.uid()), 'manage_onsite')));
+CREATE POLICY "onsite managers delete" ON public.onsite_visits FOR DELETE TO authenticated
+  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')) OR (SELECT public.has_permission((SELECT auth.uid()), 'manage_onsite')));
+
+CREATE TRIGGER onsite_visits_updated_at BEFORE UPDATE ON public.onsite_visits
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.onsite_visits;

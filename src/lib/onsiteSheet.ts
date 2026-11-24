@@ -1,7 +1,7 @@
 /** 방문수리 화면은 구글 시트 「출장」 탭을 읽고 쓴다. 칸 위치는 머리글 이름으로 찾아, 시트 칸 순서가 바뀌어도 맞게 동작한다. */
 export const ONSITE_TAB = "출장";
 
-export type OnsiteField = "status" | "branch" | "name" | "phone" | "address" | "detail" | "machine" | "model" | "technician";
+export type OnsiteField = "status" | "branch" | "name" | "phone" | "address" | "detail" | "machine" | "model" | "technician" | "priority" | "requested" | "completed";
 export type OnsiteLayout = Record<OnsiteField, number>;
 
 export interface OnsiteRow {
@@ -14,12 +14,15 @@ export interface OnsiteRow {
   주소: string;
   내역: string;
   출장기사: string;
+  우선순위: string;
+  요구날짜: string;
+  완료날짜: string;
   _rowIndex: number;
   _raw: string[];
 }
 
 // 「출장」 탭 기본 칸 순서 (머리글을 못 찾을 때)
-const DEFAULT_LAYOUT: OnsiteLayout = { status: 0, branch: 1, name: 4, phone: 5, address: 7, detail: 8, machine: 9, model: 10, technician: 11 };
+const DEFAULT_LAYOUT: OnsiteLayout = { status: 0, branch: 1, priority: 2, requested: 3, name: 4, phone: 5, address: 7, detail: 8, machine: 9, model: 10, technician: 11, completed: 12 };
 
 const clean = (s: string) => (s || "").replace(/\s+/g, "");
 
@@ -37,6 +40,9 @@ export function onsiteLayout(headerRow: string[] | undefined): OnsiteLayout {
     machine: pick("machine", (x) => x === "기계"),
     model: pick("model", (x) => x.includes("품목")),
     technician: pick("technician", (x) => x.includes("기사")),
+    priority: pick("priority", (x) => x.includes("우선")),
+    requested: pick("requested", (x) => x.includes("요구날짜") || x.includes("요청일") || x.includes("요청날짜")),
+    completed: pick("completed", (x) => x.includes("완료날짜") || x.includes("완료일")),
   };
 }
 
@@ -55,6 +61,9 @@ export function parseOnsiteRows(values: string[][]): { rows: OnsiteRow[]; layout
       주소: g(row, "address"),
       내역: g(row, "detail"),
       출장기사: g(row, "technician"),
+      우선순위: g(row, "priority"),
+      요구날짜: g(row, "requested"),
+      완료날짜: g(row, "completed"),
       _rowIndex: idx + 2,
       _raw: row,
     }))

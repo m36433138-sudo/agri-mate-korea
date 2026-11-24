@@ -1,273 +1,214 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useEffect, useState } from "react";
 import { CustomerSearchInput } from "@/components/CustomerSearchInput";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
-import { ONSITE_TAB, buildOnsiteValues, onsiteLayout, type OnsiteLayout, type OnsiteRow } from "@/lib/onsiteSheet";
+import { cn } from "@/lib/utils";
+import { VISIT_STATUSES, type OnsiteVisit, type VisitInput, type VisitStatus } from "@/lib/onsiteVisits";
 
-const STATUSES = ["출장", "50시간 A/S", "진행중", "완료", "보류"];
+const CATEGORIES = ["출장", "50시간 A/S", "점검", "배달·수거"];
 const BRANCHES = ["장흥", "강진"];
 const MACHINE_TYPES = ["트랙터", "콤바인", "이앙기", "기타"];
+const PRIORITIES = ["급함", "이번 주", "한가할 때"];
 
-interface FormData {
-  status: string;
-  name: string;
-  machine: string;       // 기계 종류
-  model: string;         // 품목 (모델명)
-  serial_number: string; // 제조번호 (UI 전용)
-  phone: string;
-  address: string;
-  detail: string;
-  branch: string;
-  technician: string;
-}
+type Form = {
+  status: VisitStatus; category: string; branch: string; priority: string; requested: string; scheduled_on: string;
+  customer_name: string; phone: string; address: string; detail: string; machine: string; model: string; serial: string; technician: string;
+  customer_id: string | null;
+};
 
-function rowToForm(row?: OnsiteRow): FormData {
-  if (!row) return {
-    status: "", name: "", machine: "", model: "", serial_number: "",
-    phone: "", address: "", detail: "", branch: "", technician: "",
-  };
+const empty: Form = {
+  status: "대기", category: "출장", branch: "", priority: "", requested: "", scheduled_on: "",
+  customer_name: "", phone: "", address: "", detail: "", machine: "", model: "", serial: "", technician: "", customer_id: null,
+};
+
+function toForm(v?: OnsiteVisit | null, defaults?: Partial<Form>): Form {
+  if (!v) return { ...empty, ...defaults };
   return {
-    status: row.진행사항,
-    name: row.손님성함,
-    machine: row.기계,
-    model: row.품목,
-    serial_number: "",
-    phone: row.전화번호,
-    address: row.주소,
-    detail: row.내역,
-    branch: row.지점,
-    technician: row.출장기사,
+    status: v.status, category: v.category ?? "", branch: v.branch ?? "", priority: v.priority ?? "", requested: v.requested ?? "",
+    scheduled_on: v.scheduled_on ?? "", customer_name: v.customer_name, phone: v.phone ?? "", address: v.address ?? "", detail: v.detail ?? "",
+    machine: v.machine ?? "", model: v.model ?? "", serial: "", technician: v.technician ?? "", customer_id: v.customer_id,
   };
 }
 
-function formToFields(f: FormData) {
-  const modelWithSerial = f.model + (f.serial_number ? ` (${f.serial_number})` : "");
+const opt = (s: string) => (s.trim() ? s.trim() : null);
+const today = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+
+export function formToInput(f: Form, prev?: OnsiteVisit | null): VisitInput {
+  const model = f.model.trim() + (f.serial.trim() ? ` (${f.serial.trim()})` : "");
   return {
-    status: f.status, branch: f.branch, name: f.name, phone: f.phone, address: f.address,
-    detail: f.detail, machine: f.machine, model: modelWithSerial, technician: f.technician,
+    status: f.status,
+    category: opt(f.category),
+    branch: opt(f.branch),
+    priority: opt(f.priority),
+    requested: opt(f.requested),
+    scheduled_on: f.scheduled_on || null,
+    completed_on: f.status === "완료" ? prev?.completed_on ?? today() : null,
+    customer_name: f.customer_name.trim(),
+    phone: opt(f.phone),
+    address: opt(f.address),
+    detail: opt(f.detail),
+    machine: opt(f.machine),
+    model: opt(model),
+    technician: opt(f.technician),
+    customer_id: f.customer_id,
   };
-}
-
-async function callSheet(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke("google-sheets", { body: { ...body, sheetName: ONSITE_TAB } });
-  if (error) {
-    const ctx = (error as any).context;
-    const msg = ctx?.json ? (await ctx.json().catch(() => null))?.error : null;
-    throw new Error(msg || error.message);
-  }
-  if (data?.error) throw new Error(data.error);
 }
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
-  row?: OnsiteRow | null;
-  layout?: OnsiteLayout;
+  visit?: OnsiteVisit | null;
+  defaults?: Partial<Form>;
+  canDelete?: boolean;
+  onSave: (input: VisitInput, prev: OnsiteVisit | null) => Promise<void>;
+  onDelete?: (v: OnsiteVisit) => Promise<void>;
 }
 
-export function OnsiteRowFormModal({ open, onClose, onSuccess, row, layout }: Props) {
-  const [form, setForm] = useState<FormData>(rowToForm(row || undefined));
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+function Chips({ value, options, onChange, label }: { value: string; options: readonly string[]; onChange: (v: string) => void; label: string }) {
+  return (
+    <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={label}>
+      {Array.from(new Set([...options, value].filter(Boolean))).map((o) => (
+        <button key={o} type="button" role="radio" aria-checked={value === o} onClick={() => onChange(value === o ? "" : o)}
+          className={cn("h-9 px-3 rounded-full border text-sm", value === o ? "border-primary bg-primary/10 text-primary font-semibold" : "text-muted-foreground")}>
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function OnsiteRowFormModal({ open, onClose, visit, defaults, canDelete, onSave, onDelete }: Props) {
+  const [form, setForm] = useState<Form>(toForm(visit, defaults));
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const { toast } = useToast();
-  const isEdit = !!row;
+  const isEdit = !!visit;
 
   useEffect(() => {
-    if (open) {
-      setForm(rowToForm(row || undefined));
-      setSelectedCustomerId(null);
-      setConfirmDelete(false);
-    }
-  }, [open, row]);
+    if (open) { setForm(toForm(visit, defaults)); setConfirmDelete(false); }
+  }, [open, visit, defaults]);
 
-  const set = (key: keyof FormData, val: string) => setForm(prev => ({ ...prev, [key]: val }));
+  const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((p) => ({ ...p, [k]: v }));
 
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      toast({ title: "이름을 입력하세요", variant: "destructive" });
-      return;
-    }
+  const save = async () => {
+    if (!form.customer_name.trim()) return;
     setSaving(true);
     try {
-      const lay = layout ?? onsiteLayout(undefined);
-      const values = buildOnsiteValues(lay, formToFields(form), isEdit ? row?._raw : []);
-
-      if (isEdit && row?._rowIndex) {
-        await callSheet({ action: "updateRow", rowIndex: row._rowIndex, values });
-        toast({ title: "수정 완료" });
-      } else {
-        await callSheet({ action: "addRow", values });
-        toast({ title: "추가 완료" });
-      }
-      onSuccess();
+      await onSave(formToInput(form, visit), visit ?? null);
       onClose();
-    } catch (err: any) {
-      toast({ title: "오류", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!row?._rowIndex) return;
-    setDeleting(true);
-    try {
-      await callSheet({ action: "clearRow", rowIndex: row._rowIndex });
-      toast({ title: "삭제 완료" });
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      toast({ title: "삭제 오류", description: err.message, variant: "destructive" });
-    } finally {
-      setDeleting(false);
-      setConfirmDelete(false);
-    }
+  const remove = async () => {
+    if (!visit || !onDelete) return;
+    setSaving(true);
+    try { await onDelete(visit); onClose(); } finally { setSaving(false); }
   };
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(v) => !v && !saving && onClose()}>
+      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto overflow-x-hidden" onOpenAutoFocus={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{isEdit ? "방문수리 수정" : "방문수리 추가"}</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-
-          {/* 진행사항 */}
-          <div className="col-span-2">
-            <Label>진행사항</Label>
-            <Select value={form.status} onValueChange={v => set("status", v)}>
-              <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-              <SelectContent>
-                {Array.from(new Set([...STATUSES, form.status].filter(Boolean))).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label>상태</Label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {VISIT_STATUSES.map((s) => (
+                <button key={s} type="button" aria-pressed={form.status === s} onClick={() => set("status", s)}
+                  className={cn("h-10 rounded-xl border text-sm font-medium", form.status === s ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground")}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label>종류</Label>
+            <Chips value={form.category} options={CATEGORIES} onChange={(v) => set("category", v)} label="종류" />
           </div>
 
-          {/* 지점 */}
-          <div>
-            <Label>지점</Label>
-            <Select value={form.branch} onValueChange={v => set("branch", v)}>
-              <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-              <SelectContent>
-                {Array.from(new Set([...BRANCHES, form.branch].filter(Boolean))).map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 출장기사 */}
-          <div>
-            <Label>출장기사</Label>
-            <Input value={form.technician} onChange={e => set("technician", e.target.value)} />
-          </div>
-
-          {/* 손님 성함 */}
-          <div>
+          <div className="space-y-1.5 min-w-0">
             <Label>손님 성함 *</Label>
             <CustomerSearchInput
-              value={form.name}
-              onChange={v => set("name", v)}
-              onSelect={c => {
-                set("name", c.name);
-                set("phone", c.phone || "");
-                set("address", c.address || "");
-                setSelectedCustomerId(c.id);
-              }}
+              value={form.customer_name}
+              onChange={(v) => set("customer_name", v)}
+              onSelect={(c) => setForm((p) => ({ ...p, customer_name: c.name, phone: c.phone || p.phone, address: c.address || p.address, customer_id: c.id }))}
             />
           </div>
-
-          {/* 전화번호 */}
-          <div>
+          <div className="space-y-1.5">
             <Label>전화번호</Label>
-            <Input value={form.phone} onChange={e => set("phone", e.target.value)} />
+            <Input value={form.phone} inputMode="tel" onChange={(e) => set("phone", e.target.value)} />
+          </div>
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label>주소</Label>
+            <Input value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="예: 대구면 백사1길 72 (읍·면부터 적어도 돼요)" />
           </div>
 
-          {/* 기계 종류 — Select */}
-          <div>
+          <div className="space-y-1.5">
             <Label>기계</Label>
-            <Select value={form.machine} onValueChange={v => set("machine", v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="기계 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from(new Set([...MACHINE_TYPES, form.machine].filter(Boolean))).map(t => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select value={form.machine} onValueChange={(v) => set("machine", v)}>
+              <SelectTrigger><SelectValue placeholder="기계 선택" /></SelectTrigger>
+              <SelectContent>{Array.from(new Set([...MACHINE_TYPES, form.machine].filter(Boolean))).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-
-          {/* 품목 (모델명) — 검색 지원 */}
-          <div>
+          <div className="space-y-1.5 min-w-0">
             <Label>품목 (모델명)</Label>
-            <MachineSearchInput
-              value={form.model}
-              customerId={selectedCustomerId}
-              onChange={v => set("model", v)}
-              onSelect={m => {
-                set("model", m.model_name);
-                set("serial_number", m.serial_number || "");
-              }}
-              placeholder="모델명 검색 또는 직접 입력"
-            />
+            <MachineSearchInput value={form.model} customerId={form.customer_id} onChange={(v) => set("model", v)}
+              onSelect={(m) => setForm((p) => ({ ...p, model: m.model_name, serial: m.serial_number || "" }))} placeholder="모델명 검색 또는 직접 입력" />
           </div>
-
-          {/* 제조번호 */}
-          <div className="col-span-2">
-            <Label>제조번호</Label>
-            <Input
-              value={form.serial_number}
-              onChange={e => set("serial_number", e.target.value)}
-              placeholder="예: YR60DZ-123456"
-              className="font-mono"
-            />
-          </div>
-
-          {/* 주소 */}
-          <div className="col-span-2">
-            <Label>주소</Label>
-            <Input value={form.address} onChange={e => set("address", e.target.value)} />
-          </div>
-
-          {/* 내역 */}
-          <div className="col-span-2">
+          <div className="sm:col-span-2 space-y-1.5">
             <Label>요구사항 · 내역</Label>
-            <Textarea value={form.detail} onChange={e => set("detail", e.target.value)} rows={3} />
+            <Textarea value={form.detail} onChange={(e) => set("detail", e.target.value)} rows={3} />
+          </div>
+
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label>우선순위</Label>
+            <Chips value={form.priority} options={PRIORITIES} onChange={(v) => set("priority", v)} label="우선순위" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>가기로 한 날</Label>
+            <div className="flex gap-1.5">
+              <Input type="date" value={form.scheduled_on} onChange={(e) => set("scheduled_on", e.target.value)} className="min-w-0" />
+              <Button type="button" variant="outline" className="shrink-0" onClick={() => set("scheduled_on", today())}>오늘</Button>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>손님이 원한 때</Label>
+            <Input value={form.requested} onChange={(e) => set("requested", e.target.value)} placeholder="예: 모내기 전, 11/25" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>지점</Label>
+            <Chips value={form.branch} options={BRANCHES} onChange={(v) => set("branch", v)} label="지점" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>출장기사</Label>
+            <Input value={form.technician} onChange={(e) => set("technician", e.target.value)} />
           </div>
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          {isEdit && !confirmDelete && (
-            <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}
-              disabled={saving || deleting} className="sm:mr-auto">
+          {isEdit && canDelete && onDelete && !confirmDelete && (
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} disabled={saving} className="sm:mr-auto text-destructive">
               <Trash2 className="h-4 w-4 mr-1" /> 삭제
             </Button>
           )}
           {confirmDelete && (
             <div className="flex items-center gap-2 sm:mr-auto">
-              <span className="text-sm text-destructive font-medium">정말 삭제하시겠습니까?</span>
-              <Button size="sm" variant="destructive" onClick={handleDelete} disabled={deleting}>
-                {deleting ? "삭제 중..." : "확인"}
-              </Button>
+              <span className="text-sm text-destructive font-medium">정말 삭제할까요?</span>
+              <Button size="sm" variant="destructive" onClick={remove} disabled={saving}>삭제</Button>
               <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)}>취소</Button>
             </div>
           )}
-          <Button variant="outline" onClick={onClose} disabled={saving || deleting}>취소</Button>
-          <Button onClick={handleSave} disabled={saving || deleting}>
-            {saving ? "저장 중..." : isEdit ? "수정" : "추가"}
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>취소</Button>
+          <Button onClick={save} disabled={saving || !form.customer_name.trim()}>{saving ? "저장 중..." : isEdit ? "저장" : "추가"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
