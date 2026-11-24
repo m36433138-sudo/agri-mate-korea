@@ -12,9 +12,11 @@ import { toast } from "sonner";
 import SignatureCanvas from "react-signature-canvas";
 import { CustomerPickerDialog, ProductPickerDialog } from "@/components/quotes/PickerDialogs";
 import { QuotePrintView } from "@/components/quotes/QuotePrintView";
+import { productImageUrl } from "@/lib/productCatalog";
 import { ShareQuoteDialog } from "@/components/quotes/ShareQuoteDialog";
 import { won, calcLine } from "@/lib/quoteTypes";
-import type { Company, QuoteItem } from "@/lib/quoteTypes";
+import type { Company, QuoteItem, QuoteProduct } from "@/lib/quoteTypes";
+import { useQuery } from "@tanstack/react-query";
 
 export default function QuoteEditor() {
   const { id } = useParams();
@@ -33,6 +35,19 @@ export default function QuoteEditor() {
   const [customerSsn, setCustomerSsn] = useState("");
 
   const [items, setItems] = useState<QuoteItem[]>([]);
+  // 견적에 담긴 제품의 사진·주요 사양 (화면 썸네일과 견적서 그림에 쓴다)
+  const productIds = [...new Set(items.map((i) => i.product_id).filter(Boolean) as string[])].sort();
+  const { data: usedProducts = [] } = useQuery<QuoteProduct[]>({
+    queryKey: ["quote-used-products", productIds.join(",")],
+    enabled: productIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("quote_products").select("*").in("id", productIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const productById = new Map(usedProducts.map((p) => [p.id, p]));
   const [tradeIn, setTradeIn] = useState(0);
   const [memo, setMemo] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
@@ -251,7 +266,14 @@ export default function QuoteEditor() {
             <tbody>
               {items.map((it, idx) => (
                 <tr key={idx} className="border-t border-border">
-                  <td className="p-1"><Input value={it.product_name} onChange={(e) => updateItem(idx, { product_name: e.target.value })} /></td>
+                  <td className="p-1">
+                    <div className="flex items-center gap-2">
+                      {it.product_id && productById.get(it.product_id)?.image_path && (
+                        <img src={productImageUrl(productById.get(it.product_id)!.image_path)!} alt="" className="h-10 w-12 rounded-md object-contain bg-muted shrink-0" />
+                      )}
+                      <Input value={it.product_name} onChange={(e) => updateItem(idx, { product_name: e.target.value })} />
+                    </div>
+                  </td>
                   <td className="p-1"><Input value={it.spec || ""} onChange={(e) => updateItem(idx, { spec: e.target.value })} /></td>
                   <td className="p-1"><Input type="number" value={it.quantity} onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) })} className="text-right" /></td>
                   <td className="p-1"><Input type="number" value={it.unit_price} onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) })} className="text-right" /></td>
@@ -331,6 +353,7 @@ export default function QuoteEditor() {
             memo, signature_data: signature, trade_in_amount: tradeIn,
           }}
           items={items}
+          products={usedProducts}
         />
       </div>
 

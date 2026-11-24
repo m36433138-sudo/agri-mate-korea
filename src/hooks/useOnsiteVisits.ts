@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { fetchVisits, importVisitsFromSheet, mirrorDelete, mirrorVisit, type OnsiteVisit, type VisitInput } from "@/lib/onsiteVisits";
 import { geocodeAddress } from "@/lib/onsiteRoute";
+import { sendPush } from "@/lib/appPush";
 
 const KEY = ["onsite-visits"];
 const db = supabase as any;
@@ -56,11 +57,21 @@ export function useOnsiteVisits(canManage: boolean) {
         : db.from("onsite_visits").insert({ ...input, created_by: uid, updated_by: uid });
       const { data, error } = await q.select("*").single();
       if (error) throw new Error(error.message);
-      return { saved: data as OnsiteVisit, prevName: prev?.customer_name };
+      return { saved: data as OnsiteVisit, prevName: prev?.customer_name, prevTech: prev?.technician?.trim() || null };
     },
-    onSuccess: ({ saved, prevName }) => {
+    onSuccess: ({ saved, prevName, prevTech }) => {
       qc.invalidateQueries({ queryKey: KEY });
       void mirrorVisit(saved, prevName).then((ok) => { if (!ok) backupFailed(); });
+      // 출장기사가 새로 정해지거나 바뀌면 그 기사 휴대폰에 알림
+      const tech = saved.technician?.trim();
+      if (tech && tech !== prevTech && saved.status !== "완료") {
+        void sendPush("onsite", { employee_names: tech.split(/[,·/\s]+/).filter(Boolean) }, {
+          title: `방문수리 배정 · ${saved.customer_name}`,
+          body: [[saved.machine, saved.model].filter(Boolean).join(" "), saved.detail, saved.address].filter(Boolean).join(" · ").slice(0, 200),
+          url: "/onsite-repairs",
+          tag: `onsite-${saved.id}`,
+        });
+      }
     },
     onError: (e: Error) => toast({ title: "저장 실패", description: e.message, variant: "destructive" }),
   });

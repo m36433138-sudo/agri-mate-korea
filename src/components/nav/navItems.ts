@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, UserCog, User, Home,
   MessageSquare, ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin, Landmark,
-  FileText, BookOpen, ShieldCheck, Wallet, Map, AlertTriangle, Receipt, ShoppingCart, Cog,
+  FileText, BookOpen, ShieldCheck, Wallet, Map, AlertTriangle, Receipt, ShoppingCart, Cog, Smartphone,
 } from "lucide-react";
 
 export type NavItem = { title: string; url: string; icon: LucideIcon; badge?: number };
@@ -71,6 +71,7 @@ export function staffNavGroups({ isAdmin, hasPermission: can, unreadMessages }: 
       label: "도구 · 설정",
       items: [
         { title: "AI 어시스턴트", url: "/chat", icon: Sparkles },
+        { title: "앱·알림 설정", url: "/app-settings", icon: Smartphone },
         ...pick(can("view_knowledge"), { title: "지식베이스", url: "/knowledge", icon: BookOpen }),
         ...pick(isAdmin, { title: "위치 이력", url: "/location-history", icon: MapPin }),
         ...pick(isAdmin, { title: "사용자 관리", url: "/users", icon: UserCog }),

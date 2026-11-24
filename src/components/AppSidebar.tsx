@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogOut, ChevronDown, Tractor } from "lucide-react";
+import { LogOut, ChevronDown } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,15 +86,16 @@ export function AppSidebar() {
 
 function LogoHeader({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className={cn("flex items-center gap-2.5", collapsed && "justify-center")}>
-      <div className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center bg-primary text-primary-foreground shadow-sm">
-        <Tractor className="h-5 w-5" strokeWidth={2.2} />
-      </div>
-      {!collapsed && (
-        <div className="min-w-0">
-          <p className="text-[15px] font-extrabold tracking-tight text-sidebar-foreground leading-tight">AgriMate</p>
-          <p className="text-[11px] font-medium text-muted-foreground leading-tight">광문농기</p>
-        </div>
+    <div className={cn("flex items-center", collapsed && "justify-center")}>
+      {/* 광문 로고. 어두운 화면에서는 흰 바탕 위에 올려 원래 색을 지킨다 */}
+      {collapsed ? (
+        <span className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center bg-white shadow-sm">
+          <img src="/brand/gwangmun-mark.png" alt="광문" className="h-6 w-auto" />
+        </span>
+      ) : (
+        <span className="dark:bg-white dark:rounded-xl dark:px-2.5 dark:py-1.5 block">
+          <img src="/brand/gwangmun-logo.png" alt="GWANGMUN 광문농기계" className="h-9 w-auto max-w-full" />
+        </span>
       )}
     </div>
   );

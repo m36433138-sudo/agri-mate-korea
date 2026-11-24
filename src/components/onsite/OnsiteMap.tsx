@@ -6,6 +6,7 @@ import { Crosshair, X } from "lucide-react";
 import type { OnsiteVisit } from "@/lib/onsiteVisits";
 import { navLinks, type LatLng } from "@/lib/onsiteRoute";
 import { STATUS_STYLE } from "./VisitCard";
+import { minutesAgo, type LiveStaff } from "@/hooks/useMyAttendance";
 
 const COLOR: Record<string, string> = { 대기: "#64748b", 진행중: "#2563eb", 보류: "#d97706", 완료: "#16a34a" };
 
@@ -28,11 +29,13 @@ type Props = {
   orderOf: Map<string, number>;
   origin: LatLng | null;
   canManage: boolean;
+  /** 위치 공유 중인 직원 */
+  staff?: LiveStaff[];
   onMove: (v: OnsiteVisit, at: LatLng) => void;
 };
 
 /** 갈 곳 지도: 번호는 동선 순서, 색은 상태. 「위치 옮기기」 후 지도를 누르면 그 자리로 핀을 옮긴다. */
-export default function OnsiteMap({ visits, orderOf, origin, canManage, onMove }: Props) {
+export default function OnsiteMap({ visits, orderOf, origin, canManage, staff = [], onMove }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
@@ -90,9 +93,22 @@ export default function OnsiteMap({ visits, orderOf, origin, canManage, onMove }
       pts.push([v.lat!, v.lng!]);
       if (no) route.push([v.lat!, v.lng!]);
     }
+    for (const p of staff) {
+      const ago = minutesAgo(p.updated_at);
+      const fresh = ago <= 15;
+      L.marker([p.lat, p.lng], {
+        zIndexOffset: 1000,
+        icon: L.divIcon({
+          className: "",
+          html: `<div><span style="width:28px;height:28px;border-radius:999px;background:${fresh ? "#10b981" : "#f59e0b"};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);color:#fff;font:800 12px/22px system-ui;text-align:center">${esc(p.name.slice(-2))}</span></div>`,
+          iconSize: [28, 28],
+        }),
+      }).bindTooltip(`${esc(p.name)} · ${ago <= 1 ? "방금" : `${ago}분 전`}`, { direction: "top" }).addTo(g);
+      pts.push([p.lat, p.lng]);
+    }
     if (route.length > 1) L.polyline(route, { color: "#2563eb", weight: 3, opacity: 0.5, dashArray: "6 6" }).addTo(g);
     if (pts.length) m.fitBounds(L.latLngBounds(pts).pad(0.15), { maxZoom: 14 });
-  }, [visits, orderOf, origin, canManage]);
+  }, [visits, orderOf, origin, canManage, staff]);
 
   return (
     <div className="relative rounded-3xl overflow-hidden border border-border/70 bg-card">

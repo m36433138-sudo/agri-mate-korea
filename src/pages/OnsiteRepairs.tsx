@@ -1,5 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { useLiveStaff } from "@/hooks/useMyAttendance";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,7 +43,9 @@ export default function OnsiteRepairs() {
   useGeocodeQueue(visits, canManage);
 
   const [tab, setTab] = useState<Tab>("todo");
-  const [view, setView] = useState<"list" | "map">("list");
+  const [params] = useSearchParams();
+  const [view, setView] = useState<"list" | "map">(params.get("view") === "map" ? "map" : "list");
+  const { data: liveStaff = [] } = useLiveStaff(view === "map");
   const [branch, setBranch] = useState<"전체" | "장흥" | "강진">("전체");
   const [mine, setMine] = useState(false);
   const [search, setSearch] = useState("");
@@ -193,6 +197,7 @@ export default function OnsiteRepairs() {
             orderOf={new Map([...route].map(([id, r]) => [id, r.no]))}
             origin={start}
             canManage={canManage}
+            staff={liveStaff}
             onMove={(v, at) => patch.mutate({ visit: v, change: { lat: at.lat, lng: at.lng, geocoded_address: v.address } })}
           />
         </Suspense>

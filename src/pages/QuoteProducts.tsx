@@ -1,114 +1,184 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Camera, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import type { QuoteProduct } from "@/lib/quoteTypes";
-import { won } from "@/lib/quoteTypes";
+import { PageHeader } from "@/components/page/PageParts";
 import ProductBulkUpload from "@/components/quotes/ProductBulkUpload";
+import { ProductGrid } from "@/components/quotes/ProductGrid";
+import { ProductDetail, useQuoteProducts } from "@/components/quotes/ProductDetail";
+import type { QuoteProduct } from "@/lib/quoteTypes";
+import { MACHINE_GROUPS, PRODUCT_BUCKET, groupOf, productImageUrl, uploadProductImage } from "@/lib/productCatalog";
+import { cn } from "@/lib/utils";
 
-export default function QuoteProducts() {
-  const [items, setItems] = useState<QuoteProduct[]>([]);
-  const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Partial<QuoteProduct> | null>(null);
+const db = supabase as any;
 
-  const load = async () => {
-    const { data } = await (supabase as any).from("quote_products").select("*").order("sort_order").order("name");
-    setItems(data || []);
-  };
-  useEffect(() => { load(); }, []);
+type Draft = Partial<QuoteProduct> & { _file?: File | null; _preview?: string | null; _removeImage?: boolean };
+
+function ProductEditDialog({ draft, onClose, categories, onSaved }: { draft: Draft | null; onClose: () => void; categories: string[]; onSaved: () => void }) {
+  const [d, setD] = useState<Draft>({});
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const camRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (draft) setD(draft); }, [draft]);
+  const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));
+  const pick = (f?: File | null) => { if (f) set({ _file: f, _preview: URL.createObjectURL(f), _removeImage: false }); };
+  const preview = d._preview ?? (d._removeImage ? null : productImageUrl(d.image_path));
 
   const save = async () => {
-    if (!editing?.name) return toast.error("품명을 입력하세요");
-    const payload = {
-      name: editing.name,
-      spec: editing.spec || null,
-      unit_price: Number(editing.unit_price) || 0,
-      category: editing.category || null,
-      notes: editing.notes || null,
-      is_active: editing.is_active ?? true,
-    };
-    const { error } = editing.id
-      ? await (supabase as any).from("quote_products").update(payload).eq("id", editing.id)
-      : await (supabase as any).from("quote_products").insert(payload);
-    if (error) return toast.error(error.message);
-    toast.success("저장되었습니다");
-    setOpen(false); setEditing(null); load();
+    if (!d.name?.trim()) return toast.error("모델명(품명)을 입력하세요");
+    setSaving(true);
+    try {
+      const payload = {
+        name: d.name.trim(), spec: d.spec?.trim() || null, unit_price: Number(d.unit_price) || 0,
+        machine_group: d.machine_group || groupOf({ name: d.name, category: d.category ?? null }),
+        category: d.category?.trim() || null, brand: d.brand?.trim() || null,
+        highlights: d.highlights?.trim() || null, description: d.description?.trim() || null,
+        notes: d.notes?.trim() || null, is_active: d.is_active ?? true, sort_order: Number(d.sort_order) || 0,
+      };
+      let id = d.id;
+      if (id) {
+        const { error } = await db.from("quote_products").update(payload).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await db.from("quote_products").insert(payload).select("id").single();
+        if (error) throw error;
+        id = data.id;
+      }
+      const old = d.image_path;
+      if (d._file) {
+        const path = await uploadProductImage(d._file, id!);
+        await db.from("quote_products").update({ image_path: path }).eq("id", id);
+        if (old) await supabase.storage.from(PRODUCT_BUCKET).remove([old]);
+      } else if (d._removeImage && old) {
+        await db.from("quote_products").update({ image_path: null }).eq("id", id);
+        await supabase.storage.from(PRODUCT_BUCKET).remove([old]);
+      }
+      toast.success("저장했어요");
+      onSaved();
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("삭제하시겠습니까?")) return;
-    await (supabase as any).from("quote_products").delete().eq("id", id);
-    load();
-  };
+  return (
+    <Dialog open={!!draft} onOpenChange={(v) => !v && !saving && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[92vh] overflow-y-auto overflow-x-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogHeader><DialogTitle>{d.id ? "제품 수정" : "제품 추가"}</DialogTitle></DialogHeader>
+        <div className="space-y-4 min-w-0">
+          <div className="space-y-2">
+            <Label>사진</Label>
+            <div className="relative aspect-[4/3] rounded-2xl border border-dashed bg-muted/40 overflow-hidden flex items-center justify-center">
+              {preview ? <img src={preview} alt="" className="absolute inset-0 w-full h-full object-contain p-2" /> : <ImagePlus className="h-10 w-10 text-muted-foreground/40" />}
+              {preview && (
+                <button type="button" onClick={() => set({ _file: null, _preview: null, _removeImage: true })} className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/90 flex items-center justify-center" aria-label="사진 빼기">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" className="gap-1.5" onClick={() => fileRef.current?.click()}><ImagePlus className="h-4 w-4" />사진 고르기</Button>
+              <Button type="button" variant="outline" className="gap-1.5" onClick={() => camRef.current?.click()}><Camera className="h-4 w-4" />사진 찍기</Button>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0])} />
+            <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => pick(e.target.files?.[0])} />
+          </div>
 
-  const filtered = items.filter((i) =>
-    !q || i.name.toLowerCase().includes(q.toLowerCase()) || (i.spec || "").toLowerCase().includes(q.toLowerCase())
+          <div className="space-y-1.5">
+            <Label>종류</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {MACHINE_GROUPS.map((g) => {
+                const on = (d.machine_group || (d.name ? groupOf({ name: d.name, category: d.category ?? null }) : "")) === g;
+                return (
+                  <button key={g} type="button" onClick={() => set({ machine_group: g })} aria-pressed={on}
+                    className={cn("h-9 px-3 rounded-full border text-sm", on ? "border-primary bg-primary/10 text-primary font-semibold" : "text-muted-foreground")}>{g}</button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>세부 분류</Label>
+              <Input list="product-categories" value={d.category ?? ""} onChange={(e) => set({ category: e.target.value })} placeholder="예: 자탈형 콤바인" />
+              <datalist id="product-categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+            </div>
+            <div className="space-y-1.5"><Label>제조사</Label><Input value={d.brand ?? ""} onChange={(e) => set({ brand: e.target.value })} placeholder="얀마" /></div>
+          </div>
+          <div className="space-y-1.5"><Label>모델명 (품명) *</Label><Input value={d.name ?? ""} onChange={(e) => set({ name: e.target.value })} placeholder="예: YT5113A" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>규격</Label><Input value={d.spec ?? ""} onChange={(e) => set({ spec: e.target.value })} placeholder="예: 113마력, 6조" /></div>
+            <div className="space-y-1.5"><Label>견적 기준가 (원)</Label><Input inputMode="numeric" value={d.unit_price ?? ""} onChange={(e) => set({ unit_price: Number(e.target.value.replace(/\D/g, "")) })} /></div>
+          </div>
+          <div className="space-y-1.5"><Label>주요 사양 <span className="text-muted-foreground font-normal">(한 줄에 하나)</span></Label>
+            <Textarea rows={4} value={d.highlights ?? ""} onChange={(e) => set({ highlights: e.target.value })} placeholder={"엔진 4TNV98C 113마력\n캐빈·에어컨 기본\n자동 수평 제어"} />
+          </div>
+          <div className="space-y-1.5"><Label>설명</Label><Textarea rows={3} value={d.description ?? ""} onChange={(e) => set({ description: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>메모 (내부용)</Label><Input value={d.notes ?? ""} onChange={(e) => set({ notes: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>정렬 순서</Label><Input inputMode="numeric" value={d.sort_order ?? 0} onChange={(e) => set({ sort_order: Number(e.target.value.replace(/\D/g, "")) })} /></div>
+          </div>
+          <label className="flex items-center justify-between rounded-2xl border p-3"><span className="text-sm font-medium">견적에서 고를 수 있게 (판매 중)</span><Switch checked={d.is_active ?? true} onCheckedChange={(v) => set({ is_active: v })} /></label>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={saving}>취소</Button>
+          <Button onClick={save} disabled={saving} className="gap-1.5">{saving && <Loader2 className="h-4 w-4 animate-spin" />}저장</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
+}
+
+export default function QuoteProducts() {
+  const qc = useQueryClient();
+  const { data: items = [], isLoading } = useQuoteProducts();
+  const [detail, setDetail] = useState<QuoteProduct | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const reload = () => qc.invalidateQueries({ queryKey: ["quote-products"] });
+  const categories = [...new Set(items.map((i) => i.category).filter(Boolean) as string[])].sort();
+
+  const remove = async (p: QuoteProduct) => {
+    if (!confirm(`「${p.name}」을(를) 지울까요? 이미 만든 견적서에는 그대로 남아요.`)) return;
+    const { error } = await db.from("quote_products").delete().eq("id", p.id);
+    if (error) return toast.error(error.message);
+    if (p.image_path) await supabase.storage.from(PRODUCT_BUCKET).remove([p.image_path]);
+    setDetail(null);
+    reload();
+  };
 
   return (
     <div className="space-y-5">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight">견적 제품 관리</h1>
-          <p className="text-sm text-muted-foreground mt-1">견적서에서 선택할 제품/규격/단가</p>
-        </div>
-        <div className="flex gap-2">
-          <ProductBulkUpload onDone={load} />
-          <Button onClick={() => { setEditing({ is_active: true }); setOpen(true); }}>
-            <Plus className="w-4 h-4 mr-1" /> 제품 추가
-          </Button>
-        </div>
-      </div>
-
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="제품명/규격 검색" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
-      </div>
-
-      <div className="grid gap-2">
-        {filtered.map((p) => (
-          <Card key={p.id} className="p-3 flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{p.name}</span>
-                {p.spec && <span className="text-sm text-muted-foreground">{p.spec}</span>}
-                {!p.is_active && <span className="text-xs text-muted-foreground">(비활성)</span>}
-              </div>
-              {p.category && <div className="text-xs text-muted-foreground">{p.category}</div>}
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="font-semibold tabular-nums">{won(p.unit_price)}</span>
-              <Button size="sm" variant="ghost" onClick={() => { setEditing(p); setOpen(true); }}>
-                <Pencil className="w-4 h-4" />
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => remove(p.id)}>
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </Card>
-        ))}
-        {filtered.length === 0 && <div className="text-center text-muted-foreground py-8">제품이 없습니다</div>}
-      </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editing?.id ? "제품 수정" : "제품 추가"}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div><Label>품명 *</Label><Input value={editing?.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
-            <div><Label>규격</Label><Input value={editing?.spec || ""} onChange={(e) => setEditing({ ...editing, spec: e.target.value })} /></div>
-            <div><Label>단가</Label><Input type="number" value={editing?.unit_price ?? ""} onChange={(e) => setEditing({ ...editing, unit_price: Number(e.target.value) })} /></div>
-            <div><Label>카테고리</Label><Input value={editing?.category || ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} /></div>
-            <div><Label>메모</Label><Input value={editing?.notes || ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} /></div>
-          </div>
-          <DialogFooter><Button onClick={save}>저장</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PageHeader
+        title="제품 카탈로그"
+        sub={`견적서에 넣는 농기계·작업기 ${items.length}종 · 사진과 주요 사양을 함께 관리`}
+        actions={
+          <>
+            <ProductBulkUpload onDone={reload} />
+            <Button className="h-11 rounded-full px-5" onClick={() => setDraft({ is_active: true, brand: "얀마" })}><Plus className="w-4 h-4 mr-1" /> 제품 추가</Button>
+          </>
+        }
+      />
+      {isLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-64 rounded-3xl" />)}</div>
+      ) : (
+        <ProductGrid products={items} onOpen={setDetail} />
+      )}
+      <ProductDetail p={detail} open={!!detail} onOpenChange={(v) => !v && setDetail(null)}
+        footer={detail && (
+          <>
+            <Button variant="outline" className="text-destructive gap-1.5" onClick={() => remove(detail)}><Trash2 className="h-4 w-4" />삭제</Button>
+            <Button className="flex-1 gap-1.5" onClick={() => { setDraft(detail); setDetail(null); }}><Pencil className="h-4 w-4" />수정</Button>
+          </>
+        )} />
+      <ProductEditDialog draft={draft} onClose={() => setDraft(null)} categories={categories} onSaved={reload} />
     </div>
   );
 }

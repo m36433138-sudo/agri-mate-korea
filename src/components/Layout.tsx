@@ -1,4 +1,5 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { useLiveLocationRunner } from "@/hooks/useMyAttendance";
 import { AppSidebar } from "@/components/AppSidebar";
 import GlobalSearch from "@/components/GlobalSearch";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -8,7 +9,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUnreadCount } from "@/hooks/useMessenger";
 import { useLocation, Link } from "react-router-dom";
 import { useEffect, useMemo, useRef } from "react";
-import { ChevronRight, Tractor } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useMessengerNotifications } from "@/hooks/useMessengerNotifications";
 import { useReceivablesAlert } from "@/hooks/useReceivablesAlert";
 
@@ -33,6 +34,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/expenses": "지출 관리",
   "/workspace": "내 업무",
   "/messenger": "사내 메신저",
+  "/app-settings": "앱·알림 설정",
   "/attachments": "작업기 관리",
   "/error-codes": "에러코드 기록",
   "/diagrams": "부품 도면",
@@ -111,6 +113,7 @@ function useBottomTabs(): NavItem[] {
 export default function Layout({ children }: { children: React.ReactNode }) {
   useMessengerNotifications();
   useReceivablesAlert();
+  useLiveLocationRunner();
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
   const tabs = useBottomTabs();
@@ -129,8 +132,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {/* 휴대폰은 아래 탭의 「전체 메뉴」로 연다 (탭이 없는 고객 화면은 여기서) */}
             <SidebarTrigger className={`shrink-0 ${tabs.length ? "hidden md:inline-flex" : ""}`} />
             <div className="w-px h-5 bg-border shrink-0 hidden md:block" />
-            <Link to="/" className="md:hidden shrink-0 w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center" aria-label="대시보드">
-              <Tractor className="h-[18px] w-[18px]" strokeWidth={2.2} />
+            <Link to="/" className="md:hidden shrink-0 w-9 h-9 rounded-lg bg-white border border-border/60 flex items-center justify-center" aria-label="대시보드">
+              <img src="/brand/gwangmun-mark.png" alt="광문" className="h-6 w-auto" />
             </Link>
             <Breadcrumb />
             <div className="flex-1 hidden sm:block" />
