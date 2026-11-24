@@ -14,7 +14,7 @@ import { formatPrice } from "@/lib/formatters";
 import { ExternalLink, Printer, Trash2 } from "lucide-react";
 import type { PartSaleRow } from "./types";
 import { buyerOf, PAYMENT_MODE_LABELS } from "./types";
-import { printPartSale } from "./printPartSale";
+import { PartSalePrintDialog } from "./PartSalePrintDialog";
 
 export function PartSaleDetailDialog({ sale, onClose, canManage }: {
   sale: PartSaleRow | null; onClose: () => void; canManage: boolean;
@@ -22,6 +22,7 @@ export function PartSaleDetailDialog({ sale, onClose, canManage }: {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const del = useMutation({
     mutationFn: async (id: string) => {
@@ -116,15 +117,15 @@ export function PartSaleDetailDialog({ sale, onClose, canManage }: {
                 <Trash2 className="h-4 w-4 mr-1" /> 판매 취소
               </Button>
             )}
-            <Button variant="outline" onClick={() => {
-              if (!printPartSale(sale)) toast({ title: "팝업이 막혀 있어요", description: "브라우저에서 팝업을 허용해주세요.", variant: "destructive" });
-            }}>
+            <Button variant="outline" onClick={() => setPrintOpen(true)}>
               <Printer className="h-4 w-4 mr-1" /> 거래명세서 인쇄
             </Button>
             <Button onClick={onClose}>닫기</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {sale && <PartSalePrintDialog sale={sale} open={printOpen} onOpenChange={setPrintOpen} />}
 
       <AlertDialog open={confirm} onOpenChange={setConfirm}>
         <AlertDialogContent>

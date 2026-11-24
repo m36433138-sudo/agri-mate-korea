@@ -226,15 +226,20 @@ ${diagramPages}
 </body></html>`;
 }
 
-/** 숨긴 틀에서 인쇄 창을 띄운다. 그림(도면·도장)이 다 뜬 뒤에 인쇄한다. */
+/** 숨긴 틀에서 견적서 인쇄 창을 띄운다. */
 export function printInsuranceEstimate(items: EstimateItem[], info: EstimatePrintInfo) {
+  printHtmlDocument(insuranceEstimateHtml(items, info));
+}
+
+/** 숨긴 틀에 문서를 넣고 인쇄 창을 띄운다. 그림(도면·도장)이 다 뜬 뒤에 인쇄한다. 팝업 차단과 상관없다. */
+export function printHtmlDocument(html: string) {
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
   frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
   document.body.appendChild(frame);
   const doc = frame.contentDocument!;
   doc.open();
-  doc.write(insuranceEstimateHtml(items, info));
+  doc.write(html);
   doc.close();
   const imgs = Array.from(doc.images);
   let printed = false;
