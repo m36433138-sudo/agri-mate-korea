@@ -1,0 +1,20 @@
+-- 고객·기계 정보는 회사 전체가 함께 본다.
+-- 전에는 직원이 자기 지점(프로필 branch) 고객만 볼 수 있었는데, 고객 1천여 명 모두 지점이 비어 있어 아무 직원도 고객을 못 봤다.
+-- 보기: 모든 직원(관리자·직원). 등록·수정: 「고객 등록·수정」 권한이 있는 직원(지점 제한 없음). 삭제: 관리자만(기존 정책).
+-- 고객 계정은 그대로 자기 정보·자기 기계·자기 수리만 본다.
+DROP POLICY IF EXISTS "Employees view branch customers" ON public.customers;
+DROP POLICY IF EXISTS "Employees create branch customers" ON public.customers;
+DROP POLICY IF EXISTS "Employees edit branch customers" ON public.customers;
+
+CREATE POLICY "Staff view all customers" ON public.customers FOR SELECT TO authenticated
+  USING ((SELECT public.is_staff((SELECT auth.uid()))));
+CREATE POLICY "Employees create customers" ON public.customers FOR INSERT TO authenticated
+  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'employee')) AND (SELECT public.has_permission((SELECT auth.uid()), 'edit_customers')));
+CREATE POLICY "Employees edit customers" ON public.customers FOR UPDATE TO authenticated
+  USING ((SELECT public.has_role((SELECT auth.uid()), 'employee')) AND (SELECT public.has_permission((SELECT auth.uid()), 'edit_customers')))
+  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'employee')) AND (SELECT public.has_permission((SELECT auth.uid()), 'edit_customers')));
+
+-- 고객의 기계도 모든 직원이 본다 (등록·수정은 기존 권한 그대로)
+DROP POLICY IF EXISTS "Employees view machines with permission" ON public.machines;
+CREATE POLICY "Staff view all machines" ON public.machines FOR SELECT TO authenticated
+  USING ((SELECT public.is_staff((SELECT auth.uid()))));

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Profile } from "@/types/database";
 import { withRetry, classifyTransient, describeReason } from "@/lib/retry";
 import { useToast } from "@/hooks/use-toast";
+import { STAFF_SHARED_PERMISSIONS } from "@/lib/permissions";
 
 export type AppRole = "admin" | "employee" | "customer";
 
@@ -110,7 +111,7 @@ export function useUserRole() {
 
   const hasPermission = (key: string) => {
     if (isAdmin) return true;
-    if (isEmployee) return permissions?.[key] ?? false;
+    if (isEmployee) return STAFF_SHARED_PERMISSIONS.includes(key) || (permissions?.[key] ?? false);
     return false;
   };
 

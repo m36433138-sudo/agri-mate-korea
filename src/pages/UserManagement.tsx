@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import type { AppRole } from "@/hooks/useUserRole";
 import type { Customer } from "@/types/database";
-import { PERMISSION_GROUPS, PERMISSION_LABELS, PERMISSION_PRESETS, ALL_PERMISSIONS } from "@/lib/permissions";
+import { PERMISSION_GROUPS, PERMISSION_LABELS, PERMISSION_PRESETS, ALL_PERMISSIONS, STAFF_SHARED_PERMISSIONS } from "@/lib/permissions";
 
 type TeamType = "영업팀" | "기사팀" | "사무팀";
 
@@ -1162,9 +1162,10 @@ function PermissionsDialog({ employeeId, onClose }: { employeeId: string; onClos
                             {item.label}
                           </Label>
                           <Switch
-                            checked={permMap[item.key] ?? false}
-                            disabled={bulkMutation.isPending}
+                            checked={STAFF_SHARED_PERMISSIONS.includes(item.key) || (permMap[item.key] ?? false)}
+                            disabled={bulkMutation.isPending || STAFF_SHARED_PERMISSIONS.includes(item.key)}
                             onCheckedChange={(checked) => toggle(item.key, checked)}
+                            aria-label={item.label}
                           />
                         </div>
                       ))}
