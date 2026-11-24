@@ -48,7 +48,12 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 export function parseDepositSms(raw: string, now: Date = new Date()): ParsedDeposit | null {
   if (!raw) return null;
-  const text = raw.replace(/\[(Web발신|국외발신)\]/g, " ").replace(/\r/g, "").trim();
+  const text = raw
+    .replace(/\[(Web발신|국외발신)\]/g, " ")
+    .replace(/\r/g, "")
+    // 전달 앱이 앞에 붙이는 「보낸사람 : 15882100(주소록 이름)」 줄은 입금자명이 아니다
+    .replace(/^\s*(보낸\s*사람|발신\s*번호|발신자|From)\s*[:：][^\n]*\n?/gim, " ")
+    .trim();
   if (!/입금/.test(text)) return null;
   // 「출금」만 있고 입금 금액이 없는 문자는 제외
   const amtMatch =

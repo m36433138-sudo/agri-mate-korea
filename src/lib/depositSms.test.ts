@@ -88,4 +88,12 @@ describe("pickSmsText (전달 앱마다 다른 본문 칸)", () => {
     expect(pickSmsText(broken)).toBe(sms);
     expect(pickSmsText({ from: "x" }, broken)).toBe(sms);
   });
+  it("한글 SMS Forwarder 앱이 붙이는 「보낸사람」 줄은 입금자명으로 읽지 않는다", () => {
+    const fwd = "보낸사람 : 15882100()\n농협 입금1원\n11/24 10:38 301-****-9230-21 마준혁\n잔액112,741,834원";
+    const p = parseDepositSms(fwd, new Date("2026-11-24T01:40:00Z"));
+    expect(p?.depositorName).toBe("마준혁");
+    expect(p?.amount).toBe(1);
+    expect(p?.balance).toBe(112741834);
+    expect(pickSmsText({ text: fwd })).toBe(fwd);
+  });
 });

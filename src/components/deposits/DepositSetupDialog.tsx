@@ -114,6 +114,7 @@ export function DepositSetupDialog({ open, onOpenChange }: { open: boolean; onOp
               <li>「+」로 규칙을 하나 만들어요. <b className="text-foreground">Sender(보내는 사람)</b>에 농협 문자 번호(보통 <code>15882100</code>)를 넣어요. 번호를 모르면 <code>*</code>로 두어도 돼요 — 입금 문자가 아니면 저장하지 않아요.</li>
               <li><b className="text-foreground">Webhook URL</b>에 위 주소를 붙여넣어요. 아래쪽 JSON 내용은 <b className="text-foreground">고치지 말고 그대로</b> 두고 저장해요.</li>
               <li><b className="text-foreground">배터리 최적화 끄기</b>: 설정 → 애플리케이션 → SMS to URL Forwarder → 배터리 → 「제한 없음」. 안 끄면 몇 시간 늦게 보내거나 안 보내요.</li>
+              <li><b className="text-foreground">한글 「SMS Forwarder」(문자 자동 전달) 앱</b>을 쓰면: 받는 사람 URL 설정에서 요청 종류 <b className="text-foreground">POST</b>, Body는 <b className="text-foreground">JSON</b>을 고르고 내용을 <code>{'{"text":"{msg}"}'}</code> 한 줄로 바꿔요. GET이나 x-www-form-urlencoded로 두면 문자 내용 없이 주소만 와서 저장되지 않아요. 받는 사람 URL은 하나만 두세요.</li>
               <li>다른 전달 앱도 괜찮아요: 방법은 POST(웹훅), 보낼 내용에 문자 본문(<code>%text%</code>, <code>{"{msg}"}</code> 등)이 들어가면 돼요.</li>
             </ol>
             <p className="text-xs text-muted-foreground"><b className="text-foreground">아이폰</b>: 단축어 → 자동화 → 「메시지」(내용에 「입금」 포함) → 「URL의 콘텐츠 가져오기」 방법 POST, 주소 붙여넣기, 본문 JSON에 <code>text</code> = 메시지 내용.</p>

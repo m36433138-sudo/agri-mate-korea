@@ -59,7 +59,8 @@ Deno.serve(async (req) => {
   const text = pickSmsText(body, raw).slice(0, 2000);
   if (!text.trim()) {
     await log("empty", raw.slice(0, 500) || null);
-    return json({ ok: true, saved: false, reason: "본문이 비어 있음 — 전달 앱의 보낼 내용에 문자 본문을 넣어 주세요" });
+    // 전달 앱 기록에 「실패」로 보이도록 400 — 200이면 앱은 「성공」으로 표시해 원인을 숨긴다
+    return json({ ok: false, saved: false, error: "본문이 비어 있음 — 전달 앱의 보낼 내용에 문자 본문을 넣어 주세요" }, 400);
   }
   if (text.startsWith("[연결 시험]")) {
     await log("test", text);
