@@ -36,6 +36,34 @@ export function useMe() {
   });
 }
 
+/**
+ * 로그인 계정에 직원 정보가 없을 때(관리자 계정 등): 같은 이름의 연결 안 된 직원이 있으면 그 직원에 연결하고,
+ * 없으면 새 직원으로 등록해 연결한다. 직원 정보를 고칠 수 있는 관리자만 된다.
+ */
+export function useLinkMyself() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (fallbackName: string) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) throw new Error("로그인이 필요해요");
+      const { data: prof } = await db.from("profiles").select("display_name").eq("id", uid).maybeSingle();
+      const name = (prof?.display_name || fallbackName || "").trim();
+      if (!name || name.includes("@")) throw new Error("내 이름(표시 이름)이 없어요. 사용자 관리에서 이름을 먼저 넣어 주세요.");
+      const { data: same } = await db.from("employees").select("id, user_id").eq("name", name).is("user_id", null).limit(1);
+      if (same?.length) {
+        const { error } = await db.from("employees").update({ user_id: uid }).eq("id", same[0].id);
+        if (error) throw new Error(error.message);
+        return { name, created: false };
+      }
+      const { error } = await db.from("employees").insert({ name, user_id: uid, is_active: true });
+      if (error) throw new Error(error.message.includes("row-level") ? "직원 정보는 관리자만 연결할 수 있어요. 관리자에게 부탁해 주세요." : error.message);
+      return { name, created: true };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me-employee"] }),
+  });
+}
+
 /** 오늘 내 출퇴근 기록 + 출근·퇴근 (위치는 출퇴근 기록과 위치 기록에 함께 남긴다) */
 export function useMyAttendance() {
   const qc = useQueryClient();

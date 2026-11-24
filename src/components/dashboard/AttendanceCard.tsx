@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, LogOut, MapPin, MapPinOff, Radio } from "lucide-react";
+import { LogIn, LogOut, MapPin, MapPinOff, Radio, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLiveSharing, useMyAttendance } from "@/hooks/useMyAttendance";
+import { useLinkMyself, useLiveSharing, useMyAttendance } from "@/hooks/useMyAttendance";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const hm = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--";
@@ -21,11 +22,36 @@ export function AttendanceCard() {
   const { toast } = useToast();
   const { me, meLoading, record, isLoading, clockIn, clockOut, working } = useMyAttendance();
   const { off, setOff, status } = useLiveSharing();
+  const { isAdmin, isEmployee, profile } = useUserRole();
+  const link = useLinkMyself();
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
 
   if (meLoading) return <Skeleton className="h-[148px] rounded-3xl" />;
-  if (!me) return null; // 직원 계정이 아니면 보이지 않는다
+  if (!me) {
+    // 고객 계정에는 보이지 않는다. 직원·관리자인데 직원 정보가 연결 안 됐으면 연결부터.
+    if (!isAdmin && !isEmployee) return null;
+    return (
+      <section className="rounded-3xl bg-card border border-border/70 card-shadow p-5 space-y-3">
+        <p className="text-sm text-muted-foreground">오늘 출퇴근</p>
+        <p className="text-lg font-bold">이 계정에 직원 정보가 연결돼 있지 않아요</p>
+        {isAdmin ? (
+          <>
+            <p className="text-xs text-muted-foreground">연결하면 출근·퇴근과 위치 공유를 쓸 수 있어요. 같은 이름의 직원이 있으면 그 직원에, 없으면 새로 등록해 연결해요.</p>
+            <Button className="h-12 rounded-2xl w-full gap-2" disabled={link.isPending}
+              onClick={() => link.mutate(profile?.display_name ?? "", {
+                onSuccess: (r) => toast({ title: `「${r.name}」 직원으로 ${r.created ? "새로 등록해 " : ""}연결했어요`, description: "이제 출근을 누를 수 있어요." }),
+                onError: (e: Error) => toast({ title: "연결 실패", description: e.message, variant: "destructive" }),
+              })}>
+              <UserCheck className="h-5 w-5" /> {link.isPending ? "연결 중…" : "내 직원 정보 연결"}
+            </Button>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">관리자에게 「사용자 관리」에서 내 계정을 직원 정보에 연결해 달라고 부탁해 주세요.</p>
+        )}
+      </section>
+    );
+  }
 
   const done = !!record?.clock_out;
   const run = (m: typeof clockIn, label: string) => m.mutate(undefined, {
