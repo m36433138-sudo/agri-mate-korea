@@ -22,7 +22,7 @@ export default function QuotesList() {
   const load = async () => {
     const { data } = await (supabase as any)
       .from("quotes")
-      .select("id,quote_number,quote_date,customer_name,customer_phone,total_amount,created_by,companies(company_name)")
+      .select("id,quote_number,quote_date,customer_name,customer_phone,total_amount,created_by,assignee,companies(company_name)")
       .order("quote_date", { ascending: false })
       .limit(200);
     setRows(data || []);
@@ -103,6 +103,7 @@ export default function QuotesList() {
                   <span className="sm:hidden">· {r.quote_date?.slice(5)}</span>
                   {r.companies?.company_name && <span className="truncate hidden sm:inline">· {r.companies.company_name}</span>}
                   {r.created_by && authors[r.created_by] && <span className="truncate hidden md:inline">· 작성 {authors[r.created_by]}</span>}
+                  {r.assignee && <span className="truncate text-primary">· 담당 {r.assignee}</span>}
                 </div>
               </div>
               <span className="text-sm sm:text-base font-bold tabular-nums whitespace-nowrap">{won(Number(r.total_amount))}</span>

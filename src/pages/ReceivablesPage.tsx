@@ -211,6 +211,7 @@ export default function ReceivablesPage() {
                           {SOURCE_TYPE_LABELS[r.source_type] ?? "미수금"}
                         </Badge>
                         <span className="text-sm font-medium truncate">{recordTitle(r)}</span>
+                        {r.assignee && <span className="shrink-0 text-[11px] rounded-full bg-primary/10 text-primary px-2 py-0.5">담당 {r.assignee}</span>}
                         {r.is_paid ? (
                           <Badge className="text-[11px] bg-green-500/15 text-green-700 dark:text-green-400 shrink-0 hover:bg-green-500/15">완납</Badge>
                         ) : d !== null && d < 0 ? (

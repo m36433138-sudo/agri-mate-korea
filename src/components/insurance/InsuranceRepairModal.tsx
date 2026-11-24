@@ -14,7 +14,8 @@ import { SelectedCustomerCard } from "@/components/SelectedCustomerCard";
 import { FormDialogTopBar, formDialogBodyClass, formDialogContentClass } from "@/components/forms/FormDialogTopBar";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { MachineSearchInput } from "@/components/MachineSearchInput";
-import { useTechnicians } from "@/hooks/useTechnicians";
+import { StaffPicker } from "@/components/StaffPicker";
+import { notifyAssignees } from "@/lib/assignments";
 import InsurancePhotoManager from "./InsurancePhotoManager";
 import InsuranceEstimateEditor from "./InsuranceEstimateEditor";
 import { estimateTotals, newKey, type EstimateItem } from "@/lib/insuranceEstimate";
@@ -52,7 +53,6 @@ export default function InsuranceRepairModal({
 }) {
   const { toast } = useToast();
   const { data: companies = [] } = useInsuranceCompanies();
-  const { data: technicians = [] } = useTechnicians();
   const save = useSaveInsuranceRepair();
 
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -208,6 +208,8 @@ export default function InsuranceRepairModal({
         ...(status !== prevStatus ? statusSideEffects(status) : {}),
       });
       setSavedId(id);
+      // 새로 담당 기사가 된 사람에게 알림 (내 업무 「내 담당」에도 뜬다)
+      void notifyAssignees(technician, repair?.technician, { title: "보험수리 담당", body: [claimNumber, description].filter(Boolean).join(" · ").slice(0, 160) || "보험수리 건이 배정됐어요", url: "/insurance-repairs", tag: `ins-${id}` });
       if (itemsReady) {
         const { error: itemErr } = await (supabase as any).rpc("replace_insurance_estimate_items", {
           _repair_id: id,
@@ -342,12 +344,7 @@ export default function InsuranceRepairModal({
             </div>
             <div>
               <Label className="text-xs">담당 기사</Label>
-              <select className={selectCls} value={technician} onChange={(e) => setTechnician(e.target.value)}>
-                <option value="">선택하세요</option>
-                {technicians.map((t: any) => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
-              </select>
+              <StaffPicker multiple value={technician} onChange={setTechnician} placeholder="담당 기사 선택" />
             </div>
             <div>
               <Label className="text-xs">진행상태</Label>
