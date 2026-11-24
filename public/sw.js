@@ -1,4 +1,4 @@
-/* AgriMate 서비스 워커: 앱 설치(홈 화면) + 휴대폰 알림.
+/* CSGM 서비스 워커: 앱 설치(홈 화면) + 휴대폰 알림.
  * 화면 파일은 저장해 두지 않는다(항상 최신 화면). 인터넷이 끊겼을 때만 안내 쪽을 보여 준다. */
 const OFFLINE_HTML = `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>연결 없음</title><body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;background:#F2F4F6;color:#111827">
@@ -14,7 +14,7 @@ self.addEventListener("fetch", (e) => {
 });
 
 self.addEventListener("push", (e) => {
-  let msg = { title: "광문농기", body: "", url: "/" };
+  let msg = { title: "CSGM", body: "", url: "/" };
   try { msg = { ...msg, ...e.data.json() }; } catch { if (e.data) msg.body = e.data.text(); }
   e.waitUntil(self.registration.showNotification(msg.title, {
     body: msg.body,

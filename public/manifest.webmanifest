@@ -1,7 +1,7 @@
 {
-  "name": "AgriMate 광문농기",
-  "short_name": "광문농기",
-  "description": "광문농기 직원용 — 수리·방문수리·부품·견적·출퇴근",
+  "name": "CSGM · Customer Service Gwangmun",
+  "short_name": "CSGM",
+  "description": "CSGM 직원용 — 수리·방문수리·부품·견적·출퇴근",
   "lang": "ko",
   "id": "/",
   "start_url": "/",

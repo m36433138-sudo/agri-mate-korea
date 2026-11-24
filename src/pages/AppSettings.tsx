@@ -78,7 +78,7 @@ export default function AppSettings() {
         ) : canPrompt ? (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">홈 화면에 아이콘이 생기고, 주소창 없이 앱처럼 열려요.</p>
-            <Button className="h-12 rounded-2xl gap-2 text-base w-full sm:w-auto" onClick={async () => { if (await prompt()) toast({ title: "설치했어요. 홈 화면의 「광문농기」로 여세요." }); }}>
+            <Button className="h-12 rounded-2xl gap-2 text-base w-full sm:w-auto" onClick={async () => { if (await prompt()) toast({ title: "설치했어요. 홈 화면의 「CSGM」으로 여세요." }); }}>
               <Download className="h-5 w-5" /> 앱 설치하기
             </Button>
           </div>
@@ -86,7 +86,7 @@ export default function AppSettings() {
           <ol className="space-y-2 text-sm">
             <li className="flex gap-2"><span className="font-bold text-primary">1</span><span><b>Safari</b>로 이 주소를 열어요 (카카오톡 안 브라우저 말고)</span></li>
             <li className="flex gap-2"><span className="font-bold text-primary">2</span><span>아래쪽 <Share className="inline h-4 w-4 -mt-0.5" /> <b>공유</b> 버튼 → <SquarePlus className="inline h-4 w-4 -mt-0.5" /> <b>홈 화면에 추가</b></span></li>
-            <li className="flex gap-2"><span className="font-bold text-primary">3</span><span>홈 화면의 「광문농기」 아이콘으로 열고, 이 화면에서 알림을 켜요</span></li>
+            <li className="flex gap-2"><span className="font-bold text-primary">3</span><span>홈 화면의 「CSGM」 아이콘으로 열고, 이 화면에서 알림을 켜요</span></li>
           </ol>
         ) : (
           <ol className="space-y-2 text-sm">

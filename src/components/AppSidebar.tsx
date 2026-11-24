@@ -92,8 +92,8 @@ function LogoHeader({ collapsed }: { collapsed: boolean }) {
       </div>
       {!collapsed && (
         <div className="min-w-0">
-          <p className="text-[15px] font-extrabold tracking-tight text-sidebar-foreground leading-tight">AgriMate</p>
-          <p className="text-[11px] font-medium text-muted-foreground leading-tight">광문농기</p>
+          <p className="text-[15px] font-extrabold tracking-tight text-sidebar-foreground leading-tight">CSGM</p>
+          <p className="text-[11px] font-medium text-muted-foreground leading-tight">Customer Service Gwangmun</p>
         </div>
       )}
     </div>
