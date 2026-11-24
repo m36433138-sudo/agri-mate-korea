@@ -20,6 +20,11 @@ export type QuoteProduct = {
   notes: string | null;
   is_active: boolean;
   sort_order: number;
+  machine_group?: string | null;
+  brand?: string | null;
+  image_path?: string | null;
+  highlights?: string | null;
+  description?: string | null;
 };
 
 export type QuoteItem = {

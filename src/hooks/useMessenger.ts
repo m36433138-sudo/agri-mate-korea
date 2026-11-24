@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { sendPush } from "@/lib/appPush";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -284,6 +285,13 @@ export function useMessengerActions() {
         file_size: fileSize,
       });
       if (error) throw error;
+      // 대화방 사람들 휴대폰에 알림 (보낸 사람 이름은 서버가 붙인다). 실패해도 보내기는 끝났다.
+      void sendPush("chat", { room_id: input.roomId }, {
+        title: "새 메시지",
+        body: input.content?.trim().slice(0, 120) || (fileName ? `📎 ${fileName}` : "파일"),
+        url: `/messenger?room=${input.roomId}`,
+        tag: `chat-${input.roomId}`,
+      });
     },
     onSuccess: invalidate,
   });

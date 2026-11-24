@@ -1,15 +1,18 @@
 import { forwardRef } from "react";
-import type { Company, Quote, QuoteItem } from "@/lib/quoteTypes";
+import type { Company, Quote, QuoteItem, QuoteProduct } from "@/lib/quoteTypes";
+import { productImageUrl } from "@/lib/productCatalog";
 import { won } from "@/lib/quoteTypes";
 
 type Props = {
   company: Company | null;
   quote: Partial<Quote>;
   items: QuoteItem[];
+  /** 견적에 담긴 제품 (사진·주요 사양을 표 아래 카드로 보여 준다) */
+  products?: QuoteProduct[];
 };
 
 // A4 견적서 인쇄/이미지 캡처용 뷰. 흰 배경 + 검정 텍스트 (다크테마 무관)
-export const QuotePrintView = forwardRef<HTMLDivElement, Props>(({ company, quote, items }, ref) => {
+export const QuotePrintView = forwardRef<HTMLDivElement, Props>(({ company, quote, items, products = [] }, ref) => {
   const subtotal = items.reduce((s, i) => s + Number(i.line_total || 0), 0);
   const discount = items.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price) * (Number(i.discount_rate) / 100), 0);
   const tradeIn = Number(quote.trade_in_amount || 0);
@@ -110,6 +113,35 @@ export const QuotePrintView = forwardRef<HTMLDivElement, Props>(({ company, quot
           </tr>
         </tfoot>
       </table>
+
+      {/* 제품 사진·주요 사양 */}
+      {(() => {
+        const byId = new Map(products.map((p) => [p.id, p]));
+        const shown = [...new Set(items.map((i) => i.product_id).filter(Boolean) as string[])]
+          .map((id) => byId.get(id)).filter((p): p is QuoteProduct => !!p && (!!p.image_path || !!p.highlights));
+        if (!shown.length) return null;
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(3, shown.length)}, 1fr)`, gap: "10px", marginBottom: "16px" }}>
+            {shown.slice(0, 6).map((p) => (
+              <div key={p.id} style={{ border: "1px solid #ddd", borderRadius: "10px", overflow: "hidden" }}>
+                {p.image_path && (
+                  <div style={{ height: "130px", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img src={productImageUrl(p.image_path)!} alt={p.name} crossOrigin="anonymous" style={{ maxWidth: "100%", maxHeight: "126px", objectFit: "contain" }} />
+                  </div>
+                )}
+                <div style={{ padding: "8px 10px" }}>
+                  <div style={{ fontWeight: 700, fontSize: "13px" }}>{p.name}</div>
+                  {p.highlights && (
+                    <ul style={{ margin: "4px 0 0", paddingLeft: "14px", fontSize: "11px", color: "#374151", lineHeight: 1.5 }}>
+                      {p.highlights.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 4).map((l, i) => <li key={i}>{l}</li>)}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* 비고 + 서명 */}
       <div style={{ display: "flex", gap: "12px" }}>

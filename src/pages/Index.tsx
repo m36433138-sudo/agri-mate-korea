@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { Skeleton } from "@/components/ui/skeleton";
 import MessengerFeedCard from "@/components/dashboard/MessengerFeedCard";
+import { AttendanceCard } from "@/components/dashboard/AttendanceCard";
+import { InstallAppBanner } from "@/components/dashboard/InstallAppBanner";
+import { LiveStaffPanel } from "@/components/dashboard/LiveStaffPanel";
 import { Panel } from "@/components/dashboard/Panel";
 import { SalesTrendChart } from "@/components/dashboard/SalesTrendChart";
 import { AiAssistantCard, DeltaChip, KpiCard, TechnicianLoad } from "@/components/dashboard/DashboardBits";
@@ -141,6 +144,14 @@ export default function Dashboard() {
             <Plus className="h-4 w-4" /> 수리 등록
           </Link>
         </div>
+      </div>
+
+      <InstallAppBanner />
+
+      {/* 출퇴근 + 지금 근무 중(위치 공유) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+        <div className="lg:col-span-5"><AttendanceCard /></div>
+        <div className="lg:col-span-7"><LiveStaffPanel /></div>
       </div>
 
       {/* 1줄: AI 카드 + 숫자 카드 4개 */}

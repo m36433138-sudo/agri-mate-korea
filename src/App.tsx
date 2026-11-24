@@ -42,6 +42,7 @@ const AttachmentsCatalog = lazy(() => import("@/pages/AttachmentsCatalog"));
 const KnowledgeBase = lazy(() => import("@/pages/KnowledgeBase"));
 const InsuranceRepairs = lazy(() => import("@/pages/InsuranceRepairs"));
 const Messenger = lazy(() => import("@/pages/Messenger"));
+const AppSettings = lazy(() => import("@/pages/AppSettings"));
 const ErrorCodeLog = lazy(() => import("@/pages/ErrorCodeLog"));
 const BladeSharpening = lazy(() => import("@/pages/BladeSharpening"));
 const ReceivablesPage = lazy(() => import("@/pages/ReceivablesPage"));
@@ -121,6 +122,7 @@ const App = () => (
                         } />
                         <Route path="/workspace" element={<WorkspacePage />} />
                         <Route path="/messenger" element={<Messenger />} />
+                        <Route path="/app-settings" element={<AppSettings />} />
                         <Route path="/vendors" element={<ProtectedRoute requiredPermission="view_vendors"><VendorsList /></ProtectedRoute>} />
                         <Route path="/vendors/:id" element={<ProtectedRoute requiredPermission="view_vendors"><VendorDetail /></ProtectedRoute>} />
                         <Route path="/assets" element={<ProtectedRoute requiredPermission="view_assets"><AssetsPage /></ProtectedRoute>} />

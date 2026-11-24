@@ -4,3 +4,5 @@ project_id = "kdycruiptkxwrwuyifhp"
 verify_jwt = false
 [functions.deposit-sms]
 verify_jwt = false
+[functions.send-push]
+verify_jwt = false

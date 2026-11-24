@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   MessageSquare, Send, Paperclip, Search, Plus, Users, X, Download,
   Trash2, LogOut, Tractor, User as UserIcon, Loader2,
@@ -43,7 +43,9 @@ export default function Messenger() {
   const { toast } = useToast();
   const { rooms, isLoading } = useChatRooms();
   const { data: staff = [] } = useChatStaff();
-  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  // 알림을 눌러 /messenger?room=… 으로 들어오면 그 방을 연다
+  const [params] = useSearchParams();
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(() => params.get("room"));
   const [newRoomOpen, setNewRoomOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [roomFilter, setRoomFilter] = useState("");

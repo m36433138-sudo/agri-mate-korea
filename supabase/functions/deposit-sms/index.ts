@@ -3,6 +3,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { parseDepositSms, pickSmsText } from "../_shared/depositSms.ts";
+import { pushToUsers } from "../_shared/push.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -93,5 +94,15 @@ Deno.serve(async (req) => {
     return json({ ok: true, saved: false, reason: "이미 받은 문자" });
   }
   await log("saved", text, saved[0].id);
+  // 관리자 휴대폰에 「입금 확인 대기」 알림 (실패해도 저장은 끝났다)
+  try {
+    const { data: admins } = await admin.from("user_roles").select("user_id").eq("role", "admin");
+    await pushToUsers(admin, (admins ?? []).map((r: { user_id: string }) => r.user_id), "deposit", {
+      title: `입금 ${parsed.amount.toLocaleString("ko-KR")}원`,
+      body: `${parsed.depositorName ?? "입금자 미상"} · ${parsed.bank} — 미수금과 맞춰 승인해 주세요`,
+      url: "/receivables",
+      tag: `deposit-${saved[0].id}`,
+    });
+  } catch (e) { console.error("입금 알림 실패", e); }
   return json({ ok: true, saved: true, amount: parsed.amount, depositor: parsed.depositorName });
 });

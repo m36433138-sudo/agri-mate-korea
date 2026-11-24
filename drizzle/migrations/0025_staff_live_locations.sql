@@ -1,0 +1,30 @@
+-- 출근한 직원의 실시간 위치 (출장 위치 공유). 직원마다 한 줄, 앱이 열려 있는 동안 몇 분마다 덮어쓴다.
+-- 퇴근하거나 공유를 끄면 sharing=false 로 바뀌어 지도에서 빠진다. 지난 기록은 technician_locations(출퇴근 때)에 남는다.
+CREATE TABLE public.staff_live_locations (
+  employee_id uuid PRIMARY KEY REFERENCES public.employees(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  name text NOT NULL,
+  lat double precision,
+  lng double precision,
+  accuracy double precision,
+  sharing boolean NOT NULL DEFAULT false,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.staff_live_locations TO authenticated;
+GRANT ALL ON public.staff_live_locations TO service_role;
+ALTER TABLE public.staff_live_locations ENABLE ROW LEVEL SECURITY;
+
+-- 직원·관리자는 모두 본다 (출장 동선 공유)
+CREATE POLICY "staff read live locations" ON public.staff_live_locations FOR SELECT TO authenticated
+  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')) OR (SELECT public.has_role((SELECT auth.uid()), 'employee')));
+-- 쓰기는 자기 위치만 (로그인한 사람 = 그 직원)
+CREATE POLICY "own live location insert" ON public.staff_live_locations FOR INSERT TO authenticated
+  WITH CHECK (user_id = (SELECT auth.uid()) AND employee_id IN (SELECT id FROM public.employees WHERE user_id = (SELECT auth.uid())));
+CREATE POLICY "own live location update" ON public.staff_live_locations FOR UPDATE TO authenticated
+  USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()) AND employee_id IN (SELECT id FROM public.employees WHERE user_id = (SELECT auth.uid())));
+CREATE POLICY "own or admin live location delete" ON public.staff_live_locations FOR DELETE TO authenticated
+  USING (user_id = (SELECT auth.uid()) OR (SELECT public.has_role((SELECT auth.uid()), 'admin')));
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.staff_live_locations;

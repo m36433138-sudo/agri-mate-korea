@@ -1,4 +1,5 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { useLiveLocationRunner } from "@/hooks/useMyAttendance";
 import { AppSidebar } from "@/components/AppSidebar";
 import GlobalSearch from "@/components/GlobalSearch";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -33,6 +34,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/expenses": "지출 관리",
   "/workspace": "내 업무",
   "/messenger": "사내 메신저",
+  "/app-settings": "앱·알림 설정",
   "/attachments": "작업기 관리",
   "/error-codes": "에러코드 기록",
   "/diagrams": "부품 도면",
@@ -111,6 +113,7 @@ function useBottomTabs(): NavItem[] {
 export default function Layout({ children }: { children: React.ReactNode }) {
   useMessengerNotifications();
   useReceivablesAlert();
+  useLiveLocationRunner();
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
   const tabs = useBottomTabs();
