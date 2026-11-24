@@ -96,4 +96,8 @@ describe("pickSmsText (전달 앱마다 다른 본문 칸)", () => {
     expect(p?.balance).toBe(112741834);
     expect(pickSmsText({ text: fwd })).toBe(fwd);
   });
+  it("전달 앱 기록을 여러 건 붙여넣으면 「보낸사람」 줄마다 나눈다", () => {
+    const two = "보낸사람 : 15882100()\n농협 입금1원\n11/24 10:38 301-****-9230-21 마준혁\n잔액5원\n보낸사람 : 15882100()\n농협 입금2원\n11/24 10:39 301-****-9230-21 홍길동\n잔액7원";
+    expect(splitSmsBatch(two).map((t) => parseDepositSms(t, new Date("2026-11-24T02:00:00Z"))?.depositorName)).toEqual(["마준혁", "홍길동"]);
+  });
 });

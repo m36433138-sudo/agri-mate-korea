@@ -15,7 +15,7 @@ const RESULT: Record<string, { label: string; tone: string; hint?: string }> = {
   saved: { label: "저장됨", tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
   duplicate: { label: "이미 받음", tone: "bg-slate-500/15 text-slate-700 dark:text-slate-300", hint: "같은 문자가 두 번 와서 한 번만 저장했어요" },
   not_deposit: { label: "입금 문자 아님", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300", hint: "「입금」과 금액을 못 찾았어요. 내용이 문자 본문 그대로인지 확인하세요" },
-  empty: { label: "내용 없음", tone: "bg-red-500/15 text-red-700 dark:text-red-300", hint: "본문이 비어 왔어요. 전달 앱의 「보낼 내용」에 문자 본문 변수를 넣어 주세요" },
+  empty: { label: "내용 없음", tone: "bg-red-500/15 text-red-700 dark:text-red-300", hint: "본문이 비어 왔어요. 전달 앱을 POST · JSON으로 두고 보낼 내용에 문자 본문 변수(예: {\"text\":\"{msg}\"})를 넣어 주세요" },
   unauthorized: { label: "주소 틀림", tone: "bg-red-500/15 text-red-700 dark:text-red-300", hint: "예전 주소(키)로 왔어요. 휴대폰 앱에 지금 주소를 다시 넣어 주세요" },
   test: { label: "연결 시험", tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
   error: { label: "저장 실패", tone: "bg-red-500/15 text-red-700 dark:text-red-300" },
@@ -175,6 +175,14 @@ function PhoneStatus({ inbox, loading }: { inbox: InboxRow[]; loading: boolean }
       <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
         <Smartphone className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
         <p><b>아직 휴대폰에서 받은 문자가 없어요.</b> 아래 1~3번대로 입금 문자가 오는 휴대폰을 설정해 주세요.</p>
+      </div>
+    );
+  }
+  if (last.result === "empty") {
+    return (
+      <div className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-xs">
+        <Smartphone className="h-4 w-4 mt-0.5 shrink-0 text-red-600 dark:text-red-300" />
+        <p><b>휴대폰과 연결은 됐지만 문자 내용이 비어 와요</b> ({when(last.received_at)}). 전달 앱을 POST · JSON으로 바꾸고 내용을 <code>{'{"text":"{msg}"}'}</code>로 넣어 주세요.</p>
       </div>
     );
   }

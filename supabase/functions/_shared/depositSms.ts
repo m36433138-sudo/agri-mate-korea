@@ -118,7 +118,8 @@ export function parseDepositSms(raw: string, now: Date = new Date()): ParsedDepo
 export function splitSmsBatch(raw: string): string[] {
   return raw
     .replace(/\r/g, "")
-    .split(/\n\s*\n|(?=\[Web발신\])/)
+    // 전달 앱 기록을 복사하면 문자마다 「보낸사람 :」 줄로 시작한다
+    .split(/\n\s*\n|(?=\[Web발신\])|\n(?=\s*보낸\s*사람\s*[:：])/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
