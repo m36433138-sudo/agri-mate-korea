@@ -5,6 +5,9 @@
 
 export type PermissionKey = string;
 
+/** 모든 직원이 항상 갖는 권한 (고객·기계 정보는 회사 전체가 함께 본다). 수정·삭제 권한은 따로. */
+export const STAFF_SHARED_PERMISSIONS: readonly PermissionKey[] = ["view_customers", "view_machines"];
+
 export interface PermissionDef {
   key: PermissionKey;
   label: string;
@@ -30,7 +33,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     group: "고객",
     items: [
-      { key: "view_customers", label: "고객 목록 조회" },
+      { key: "view_customers", label: "고객 목록 조회 (모든 직원)" },
       { key: "edit_customers", label: "고객 등록·수정", requires: "view_customers" },
       { key: "delete_customers", label: "고객 삭제", requires: "view_customers" },
     ],
@@ -38,7 +41,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     group: "기계 · 작업기",
     items: [
-      { key: "view_machines", label: "기계 목록 조회" },
+      { key: "view_machines", label: "기계 목록 조회 (모든 직원)" },
       { key: "add_machines", label: "기계 등록", requires: "view_machines" },
       { key: "edit_machines", label: "기계 수정 (판매·중고인수)", requires: "view_machines" },
       { key: "delete_machines", label: "기계 삭제", requires: "view_machines" },

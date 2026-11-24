@@ -66,6 +66,35 @@ export function calcOvertime(
   return { total, morning, afternoon };
 }
 
+export type BreakSpan = { started_at: string; ended_at: string | null };
+
+const overlapMin = (a0: number, a1: number, b0: number, b1: number) => Math.max(0, Math.floor((Math.min(a1, b1) - Math.max(a0, b0)) / 60000));
+
+/** 외출 시간(분): 출근~퇴근 안에 든 부분만. 아직 안 돌아왔으면 지금(또는 퇴근)까지. */
+export function breakMinutes(clockIn: string, clockOut: string, breaks: BreakSpan[]): number {
+  const i = Date.parse(clockIn), o = Date.parse(clockOut);
+  return breaks.reduce((s, b) => s + overlapMin(i, o, Date.parse(b.started_at), b.ended_at ? Date.parse(b.ended_at) : o), 0);
+}
+
+/**
+ * 외출을 뺀 초과근무: 외출은 업무 시간이 아니므로 총 근무(8시간 기준)와 오전(08:30 전)·오후(18:00 후) 초과 구간에서 모두 뺀다.
+ */
+export function calcOvertimeWithBreaks(clockIn: string, clockOut: string, isHoliday: boolean, breaks: BreakSpan[]) {
+  const away = breakMinutes(clockIn, clockOut, breaks);
+  if (!away) return { ...calcOvertime(clockIn, clockOut, isHoliday), breakMinutes: 0 };
+  const inMs = Date.parse(clockIn), outMs = Date.parse(clockOut);
+  const net = Math.max(0, Math.floor((outMs - inMs) / 60000) - away);
+  const spans = breaks.map((b) => [Date.parse(b.started_at), b.ended_at ? Date.parse(b.ended_at) : outMs] as const);
+  const awayIn = (a: number, b: number) => spans.reduce((s, [x, y]) => s + overlapMin(Math.max(a, inMs), Math.min(b, outMs), x, y), 0);
+  if (isHoliday) return { total: net, morning: 0, afternoon: net, breakMinutes: away };
+  if (net < 480) return { total: 0, morning: 0, afternoon: 0, breakMinutes: away };
+  const dateStr = new Date(inMs + 9 * 3600_000).toISOString().slice(0, 10);
+  const mStart = Date.parse(`${dateStr}T08:30:00+09:00`), eEnd = Date.parse(`${dateStr}T18:00:00+09:00`);
+  const morning = inMs < mStart ? Math.max(0, overlapMin(inMs, outMs, inMs, mStart) - awayIn(inMs, mStart)) : 0;
+  const afternoon = outMs > eEnd ? Math.max(0, overlapMin(inMs, outMs, eEnd, outMs) - awayIn(eEnd, outMs)) : 0;
+  return { total: morning + afternoon, morning, afternoon, breakMinutes: away };
+}
+
 export function minutesToHM(min: number): string {
   if (min <= 0) return "0:00";
   const h = Math.floor(min / 60);
@@ -86,6 +115,8 @@ export interface AttendanceRecord {
   is_modified: boolean;
   modification_reason: string | null;
   is_settled: boolean;
+  /** 외출 합계(분) — 근무·초과근무에서 뺀 시간 */
+  break_minutes?: number;
   latitude_in: number | null;
   longitude_in: number | null;
   latitude_out: number | null;
@@ -262,7 +293,11 @@ export function useAttendance() {
       }
 
       const holiday = isHolidayOrWeekend(dateStr);
-      const ot = calcOvertime(existing.clock_in, now, holiday);
+      // 외출은 근무 시간에서 뺀다 (외출 중이면 지금 끝낸다)
+      const { data: brs } = await (supabase as any).from("attendance_breaks").select("id, started_at, ended_at").eq("employee_id", employeeId).eq("date", dateStr);
+      const open = (brs ?? []).filter((b: BreakSpan & { id: string }) => !b.ended_at);
+      if (open.length) await (supabase as any).from("attendance_breaks").update({ ended_at: now }).in("id", open.map((b: { id: string }) => b.id));
+      const ot = calcOvertimeWithBreaks(existing.clock_in, now, holiday, (brs ?? []).map((b: BreakSpan) => ({ started_at: b.started_at, ended_at: b.ended_at ?? now })));
 
       const { data, error } = await (supabase as any)
         .from("attendance_records")
@@ -271,6 +306,7 @@ export function useAttendance() {
           overtime_minutes: ot.total,
           morning_ot_minutes: ot.morning,
           afternoon_ot_minutes: ot.afternoon,
+          break_minutes: ot.breakMinutes,
           is_modified: isModified || existing.is_modified,
           modification_reason: modReason || existing.modification_reason,
           latitude_out: pos?.lat || null,

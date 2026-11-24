@@ -1,7 +1,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calcOvertime, isHolidayOrWeekend, type AttendanceRecord } from "@/hooks/useAttendance";
+import { breakMinutes, calcOvertimeWithBreaks, isHolidayOrWeekend, type AttendanceRecord, type BreakSpan } from "@/hooks/useAttendance";
 import { distanceKm } from "@/lib/onsiteRoute";
 
 const db = supabase as any;
@@ -36,6 +36,34 @@ export function useMe() {
   });
 }
 
+/**
+ * 로그인 계정에 직원 정보가 없을 때(관리자 계정 등): 같은 이름의 연결 안 된 직원이 있으면 그 직원에 연결하고,
+ * 없으면 새 직원으로 등록해 연결한다. 직원 정보를 고칠 수 있는 관리자만 된다.
+ */
+export function useLinkMyself() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (fallbackName: string) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) throw new Error("로그인이 필요해요");
+      const { data: prof } = await db.from("profiles").select("display_name").eq("id", uid).maybeSingle();
+      const name = (prof?.display_name || fallbackName || "").trim();
+      if (!name || name.includes("@")) throw new Error("내 이름(표시 이름)이 없어요. 사용자 관리에서 이름을 먼저 넣어 주세요.");
+      const { data: same } = await db.from("employees").select("id, user_id").eq("name", name).is("user_id", null).limit(1);
+      if (same?.length) {
+        const { error } = await db.from("employees").update({ user_id: uid }).eq("id", same[0].id);
+        if (error) throw new Error(error.message);
+        return { name, created: false };
+      }
+      const { error } = await db.from("employees").insert({ name, user_id: uid, is_active: true });
+      if (error) throw new Error(error.message.includes("row-level") ? "직원 정보는 관리자만 연결할 수 있어요. 관리자에게 부탁해 주세요." : error.message);
+      return { name, created: true };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me-employee"] }),
+  });
+}
+
 /** 오늘 내 출퇴근 기록 + 출근·퇴근 (위치는 출퇴근 기록과 위치 기록에 함께 남긴다) */
 export function useMyAttendance() {
   const qc = useQueryClient();
@@ -53,7 +81,22 @@ export function useMyAttendance() {
     },
   });
 
+  // 오늘 외출 기록 (지금 외출 중이면 ended_at 이 비어 있다)
+  type Break = BreakSpan & { id: string; reason: string | null };
+  const { data: breaks = [] } = useQuery<Break[]>({
+    queryKey: ["my-breaks", me?.id, today],
+    enabled: !!me,
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await db.from("attendance_breaks").select("id, started_at, ended_at, reason").eq("employee_id", me!.id).eq("date", today).order("started_at");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const openBreak = breaks.find((b) => !b.ended_at) ?? null;
+
   const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["my-breaks"] });
     qc.invalidateQueries({ queryKey: ["my-attendance"] });
     qc.invalidateQueries({ queryKey: ["attendance-records"] });
     qc.invalidateQueries({ queryKey: ["attendance-records-all"] });
@@ -85,9 +128,13 @@ export function useMyAttendance() {
       if (!me || !record?.clock_in) throw new Error("오늘 출근 기록이 없어요. 먼저 출근을 눌러 주세요.");
       const pos = await currentPosition();
       const now = new Date().toISOString();
-      const ot = calcOvertime(record.clock_in, now, isHolidayOrWeekend(today));
+      // 외출 중에 퇴근하면 외출을 퇴근 시각에 끝낸다
+      if (openBreak) await db.from("attendance_breaks").update({ ended_at: now }).eq("id", openBreak.id);
+      const spans = breaks.map((b) => ({ started_at: b.started_at, ended_at: b.ended_at ?? now }));
+      const ot = calcOvertimeWithBreaks(record.clock_in, now, isHolidayOrWeekend(today), spans);
       const { error } = await db.from("attendance_records").update({
         clock_out: now, overtime_minutes: ot.total, morning_ot_minutes: ot.morning, afternoon_ot_minutes: ot.afternoon,
+        break_minutes: ot.breakMinutes,
         latitude_out: pos?.lat ?? null, longitude_out: pos?.lng ?? null,
       }).eq("id", record.id);
       if (error) throw new Error(error.message);
@@ -98,7 +145,35 @@ export function useMyAttendance() {
     onSuccess: refresh,
   });
 
-  return { me, meLoading, record, isLoading, clockIn, clockOut, working: !!record?.clock_in && !record?.clock_out };
+  /** 외출: 업무 시간에서 빠지고 위치 공유가 멈춘다. 위치는 기록하지 않는다. */
+  const goOut = useMutation({
+    mutationFn: async (reason?: string) => {
+      if (!me || !record?.clock_in || record.clock_out) throw new Error("근무 중일 때만 외출할 수 있어요.");
+      if (openBreak) return;
+      const { error } = await db.from("attendance_breaks").insert({ employee_id: me.id, date: today, reason: reason?.trim() || null });
+      if (error) throw new Error(error.message.includes("one_open") ? "이미 외출 중이에요." : error.message);
+      await stopLive(me);
+    },
+    onSuccess: refresh,
+  });
+
+  /** 복귀: 외출을 끝내고 오늘 외출 합계를 남긴다. 위치 공유는 다시 시작된다. */
+  const comeBack = useMutation({
+    mutationFn: async () => {
+      if (!me || !openBreak) return;
+      const now = new Date().toISOString();
+      const { error } = await db.from("attendance_breaks").update({ ended_at: now }).eq("id", openBreak.id);
+      if (error) throw new Error(error.message);
+      if (record?.clock_in) {
+        const total = breakMinutes(record.clock_in, now, breaks.map((b) => ({ started_at: b.started_at, ended_at: b.ended_at ?? now })));
+        await db.from("attendance_records").update({ break_minutes: total }).eq("id", record.id);
+      }
+    },
+    onSuccess: refresh,
+  });
+
+  const working = !!record?.clock_in && !record?.clock_out;
+  return { me, meLoading, record, isLoading, clockIn, clockOut, goOut, comeBack, breaks, openBreak, working, away: working && !!openBreak };
 }
 
 async function publishLive(me: Me, pos: Pos, sharing: boolean) {
@@ -123,7 +198,7 @@ function setLiveSharingOff(v: boolean) {
 }
 const subscribeOff = (f: () => void) => { offListeners.add(f); return () => { offListeners.delete(f); }; };
 
-type ShareStatus = "idle" | "sharing" | "denied" | "unsupported";
+type ShareStatus = "idle" | "sharing" | "denied" | "unsupported" | "away";
 let shareStatus: ShareStatus = "idle";
 const statusListeners = new Set<() => void>();
 const setShareStatus = (v: ShareStatus) => { if (shareStatus !== v) { shareStatus = v; statusListeners.forEach((f) => f()); } };
@@ -134,12 +209,13 @@ const subscribeStatus = (f: () => void) => { statusListeners.add(f); return () =
  * 1분 넘게 지났거나 100m 넘게 움직였을 때만 저장한다.
  */
 export function useLiveLocationRunner() {
-  const { me, working } = useMyAttendance();
+  const { me, working, away } = useMyAttendance();
   const off = useSyncExternalStore(subscribeOff, liveSharingOff, () => false);
   const last = useRef<{ at: number; lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    if (!me || !working || off) { setShareStatus("idle"); return; }
+    // 외출 중에는 위치를 보내지 않는다 (업무 시간이 아님)
+    if (!me || !working || off || away) { setShareStatus(away ? "away" : "idle"); return; }
     if (!navigator.geolocation) { setShareStatus("unsupported"); return; }
     const id = navigator.geolocation.watchPosition(
       (p) => {
@@ -155,7 +231,7 @@ export function useLiveLocationRunner() {
       { enableHighAccuracy: true, maximumAge: 30_000, timeout: 60_000 },
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [me, working, off]);
+  }, [me, working, off, away]);
 }
 
 /** 화면용: 지금 공유 상태와 끄기/켜기 */

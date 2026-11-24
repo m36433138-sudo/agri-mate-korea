@@ -364,6 +364,7 @@ function DailyRecordsTable({
             {!employeeFilter && <th className="text-left py-2 px-3 font-medium">직원</th>}
             <th className="text-right py-2 px-3 font-medium">출근</th>
             <th className="text-right py-2 px-3 font-medium">퇴근</th>
+            <th className="text-right py-2 px-3 font-medium">외출</th>
             <th className="text-right py-2 px-3 font-medium">오전초과</th>
             <th className="text-right py-2 px-3 font-medium">오후초과</th>
             <th className="text-right py-2 px-3 font-medium">합계</th>
@@ -385,6 +386,7 @@ function DailyRecordsTable({
                 )}
                 <td className="py-2 px-3 text-right font-mono">{formatTime(r.clock_in)}</td>
                 <td className="py-2 px-3 text-right font-mono">{formatTime(r.clock_out)}</td>
+                <td className="py-2 px-3 text-right font-mono text-muted-foreground">{r.break_minutes ? minutesToHM(r.break_minutes) : "-"}</td>
                 <td className="py-2 px-3 text-right font-mono">{minutesToHM(r.morning_ot_minutes)}</td>
                 <td className="py-2 px-3 text-right font-mono">{minutesToHM(r.afternoon_ot_minutes)}</td>
                 <td className="py-2 px-3 text-right font-mono font-semibold">{minutesToHM(mins)}</td>
