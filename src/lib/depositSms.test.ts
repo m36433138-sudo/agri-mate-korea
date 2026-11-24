@@ -83,4 +83,21 @@ describe("pickSmsText (전달 앱마다 다른 본문 칸)", () => {
     expect(pickSmsText({ from: "15882100" })).toBe("");
     expect(pickSmsText({ from: "x" }, `{"broken": "${sms}`)).toContain("입금");
   });
+  it("줄바꿈이 그대로 들어가 깨진 JSON이어도 문자 본문만 꺼낸다", () => {
+    const broken = `{"from":"15882100","text":"${sms}","sentStamp":1795400000000}`;
+    expect(pickSmsText(broken)).toBe(sms);
+    expect(pickSmsText({ from: "x" }, broken)).toBe(sms);
+  });
+  it("한글 SMS Forwarder 앱이 붙이는 「보낸사람」 줄은 입금자명으로 읽지 않는다", () => {
+    const fwd = "보낸사람 : 15882100()\n농협 입금1원\n11/24 10:38 301-****-9230-21 마준혁\n잔액112,741,834원";
+    const p = parseDepositSms(fwd, new Date("2026-11-24T01:40:00Z"));
+    expect(p?.depositorName).toBe("마준혁");
+    expect(p?.amount).toBe(1);
+    expect(p?.balance).toBe(112741834);
+    expect(pickSmsText({ text: fwd })).toBe(fwd);
+  });
+  it("전달 앱 기록을 여러 건 붙여넣으면 「보낸사람」 줄마다 나눈다", () => {
+    const two = "보낸사람 : 15882100()\n농협 입금1원\n11/24 10:38 301-****-9230-21 마준혁\n잔액5원\n보낸사람 : 15882100()\n농협 입금2원\n11/24 10:39 301-****-9230-21 홍길동\n잔액7원";
+    expect(splitSmsBatch(two).map((t) => parseDepositSms(t, new Date("2026-11-24T02:00:00Z"))?.depositorName)).toEqual(["마준혁", "홍길동"]);
+  });
 });

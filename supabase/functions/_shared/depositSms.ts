@@ -48,7 +48,12 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 export function parseDepositSms(raw: string, now: Date = new Date()): ParsedDeposit | null {
   if (!raw) return null;
-  const text = raw.replace(/\[(Web발신|국외발신)\]/g, " ").replace(/\r/g, "").trim();
+  const text = raw
+    .replace(/\[(Web발신|국외발신)\]/g, " ")
+    .replace(/\r/g, "")
+    // 전달 앱이 앞에 붙이는 「보낸사람 : 15882100(주소록 이름)」 줄은 입금자명이 아니다
+    .replace(/^\s*(보낸\s*사람|발신\s*번호|발신자|From)\s*[:：][^\n]*\n?/gim, " ")
+    .trim();
   if (!/입금/.test(text)) return null;
   // 「출금」만 있고 입금 금액이 없는 문자는 제외
   const amtMatch =
@@ -113,15 +118,26 @@ export function parseDepositSms(raw: string, now: Date = new Date()): ParsedDepo
 export function splitSmsBatch(raw: string): string[] {
   return raw
     .replace(/\r/g, "")
-    .split(/\n\s*\n|(?=\[Web발신\])/)
+    // 전달 앱 기록을 복사하면 문자마다 「보낸사람 :」 줄로 시작한다
+    .split(/\n\s*\n|(?=\[Web발신\])|\n(?=\s*보낸\s*사람\s*[:：])/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
 
 /** 전달 앱마다 본문을 담는 칸 이름이 달라서: 흔한 이름 → 「입금」이 든 아무 글자 칸(안쪽까지) → 원문 */
 const TEXT_KEYS = ["text", "message", "msg", "body", "content", "sms", "smsBody", "sms_body", "messageBody", "Text", "Message", "Body", "Content"];
+/** 줄바꿈을 이스케이프하지 않고 보내 JSON이 깨진 경우: "text":"…" 칸만 꺼낸다 */
+function textFromBrokenJson(s: string): string | null {
+  if (!s.trim().startsWith("{")) return null;
+  for (const k of TEXT_KEYS) {
+    const m = s.match(new RegExp(`"${k}"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,\\s*"[A-Za-z_]+"\\s*:|\\})`));
+    if (m && /입금/.test(m[1])) return m[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+  }
+  return null;
+}
+
 export function pickSmsText(body: unknown, raw = ""): string {
-  if (typeof body === "string") return body;
+  if (typeof body === "string") return textFromBrokenJson(body) ?? body;
   if (body && typeof body === "object") {
     const b = body as Record<string, unknown>;
     for (const k of TEXT_KEYS) if (typeof b[k] === "string" && (b[k] as string).trim()) return b[k] as string;
@@ -136,6 +152,6 @@ export function pickSmsText(body: unknown, raw = ""): string {
     const hit = strings.filter((x) => /입금/.test(x)).sort((a, c) => c.length - a.length)[0];
     if (hit) return hit;
   }
-  return /입금/.test(raw) ? raw : "";
+  return /입금/.test(raw) ? (textFromBrokenJson(raw) ?? raw) : "";
 }
 
