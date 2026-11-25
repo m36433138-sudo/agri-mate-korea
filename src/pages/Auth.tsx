@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { setAutoLogin } from "@/lib/authStorage";
+import { getAutoLogin, getLastLoginId, setAutoLogin as saveAutoLogin, setLastLoginId } from "@/lib/authStorage";
 import { withRetry, classifyTransient, describeReason } from "@/lib/retry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 export default function Auth() {
-  const [loginId, setLoginId] = useState("");
+  const [loginId, setLoginId] = useState(getLastLoginId);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [retryInfo, setRetryInfo] = useState<string | null>(null);
-  const [autoLogin, setAutoLogin] = useState(() => {
-    const saved = localStorage.getItem("agrimate-auto-login");
-    return saved !== "false";
-  });
+  const [autoLogin, setAutoLogin] = useState(getAutoLogin);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -30,7 +27,7 @@ export default function Auth() {
 
     try {
       const email = loginId.includes("@") ? loginId : `${loginId}@ym.local`;
-      setAutoLogin(autoLogin);
+      saveAutoLogin(autoLogin);
       const { error } = await withRetry(
         () => supabase.auth.signInWithPassword({ email, password }),
         {
@@ -41,6 +38,7 @@ export default function Auth() {
         },
       );
       if (error) throw error;
+      setLastLoginId(loginId.trim());
       setRetryInfo(null);
       navigate("/");
     } catch (error: any) {
@@ -109,7 +107,7 @@ export default function Auth() {
                 onCheckedChange={(checked) => setAutoLogin(checked === true)}
               />
               <Label htmlFor="autoLogin" className="text-sm font-normal cursor-pointer">
-                자동 로그인
+                자동 로그인 <span className="text-muted-foreground">(앱을 닫아도 로그인 유지 · 공용 PC는 끄세요)</span>
               </Label>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
