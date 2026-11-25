@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ErrorCodePicker, type PickedErrorCode } from "@/components/errorCodes/ErrorCodePicker";
 import { planRepairReceivable, type RepairPaymentMode } from "@/lib/repairBilling";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -149,6 +150,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
   const [repairDate, setRepairDate] = useState(new Date().toISOString().split("T")[0]);
   const [repairContent, setRepairContent] = useState("");
+  // 이 수리에서 본 에러코드 (매뉴얼에서 고르거나 직접 입력) — 저장할 때 에러코드 기록에 함께 남긴다
+  const [errorCodes, setErrorCodes] = useState<PickedErrorCode[]>([]);
+  const [codesResolved, setCodesResolved] = useState(true);
   const [technician, setTechnician] = useState("");
   const [laborCost, setLaborCost] = useState("");
   const [operatingHours, setOperatingHours] = useState("");
@@ -319,6 +323,8 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
       setRepairDate(new Date().toISOString().split("T")[0]);
       setRepairContent(draftPrefill?.repairContent || "");
+      setErrorCodes([]);
+      setCodesResolved(true);
       setTechnician(draftPrefill?.technician || "");
       setLaborCost(draftPrefill?.laborCost ? String(draftPrefill.laborCost) : "");
       setOperatingHours(draftPrefill?.operatingHours ? String(draftPrefill.operatingHours) : "");
@@ -605,6 +611,20 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
       if (error) throw error;
 
+      if (errorCodes.length > 0) {
+        const { error: codeErr } = await supabase.from("repair_error_codes" as any).insert(errorCodes.map((c) => ({
+          repair_id: data.id,
+          error_code: c.code,
+          symptom: c.entry?.part ?? null,
+          action_taken: repairContent.trim().slice(0, 500) || null,
+          is_resolved: codesResolved,
+          resolved_at: codesResolved ? repairDate : null,
+          notes: null,
+          photo_paths: [],
+        })) as any);
+        if (codeErr) toast({ title: "수리는 저장됐지만 에러코드 기록에 실패했어요", description: codeErr.message, variant: "destructive" });
+      }
+
       if (partRows.length > 0) {
         const resolvedParts: any[] = [];
 
@@ -712,6 +732,8 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       qc.invalidateQueries({ queryKey: ["finance"] });
       qc.invalidateQueries({ queryKey: ["customer-receivables"] });
       qc.invalidateQueries({ queryKey: ["repairs"] });
+      qc.invalidateQueries({ queryKey: ["repair-error-codes"] });
+      qc.invalidateQueries({ queryKey: ["error-code-log"] });
       qc.invalidateQueries({ queryKey: ["all-repairs"] });
       qc.invalidateQueries({ queryKey: ["repairs-recent"] });
 
@@ -733,6 +755,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   // 기계 자동 매칭(작업표 초안)은 비동기로 채워지므로 비교에서 뺀다 — 사람이 입력한 값만 본다
   const snapshot = JSON.stringify({
     repairDate, repairContent, technician, laborCost, operatingHours, notes, accountingPosted,
+    errorCodes: errorCodes.map((c) => c.code), codesResolved,
     paymentMode, partialPaid, selectedCustomerId,
     parts: partRows.map((r) => [r.part_name, r.part_number, r.quantity, r.unit_price, r.branch]),
   });
@@ -944,6 +967,18 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                   placeholder="수리 내용을 입력하세요"
                   rows={2}
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="flex items-center justify-between gap-2">
+                  <span>에러코드 <span className="text-muted-foreground font-normal">(선택)</span></span>
+                  {errorCodes.length > 0 && (
+                    <label className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground cursor-pointer">
+                      <Checkbox checked={codesResolved} onCheckedChange={(v) => setCodesResolved(!!v)} />이번 수리로 해결됨
+                    </label>
+                  )}
+                </Label>
+                <ErrorCodePicker value={errorCodes} onChange={setErrorCodes} machineModel={modelFromMachineLabel(selectedMachineName)} />
               </div>
 
               <div>
