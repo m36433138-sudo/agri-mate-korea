@@ -5,23 +5,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Copy, Printer } from "lucide-react";
 import { CompanyPicker, rememberCompany, type PrintCompany } from "@/components/print/CompanyPicker";
 import { printHtmlDocument } from "@/lib/printInsuranceEstimate";
-import { partSaleHtml } from "@/lib/printPartSale";
-import type { PartSaleRow } from "./types";
-import { buyerOf } from "./types";
+import { statementHtml, type StatementDoc } from "@/lib/printPartSale";
 
-const keyOf = (branch: string) => `partSale.companyId.${branch}`;
+const keyOf = (branch?: string | null) => `partSale.companyId.${branch || "공통"}`;
 const COPY_KEY = "partSale.withSupplierCopy";
 
-/** 거래명세서 인쇄 전: 공급자(사업장)와 보관용 2장 여부를 고른다. 사업장은 지점별로 지난번 선택을 기억한다. */
-export function PartSalePrintDialog({ sale, open, onOpenChange }: { sale: PartSaleRow; open: boolean; onOpenChange: (v: boolean) => void }) {
+/** 거래명세서 인쇄 전: 공급자(사업장)와 보관용 2장 여부를 고른다. 사업장은 지점별로 지난번 선택을 기억한다. (부품 판매·수리·거래 원장 공용) */
+export function StatementPrintDialog({ doc, open, onOpenChange }: { doc: StatementDoc; open: boolean; onOpenChange: (v: boolean) => void }) {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [company, setCompany] = useState<PrintCompany | null>(null);
   const [twoCopies, setTwoCopies] = useState(() => { try { return localStorage.getItem(COPY_KEY) === "1"; } catch { return false; } });
 
   const print = () => {
-    rememberCompany(keyOf(sale.branch), companyId);
+    rememberCompany(keyOf(doc.branch), companyId);
     try { localStorage.setItem(COPY_KEY, twoCopies ? "1" : "0"); } catch { /* 기억 못 해도 인쇄는 한다 */ }
-    printHtmlDocument(partSaleHtml(sale, { company, withSupplierCopy: twoCopies }));
+    printHtmlDocument(statementHtml(doc, { company, withSupplierCopy: twoCopies }));
     onOpenChange(false);
   };
 
@@ -30,10 +28,10 @@ export function PartSalePrintDialog({ sale, open, onOpenChange }: { sale: PartSa
       <DialogContent className="sm:max-w-lg max-h-[92vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Printer className="h-5 w-5 text-primary" /> 거래명세서 인쇄</DialogTitle>
-          <DialogDescription>{buyerOf(sale)} · {sale.sale_date} · {(sale.part_sale_items ?? []).length}품목</DialogDescription>
+          <DialogDescription>{doc.buyerName} · {doc.date} · {doc.lines.length}줄 · {doc.subtitle}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 min-w-0">
-          <CompanyPicker open={open} value={companyId} rememberKey={keyOf(sale.branch)} branch={sale.branch}
+          <CompanyPicker open={open} value={companyId} rememberKey={keyOf(doc.branch)} branch={doc.branch}
             onChange={(id, c) => { setCompanyId(id); setCompany(c); }} />
           <label className="flex items-start gap-3 rounded-2xl border p-3 cursor-pointer">
             <Checkbox className="mt-0.5" checked={twoCopies} onCheckedChange={(v) => setTwoCopies(!!v)} />

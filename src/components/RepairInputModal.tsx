@@ -14,7 +14,7 @@ import { SelectedCustomerCard } from "@/components/SelectedCustomerCard";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as MapIcon, Camera } from "lucide-react";
+import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as MapIcon, Camera, Gift } from "lucide-react";
 import RepairPhotoPartsDialog from "@/components/repair/RepairPhotoPartsDialog";
 import type { EstimateItem } from "@/lib/insuranceEstimate";
 import EstimateDiagramPicker from "@/components/insurance/EstimateDiagramPicker";
@@ -49,6 +49,8 @@ export type DraftPrefill = {
 };
 
 
+const PRINT_AFTER_KEY = "repair.printStatementAfterSave";
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -56,6 +58,8 @@ type Props = {
   machineName?: string;
   draftPrefill?: DraftPrefill | null;
   onDraftFinalized?: (draftId: string) => void;
+  /** 「저장 후 거래명세서」를 켜고 저장했을 때 새 수리 id */
+  onSaved?: (repairId: string) => void;
 };
 
 type MachineCandidate = {
@@ -113,7 +117,7 @@ const reorderList = <T,>(items: T[], fromIndex: number, toIndex: number) => {
   return next;
 };
 
-export default function RepairInputModal({ open, onOpenChange, machineId, machineName, draftPrefill, onDraftFinalized }: Props) {
+export default function RepairInputModal({ open, onOpenChange, machineId, machineName, draftPrefill, onDraftFinalized, onSaved }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -160,6 +164,8 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [accountingPosted, setAccountingPosted] = useState(false);
   const [paymentMode, setPaymentMode] = useState<RepairPaymentMode>("paid");
   const [partialPaid, setPartialPaid] = useState("");
+  const [freeReason, setFreeReason] = useState("");
+  const [printAfter, setPrintAfter] = useState(() => { try { return localStorage.getItem(PRINT_AFTER_KEY) === "1"; } catch { return false; } });
 
   const { data: employees } = useQuery({
     queryKey: ["employees-list"],
@@ -352,6 +358,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
       setAccountingPosted(false);
       setPaymentMode("paid");
       setPartialPaid("");
+      setFreeReason("");
       setSelectedCustomerId("");
       setSelectedCustomerName("");
       setSelectedCustomerPhone(null);
@@ -590,6 +597,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
     );
   const partsSubtotal = partRows.reduce((sum, r) => sum + (Number(r.unit_price) || 0) * (Number(r.quantity) || 0), 0);
   const totalCost = laborCostNum + partsSubtotal;
+  const isFree = paymentMode === "free";
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -601,7 +609,10 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           repair_content: repairContent,
           technician: technician || null,
           labor_cost: parseInt(laborCost) || 0,
-          total_cost: totalCost,
+          total_cost: isFree ? 0 : totalCost,
+          is_free_service: isFree,
+          free_reason: isFree ? freeReason.trim() || null : null,
+          waived_amount: isFree ? totalCost : 0,
           notes: notes || null,
           operating_hours: parseInt(operatingHours) || null,
           accounting_posted: accountingPosted,
@@ -724,9 +735,9 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
             method: null, notes: "수리 등록 시 일부 입금", created_by: auth.user?.id,
           });
         }
-        return { receivable: plan.amount - plan.paidAmount };
+        return { id: data.id, receivable: plan.amount - plan.paidAmount };
       }
-      return { receivable: 0 };
+      return { id: data.id, receivable: 0 };
     },
     onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ["finance"] });
@@ -743,9 +754,12 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
 
       toast({
         title: "수리 이력이 저장되었습니다.",
-        description: res?.receivable > 0 ? `미수금 ${formatPrice(res.receivable)}이 등록됐어요.` : undefined,
+        description: res?.receivable > 0 ? `미수금 ${formatPrice(res.receivable)}이 등록됐어요.`
+          : isFree && totalCost > 0 ? `무상(서비스) ${formatPrice(totalCost)} 처리로 기록했어요.` : undefined,
       });
+      try { localStorage.setItem(PRINT_AFTER_KEY, printAfter ? "1" : "0"); } catch { /* 기억 못 해도 저장은 끝났다 */ }
       onOpenChange(false);
+      if (printAfter && res?.id) onSaved?.(res.id);
     },
     onError: (error: any) => toast({ title: "오류", description: error.message, variant: "destructive" }),
   });
@@ -756,7 +770,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const snapshot = JSON.stringify({
     repairDate, repairContent, technician, laborCost, operatingHours, notes, accountingPosted,
     errorCodes: errorCodes.map((c) => c.code), codesResolved,
-    paymentMode, partialPaid, selectedCustomerId,
+    paymentMode, partialPaid, freeReason, selectedCustomerId,
     parts: partRows.map((r) => [r.part_name, r.part_number, r.quantity, r.unit_price, r.branch]),
   });
   const closeNow = useCallback(() => onOpenChange(false), [onOpenChange]);
@@ -1252,17 +1266,27 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           <div className="space-y-3 pt-5 pb-2">
             <div className="rounded-lg border p-3 space-y-2">
               <Label className="text-sm">결제</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {([["paid","완납"],["unpaid","외상(미수)"],["partial","일부 입금"]] as const).map(([v,l]) => (
-                  <Button key={v} type="button" size="sm" variant={paymentMode === v ? "default" : "outline"} onClick={() => setPaymentMode(v)}>
-                    {l}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {([["paid","완납"],["unpaid","외상(미수)"],["partial","일부 입금"],["free","무상(서비스)"]] as const).map(([v,l]) => (
+                  <Button key={v} type="button" size="sm" variant={paymentMode === v ? "default" : "outline"} onClick={() => setPaymentMode(v)}
+                    className={v === "free" && paymentMode === v ? "bg-emerald-600 hover:bg-emerald-600/90" : undefined}>
+                    {v === "free" && <Gift className="h-3.5 w-3.5 mr-1" />}{l}
                   </Button>
                 ))}
               </div>
+              {isFree && (
+                <div className="space-y-1.5">
+                  <Input value={freeReason} onChange={(e) => setFreeReason(e.target.value)} className="h-9"
+                    placeholder="무상 사유 (예: 보증기간 내 불량, 단골 서비스, 재수리)" />
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                    청구 0원으로 저장하고, 원래 금액 {formatPrice(totalCost)}은 무상(서비스) 금액으로 남겨요. 부품 재고는 그대로 빠져요.
+                  </p>
+                </div>
+              )}
               {paymentMode === "partial" && (
                 <Input type="number" min={0} value={partialPaid} onChange={(e) => setPartialPaid(e.target.value)} placeholder="받은 금액" className="h-9" />
               )}
-              {paymentMode !== "paid" && totalCost > 0 && (
+              {(paymentMode === "unpaid" || paymentMode === "partial") && totalCost > 0 && (
                 <p className="text-xs text-muted-foreground">
                   저장하면 미수금 {formatPrice(Math.max(0, totalCost - (paymentMode === "partial" ? parseInt(partialPaid) || 0 : 0)))}이 고객 미수금에 자동 등록돼요 (만기 30일).
                 </p>
@@ -1279,6 +1303,12 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
                 전산 기표 완료
               </Label>
             </div>
+            {onSaved && (
+              <div className="flex items-center gap-2 px-1">
+                <Checkbox id="print-after" checked={printAfter} onCheckedChange={(v) => setPrintAfter(!!v)} />
+                <Label htmlFor="print-after" className="cursor-pointer text-sm">저장하고 바로 거래명세서 인쇄</Label>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1290,7 +1320,11 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <span>총 비용:</span>
-              <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
+              {isFree ? (
+                <span className="text-base font-bold text-emerald-600">0원 <span className="text-xs font-normal text-muted-foreground line-through">{formatPrice(totalCost)}</span> 무상</span>
+              ) : (
+                <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
+              )}
             </div>
           </div>
           {!valid && (

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { FormDialogTopBar, formDialogBodyClass, formDialogContentClass } from "@/components/forms/FormDialogTopBar";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, Map as MapIcon, Camera } from "lucide-react";
+import { Plus, Trash2, Search, Map as MapIcon, Camera, Gift } from "lucide-react";
 import RepairPhotoPartsDialog from "@/components/repair/RepairPhotoPartsDialog";
 import type { EstimateItem } from "@/lib/insuranceEstimate";
 import EstimateDiagramPicker from "@/components/insurance/EstimateDiagramPicker";
@@ -55,6 +55,8 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
   const [operatingHours, setOperatingHours] = useState("");
   const [notes, setNotes] = useState("");
   const [accountingPosted, setAccountingPosted] = useState(false);
+  const [isFree, setIsFree] = useState(false);
+  const [freeReason, setFreeReason] = useState("");
 
   const [partRows, setPartRows] = useState<PartRow[]>([]);
   const [defaultBranch, setDefaultBranch] = useState<"장흥" | "강진">("장흥");
@@ -116,6 +118,8 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
       setOperatingHours(repair.operating_hours ? String(repair.operating_hours) : "");
       setNotes(repair.notes || "");
       setAccountingPosted(!!repair.accounting_posted);
+      setIsFree(!!repair.is_free_service);
+      setFreeReason(repair.free_reason ?? "");
       setPartSearch("");
       setManualName("");
       setManualNumber("");
@@ -256,7 +260,10 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
           repair_content: repairContent,
           technician: technician || null,
           labor_cost: laborCostNum,
-          total_cost: totalCost,
+          total_cost: isFree ? 0 : totalCost,
+          is_free_service: isFree,
+          free_reason: isFree ? freeReason.trim() || null : null,
+          waived_amount: isFree ? totalCost : 0,
           operating_hours: parseInt(operatingHours) || null,
           notes: notes || null,
           accounting_posted: accountingPosted,
@@ -352,7 +359,7 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
   const valid = repairDate && repairContent;
 
   const snapshot = JSON.stringify({
-    repairDate, repairContent, technician, laborCost, operatingHours, notes, accountingPosted,
+    repairDate, repairContent, technician, laborCost, operatingHours, notes, accountingPosted, isFree, freeReason,
     parts: partRows.map((r) => [r.part_id, r.part_name, r.part_number, r.quantity, r.unit_price, r.branch]),
   });
   const closeNow = useCallback(() => onOpenChange(false), [onOpenChange]);
@@ -434,6 +441,19 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
               onCheckedChange={(v) => setAccountingPosted(!!v)}
             />
             <Label htmlFor="edit-accounting" className="cursor-pointer text-sm">전산 기표 완료</Label>
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox id="edit-free" checked={isFree} onCheckedChange={(v) => setIsFree(!!v)} />
+              <Label htmlFor="edit-free" className="cursor-pointer text-sm flex items-center gap-1"><Gift className="h-4 w-4 text-emerald-600" /> 무상(서비스) 처리</Label>
+            </div>
+            {isFree && (
+              <>
+                <Input value={freeReason} onChange={(e) => setFreeReason(e.target.value)} className="h-9" placeholder="무상 사유 (예: 보증기간 내 불량, 단골 서비스)" />
+                <p className="text-xs text-emerald-700 dark:text-emerald-400">청구 0원 · 무상 금액 {formatPrice(totalCost)}으로 기록해요. 이미 등록된 미수금은 미수금 관리에서 정리해 주세요.</p>
+              </>
+            )}
           </div>
 
           {/* Parts editor */}
@@ -603,7 +623,11 @@ export default function RepairEditDialog({ open, onOpenChange, repair }: Props) 
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <span>총 비용:</span>
-              <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
+              {isFree ? (
+                <span className="text-base font-bold text-emerald-600">0원 <span className="text-xs font-normal text-muted-foreground line-through">{formatPrice(totalCost)}</span> 무상</span>
+              ) : (
+                <span className="text-base font-bold text-foreground">{formatPrice(totalCost)}</span>
+              )}
             </div>
           </div>
         </DialogFooter>

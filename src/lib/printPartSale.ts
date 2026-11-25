@@ -18,41 +18,61 @@ export function partSaleDocNumber(s: Pick<PartSaleRow, "sale_date" | "id">) {
   return `PS-${s.sale_date.replace(/-/g, "").slice(2, 8)}-${s.id.replace(/-/g, "").slice(0, 4).toUpperCase()}`;
 }
 
-/** 부품 판매 거래명세서 HTML (YANMAR 빨강 마크, 공급자 직인, 금액 한글 표기, 공급가액·부가세) */
-export function partSaleHtml(s: PartSaleRow, opt: PartSalePrintOptions = {}) {
+export type StatementLine = { code?: string | null; name: string; spec?: string | null; qty: number; unit?: string | null; unitPrice: number; amount: number; free?: boolean };
+/** 거래명세서 한 장에 들어갈 내용 (부품 판매·수리·거래 원장이 같이 쓴다) */
+export type StatementDoc = {
+  docNo: string;
+  date: string;
+  subtitle: string;                // 「부품 판매」·「수리」·「거래 원장」
+  branch?: string | null;
+  buyerName: string;
+  buyerPhone?: string | null;
+  buyerAddress?: string | null;
+  lines: StatementLine[];
+  subtotal: number;
+  discount?: number;
+  total: number;
+  paid: number;
+  payLabel: string;
+  notes?: string | null;
+  /** 무상(서비스) 처리: 원래 금액과 이유 — 합계는 0원으로 찍힌다 */
+  freeService?: { waived: number; reason?: string | null } | null;
+};
+
+/** 거래명세서 HTML (YANMAR 빨강 마크, 공급자 직인, 금액 한글 표기, 공급가액·부가세) */
+export function statementHtml(d: StatementDoc, opt: PartSalePrintOptions = {}) {
   const c = opt.company ?? {};
-  const items = s.part_sale_items ?? [];
-  const total = Number(s.total_amount) || 0;
-  const paid = Number(s.paid_amount) || 0;
+  const total = Number(d.total) || 0;
+  const paid = Number(d.paid) || 0;
   const due = Math.max(0, total - paid);
   const { supply, vat } = vatSplit(total);
-  const docNo = partSaleDocNumber(s);
-  const companyName = c.company_name || `광문농기 ${s.branch}`;
-  const buyer = buyerOf(s);
-  const phone = s.customers?.phone ?? s.buyer_phone ?? "";
-  const address = s.customers?.address ?? "";
+  const docNo = d.docNo;
+  const companyName = c.company_name || `광문농기${d.branch ? ` ${d.branch}` : ""}`;
+  const buyer = d.buyerName;
+  const phone = d.buyerPhone ?? "";
+  const address = d.buyerAddress ?? "";
+  const free = d.freeService;
 
-  const rows = items.map((it, i) => `<tr>
-<td class="c">${i + 1}</td><td class="m">${esc(it.part_code)}</td><td>${esc(it.part_name)}</td>
-<td class="r">${it.quantity}</td><td class="r">${won(it.unit_price)}</td><td class="r b">${won(it.quantity * it.unit_price)}</td></tr>`).join("");
+  const rows = d.lines.map((it, i) => `<tr>
+<td class="c">${i + 1}</td><td class="m">${esc(it.code ?? "")}</td><td>${esc(it.name)}${it.spec ? ` <span class="s">${esc(it.spec)}</span>` : ""}${it.free ? ` <span class="free">무상</span>` : ""}</td>
+<td class="r">${it.qty}${it.unit ? ` ${esc(it.unit)}` : ""}</td><td class="r">${won(it.unitPrice)}</td><td class="r b">${won(it.amount)}</td></tr>`).join("");
   // 빈 줄을 채워 표 모양을 맞춘다 (손으로 추가 기입하는 곳)
-  const blanks = Array.from({ length: Math.max(0, 8 - items.length) }, () => `<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join("");
+  const blanks = Array.from({ length: Math.max(0, 8 - d.lines.length) }, () => `<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join("");
 
   const kv = (k: string, v: string | null | undefined) => `<div class="kv"><span>${k}</span><b>${esc(v || "-")}</b></div>`;
   const footer = [companyName, c.address, c.phone && `TEL ${c.phone}`, c.fax && `FAX ${c.fax}`].filter(Boolean).map((x) => esc(x as string)).join("  ·  ");
-  const payLabel = PAYMENT_MODE_LABELS[s.payment_mode] + (s.payment_method ? ` · ${s.payment_method}` : "");
-
+  const payLabel = d.payLabel;
   const sheet = (copy: string | null) => `<section class="page">
 <div class="bar"></div>
 <div class="head">
-  <div class="title"><h1>거 래 명 세 서</h1><p>TRANSACTION STATEMENT · 부품 판매</p></div>
+  <div class="title"><h1>거 래 명 세 서</h1><p>TRANSACTION STATEMENT · ${esc(d.subtitle)}</p></div>
   <div><div class="brand">YANMAR</div><div class="dealer">얀마 농기계 공식 대리점 · ${esc(companyName)}</div></div>
 </div>
 ${copy ? `<div class="copy">${copy}</div>` : ""}
 <div class="meta">
   <div><span>거래번호</span><b>${esc(docNo)}</b></div>
-  <div><span>거래일</span><b>${esc(dot(s.sale_date))}</b></div>
-  <div><span>판매 지점</span><b>${esc(s.branch)}</b></div>
+  <div><span>거래일</span><b>${esc(dot(d.date))}</b></div>
+  <div><span>지점</span><b>${esc(d.branch || "-")}</b></div>
   <div><span>결제</span><b class="${due > 0 ? "due" : ""}">${esc(payLabel)}</b></div>
 </div>
 <div class="cards">
@@ -82,11 +102,13 @@ ${copy ? `<div class="copy">${copy}</div>` : ""}
       <div><span>받은 금액</span><b>${won(paid)}원</b></div>
       <div class="${due > 0 ? "due" : ""}"><span>미수금</span><b>${won(due)}원</b></div>
     </div>
-    ${s.notes ? `<div class="note"><h3>비 고</h3>${esc(s.notes)}</div>` : ""}
+    ${free ? `<div class="note freebox"><h3>무 상 (서 비 스)</h3>정상 금액 ${won(free.waived)}원을 무상으로 처리했습니다.${free.reason ? `\n사유: ${esc(free.reason)}` : ""}</div>` : ""}
+    ${d.notes ? `<div class="note"><h3>비 고</h3>${esc(d.notes)}</div>` : ""}
   </div>
   <div class="sum">
-    <div><span>소계</span><b>${won(s.subtotal)}원</b></div>
-    ${Number(s.discount) > 0 ? `<div><span>할인</span><b>-${won(s.discount)}원</b></div>` : ""}
+    <div><span>소계</span><b>${won(d.subtotal)}원</b></div>
+    ${Number(d.discount) > 0 ? `<div><span>할인</span><b>-${won(d.discount ?? 0)}원</b></div>` : ""}
+    ${free ? `<div><span>무상(서비스)</span><b>-${won(free.waived)}원</b></div>` : ""}
     <div><span>공급가액</span><b>${won(supply)}원</b></div>
     <div><span>부가세 (10%)</span><b>${won(vat)}원</b></div>
     <div class="total"><span>합계</span><b>${won(total)}원</b></div>
@@ -148,9 +170,38 @@ td.c{text-align:center}td.r{text-align:right;white-space:nowrap}td.b{font-weight
 .sum div{display:flex;justify-content:space-between;padding:5px 12px;border-bottom:1px solid #f1f5f9}
 .sum div span{color:#6b7280}
 .sum .total{background:#111827;color:#fff;border-bottom:0;padding:9px 12px}.sum .total span{color:#e5e7eb}.sum .total b{font-size:15px}
+.items .s{color:#6b7280;font-size:10px}
+.free{display:inline-block;padding:0 6px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:9.5px;font-weight:700}
+.freebox{border-color:#a7f3d0;background:#f0fdf4}.freebox h3{color:#047857}
 .sign{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px;font-size:12px;font-weight:600}
 .sign .who i{display:inline-block;width:110px;border-bottom:1px solid #111827;margin:0 6px;vertical-align:bottom}
 .foot{margin-top:14px;padding-top:8px;border-top:2px solid ${YANMAR_RED};display:flex;justify-content:space-between;font-size:9.5px;color:#374151}
 tr{page-break-inside:avoid}
 </style></head><body>${pages}</body></html>`;
+}
+
+/** 부품 판매 → 거래명세서 */
+export function partSaleToStatement(s: PartSaleRow): StatementDoc {
+  const items = s.part_sale_items ?? [];
+  return {
+    docNo: partSaleDocNumber(s),
+    date: s.sale_date,
+    subtitle: "부품 판매",
+    branch: s.branch,
+    buyerName: buyerOf(s),
+    buyerPhone: s.customers?.phone ?? s.buyer_phone ?? "",
+    buyerAddress: s.customers?.address ?? "",
+    lines: items.map((it) => ({ code: it.part_code, name: it.part_name, qty: it.quantity, unitPrice: it.unit_price, amount: it.quantity * it.unit_price })),
+    subtotal: Number(s.subtotal) || 0,
+    discount: Number(s.discount) || 0,
+    total: Number(s.total_amount) || 0,
+    paid: Number(s.paid_amount) || 0,
+    payLabel: PAYMENT_MODE_LABELS[s.payment_mode] + (s.payment_method ? ` · ${s.payment_method}` : ""),
+    notes: s.notes,
+  };
+}
+
+/** 부품 판매 거래명세서 HTML */
+export function partSaleHtml(s: PartSaleRow, opt: PartSalePrintOptions = {}) {
+  return statementHtml(partSaleToStatement(s), opt);
 }

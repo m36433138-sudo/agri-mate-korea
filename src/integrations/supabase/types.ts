@@ -3284,6 +3284,9 @@ export type Database = {
           search_vec: unknown
           technician: string | null
           total_cost: number | null
+          is_free_service: boolean
+          free_reason: string | null
+          waived_amount: number
           updated_at: string
           updated_by: string | null
         }
@@ -3300,6 +3303,9 @@ export type Database = {
           search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
+          is_free_service?: boolean
+          free_reason?: string | null
+          waived_amount?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -3316,6 +3322,9 @@ export type Database = {
           search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
+          is_free_service?: boolean
+          free_reason?: string | null
+          waived_amount?: number
           updated_at?: string
           updated_by?: string | null
         }

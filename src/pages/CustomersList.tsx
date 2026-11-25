@@ -23,10 +23,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Customer } from "@/types/database";
+import { useUserRole } from "@/hooks/useUserRole";
+import { MjLedgerImportDialog } from "@/components/customers/MjLedgerImportDialog";
 
 export default function CustomersList() {
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [mjOpen, setMjOpen] = useState(false);
+  const { isAdmin } = useUserRole();
   const [importing, setImporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [cleanupConfirm, setCleanupConfirm] = useState(false);
@@ -173,6 +177,7 @@ export default function CustomersList() {
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onSelect={() => setBulkOpen(true)}><Upload className="h-4 w-4 mr-2" /> 일괄 등록 (엑셀)</DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleSheetImport}><CloudDownload className="h-4 w-4 mr-2" /> 시트 가져오기</DropdownMenuItem>
+                {isAdmin && <DropdownMenuItem onSelect={() => setMjOpen(true)}><FileSpreadsheet className="h-4 w-4 mr-2" /> 천년경영 거래 원장 가져오기</DropdownMenuItem>}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setCleanupConfirm(true)} disabled={isLoading} className="text-destructive focus:text-destructive">
                   <UserMinus className="h-4 w-4 mr-2" /> 불완전 고객 정리
@@ -294,6 +299,7 @@ export default function CustomersList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {isAdmin && <MjLedgerImportDialog open={mjOpen} onOpenChange={setMjOpen} />}
     </div>
   );
 }
