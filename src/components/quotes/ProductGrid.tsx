@@ -2,9 +2,8 @@ import { useMemo, useState } from "react";
 import { Wheat, Package, Sprout, Tractor, Wrench, Cog, Boxes, type LucideIcon } from "lucide-react";
 import { SearchField } from "@/components/page/PageParts";
 import { cn } from "@/lib/utils";
-import { won } from "@/lib/quoteTypes";
 import type { QuoteProduct } from "@/lib/quoteTypes";
-import { MACHINE_GROUPS, groupOf, productImageUrl, searchProducts, sortProducts, type MachineGroup } from "@/lib/productCatalog";
+import { MACHINE_GROUPS, groupOf, productImageUrl, productPrice, searchProducts, sortProducts, type MachineGroup } from "@/lib/productCatalog";
 
 export const GROUP_ICON: Record<MachineGroup, LucideIcon> = {
   트랙터: Tractor, 이앙기: Sprout, 콤바인: Wheat, 작업기: Cog, "관리기·방제기": Wrench, "옵션·부속": Package, 기타: Boxes,
@@ -15,7 +14,7 @@ export function ProductImage({ p, className }: { p: QuoteProduct; className?: st
   const [broken, setBroken] = useState<string | null>(null);
   const Icon = GROUP_ICON[groupOf(p)];
   return (
-    <div className={cn("relative bg-muted/60 overflow-hidden flex items-center justify-center", className)}>
+    <div className={cn("relative overflow-hidden flex items-center justify-center", url && broken !== url ? "bg-white" : "bg-muted/60", className)}>
       {url && broken !== url
         ? <img src={url} alt={p.name} loading="lazy" onError={() => setBroken(url)} className="absolute inset-0 w-full h-full object-contain p-2" />
         : <Icon className="h-10 w-10 text-muted-foreground/40" />}
@@ -91,7 +90,7 @@ export function ProductGrid({ products, onOpen, renderAction, showInactive = tru
                   </div>
                   <p className="font-bold leading-tight break-words">{p.name}</p>
                   {p.spec && p.spec !== p.category && <p className="text-xs text-muted-foreground line-clamp-1">{p.spec}</p>}
-                  <p className="text-[15px] font-extrabold tabular-nums pt-0.5">{won(p.unit_price)}</p>
+                  <p className={cn("text-[15px] font-extrabold tabular-nums pt-0.5", !(p.unit_price > 0) && "text-muted-foreground font-semibold text-sm")}>{productPrice(p.unit_price)}</p>
                 </div>
               </button>
               {renderAction && <div className="px-3 pb-3">{renderAction(p)}</div>}

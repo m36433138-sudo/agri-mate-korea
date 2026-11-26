@@ -20,11 +20,20 @@ export function groupOf(p: Pick<QuoteProduct, "category" | "name"> & { machine_g
   return "기타";
 }
 
+/** 앱에 같이 실려 나가는 기본 제품 사진(public/products/…)은 「/」로 시작한다. 버킷에 올린 사진만 지우고 바꾼다. */
+export const isBucketImage = (path: string | null | undefined): path is string => !!path && !path.startsWith("/") && !/^https?:/.test(path);
+
 /** 공개 버킷이라 바로 쓸 수 있는 주소 (견적서 그림 저장에도 그대로 들어간다) */
 export function productImageUrl(path: string | null | undefined): string | null {
   if (!path) return null;
+  if (/^https?:/.test(path)) return path;
+  // 인쇄용 iframe에서도 열리도록 절대 주소로
+  if (path.startsWith("/")) return typeof window === "undefined" ? path : new URL(path, window.location.origin).href;
   return supabase.storage.from(PRODUCT_BUCKET).getPublicUrl(path).data.publicUrl;
 }
+
+/** 견적 기준가가 아직 없는 제품(0원)은 「가격 미정」 */
+export const productPrice = (n: number) => (Number(n) > 0 ? new Intl.NumberFormat("ko-KR").format(Math.round(n)) + " 원" : "가격 미정");
 
 /** 사진을 긴 변 1600px JPEG로 줄여 올린다 (휴대폰 사진 그대로 올리면 너무 크다) */
 export async function uploadProductImage(file: File, productId: string): Promise<string> {

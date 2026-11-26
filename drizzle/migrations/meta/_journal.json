@@ -232,6 +232,13 @@
       "when": 1795686700572,
       "tag": "0032_ledger_books",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795687696342,
+      "tag": "0033_quote_product_photos",
+      "breakpoints": true
     }
   ]
 }

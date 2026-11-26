@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ProductImage } from "@/components/quotes/ProductGrid";
-import { won, type QuoteProduct } from "@/lib/quoteTypes";
-import { groupOf } from "@/lib/productCatalog";
+import type { QuoteProduct } from "@/lib/quoteTypes";
+import { groupOf, productPrice } from "@/lib/productCatalog";
 
 const db = supabase as any;
 
@@ -33,7 +33,7 @@ export function ProductDetail({ p, open, onOpenChange, footer }: { p: QuoteProdu
                 <SheetTitle className="text-2xl font-extrabold">{p.name}</SheetTitle>
                 {p.spec && p.spec !== p.category && <p className="text-sm text-muted-foreground">{p.spec}</p>}
               </SheetHeader>
-              <p className="text-2xl font-extrabold tabular-nums">{won(p.unit_price)} <span className="text-xs font-medium text-muted-foreground">견적 기준가</span></p>
+              <p className="text-2xl font-extrabold tabular-nums">{productPrice(p.unit_price)} <span className="text-xs font-medium text-muted-foreground">견적 기준가</span></p>
               {p.highlights && (
                 <div className="rounded-2xl bg-muted/50 p-4">
                   <p className="text-xs font-semibold text-muted-foreground mb-2">주요 사양</p>
