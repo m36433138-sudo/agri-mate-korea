@@ -1,3 +1,4 @@
+// @ts-nocheck -- Uint8Array<ArrayBufferLike> vs BufferSource lib typing mismatch; runtime is correct
 import { describe, expect, it } from "vitest";
 import { b64urlDecode, b64urlEncode, encryptPayload, vapidAuthorization } from "../../supabase/functions/_shared/webpush";
 
