@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ledgerBalance, matchCustomers, mjNumber, parseMjLedger } from "./mjLedger";
+import { mergeMjExports, groupNewCustomers, guessMjBook, ledgerBalance, matchCustomers, mjNumber, parseMjLedger } from "./mjLedger";
 
 // 천년경영 거래처원장 엑셀과 같은 칸 이름 (값은 예시)
 const H = ["ccode", "거래처명", "거래일자", "상품코드", "상  품  명", "규  격", "수량", "단위", "단가", "공급가액", "부가세", "면세", "합계액", "입금액", "할인", "잔액", "휴대폰", "주소", "우편번호", "전표번호", "사업자번호", "TIME"];
@@ -35,7 +35,7 @@ describe("천년경영 거래처원장 가져오기", () => {
     ]);
     expect(r.entries.find((e) => e.item_name === "출장비")?.total_amount).toBe(70000); // 합계 칸이 비면 공급가+부가세
     expect(r.entries.find((e) => e.item_name === "리프트실린더-R")?.is_free).toBe(true);
-    expect(r.entries.find((e) => e.item_name === "EGR가스온도센서")).toMatchObject({ source_key: "mj:260222001300", item_code: "000200", unit: "EA", quantity: 1 });
+    expect(r.entries.find((e) => e.item_name === "EGR가스온도센서")).toMatchObject({ source_key: "new:mj:260222001300", book: "new", item_code: "000200", unit: "EA", quantity: 1 });
   });
   it("주민번호 칸은 어디에도 남지 않는다", () => {
     expect(JSON.stringify(r)).not.toContain("1234567");
@@ -49,13 +49,47 @@ describe("천년경영 거래처원장 가져오기", () => {
     expect(new Set(r.entries.map((e) => e.source_key)).size).toBe(r.entries.length);
   });
   it("거래처 맞추기: 코드 → 휴대폰 → 이름", () => {
-    const m = matchCustomers(r.customers, [
-      { id: "a", name: "홍길동", phone: "01011112222", legacy_code: null },
-      { id: "b", name: "홍길동", phone: "01099998888", legacy_code: null },
+    const bc = r.customers.map((c) => ({ ...c, book: "new" as const }));
+    const m = matchCustomers(bc, [
+      { id: "a", name: "홍길동", phone: "01011112222" },
+      { id: "b", name: "홍길동", phone: "01099998888" },
     ]);
     expect(m[0]).toMatchObject({ by: "phone", match: { id: "a" } });
-    expect(matchCustomers(r.customers, [{ id: "c", name: "김철수", phone: null, legacy_code: "000167" }])[0].by).toBe("code");
-    expect(matchCustomers(r.customers, [{ id: "d", name: "홍길동", phone: null, legacy_code: null }])[0].by).toBe("name");
-    expect(matchCustomers(r.customers, [])[0].match).toBeNull();
+    expect(matchCustomers(bc, [{ id: "c", name: "김철수", phone: null }], [{ book: "new", code: "000167", customer_id: "c" }])[0].by).toBe("code");
+    // 다른 장부의 같은 코드는 다른 사람
+    expect(matchCustomers(bc, [{ id: "c", name: "김철수", phone: null }], [{ book: "old-jh", code: "000167", customer_id: "c" }])[0].match).toBeNull();
+    expect(matchCustomers(bc, [{ id: "d", name: "홍길동", phone: null }])[0].by).toBe("name");
+    expect(matchCustomers(bc, [])[0].match).toBeNull();
+  });
+
+  it("장부: 구천년은 2025-10-31까지만, 식별값에 장부가 붙는다", () => {
+    const old = [H,
+      row({ ...C, 거래일자: "2025-10-31", 상품코드: "000200", "상  품  명": "필터", 합계액: "11,000 ", 공급가액: "10,000 ", 부가세: "1,000 ", 전표번호: "251031000100" }),
+      row({ ...C, 거래일자: "2025-11-03", 상품코드: "000200", "상  품  명": "필터", 합계액: "11,000 ", 공급가액: "10,000 ", 부가세: "1,000 ", 전표번호: "251103000100" }),
+    ];
+    const o = parseMjLedger(old, "old-gj");
+    expect(o.entries.map((e) => e.source_key)).toEqual(["old-gj:mj:251031000100"]);
+    expect(o.afterCutoff).toBe(1);
+    expect(parseMjLedger(old, "new").entries).toHaveLength(2);
+    expect(guessMjBook(o)).toBe("old-gj"); // 주소가 강진
+    expect(guessMjBook(r)).toBe("new"); // 2026년 줄
+  });
+  it("새 고객은 장부가 달라도 같은 휴대폰이면 한 명", () => {
+    const g = groupNewCustomers([
+      { code: "1", name: "홍길동", phone: "010-1111-2222", address: "", zip: "", book: "old-jh" },
+      { code: "9", name: "홍길동(신)", phone: "01011112222", address: "", zip: "", book: "new" },
+      { code: "2", name: "김철수", phone: "", address: "", zip: "", book: "old-gj" },
+    ]);
+    expect(g.map((x) => x.map((c) => c.code))).toEqual([["9", "1"], ["2"]]);
+  });
+  it("겹치는 파일은 더 늦게까지 뽑은 쪽이 이긴다 (그 사이 지운 전표는 남지 않는다)", () => {
+    const e = (key: string, date: string, code = "1") => ({ source_key: key, book: "new" as const, legacy_customer_code: code, entry_date: date } as any);
+    const c = (code: string) => ({ code, name: "", phone: "", address: "", zip: "" });
+    const m = mergeMjExports([
+      { book: "new", periodStart: "2026-01-01", periodEnd: "2026-06-16", entries: [e("a", "2026-02-01"), e("deleted", "2026-03-01"), e("other", "2026-03-01", "2")], customers: [c("1"), c("2")] },
+      { book: "new", periodStart: "2026-01-01", periodEnd: "2026-11-26", entries: [e("a", "2026-02-01"), e("b", "2026-08-01")], customers: [c("1")] },
+    ]);
+    expect(m.entries.map((x) => x.source_key).sort()).toEqual(["a", "b", "other"]);
+    expect(m.ranges[0]).toMatchObject({ start: "2026-01-01", end: "2026-11-26", codes: ["1"] });
   });
 });

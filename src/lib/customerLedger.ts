@@ -6,7 +6,8 @@
  */
 import type { StatementDoc, StatementLine } from "./printPartSale";
 
-export type LedgerKind = "sale" | "payment" | "discount" | "memo" | "carry";
+/** adjust = 신천년 이월 조정 (화면에서만 만든다) */
+export type LedgerKind = "sale" | "payment" | "discount" | "memo" | "carry" | "adjust";
 export type LedgerSource = "mjsoft" | "repair" | "part_sale";
 export type LedgerLine = {
   key: string;
@@ -31,13 +32,17 @@ export type LedgerLine = {
   /** 무상일 때 원래 금액 (알 수 있을 때만) */
   waived: number;
   time: string | null;
+  /** 천년경영 장부 (구천년 장흥·강진 / 신천년) */
+  book?: string | null;
+  /** 장부 안의 거래처 계정 「장부:거래처코드」 — 한 사람이 계정을 여러 개 가질 수 있다 */
+  account?: string | null;
 };
 
 const n = (v: unknown) => Number(v) || 0;
 const splitVat = (total: number) => { const supply = Math.round(total / 1.1); return { supply, vat: total - supply }; };
 
 export type LedgerEntryRow = {
-  id: string; source_key: string; entry_date: string; kind: LedgerKind; item_code: string | null; item_name: string; spec: string | null;
+  id: string; book?: string | null; legacy_customer_code?: string | null; source_key: string; entry_date: string; kind: LedgerKind; item_code: string | null; item_name: string; spec: string | null;
   quantity: number | null; unit: string | null; unit_price: number | null; supply_amount: number | null; vat_amount: number | null;
   total_amount: number | null; paid_amount: number | null; discount_amount: number | null; is_free: boolean | null; recorded_at: string | null;
 };
@@ -46,10 +51,11 @@ export function fromLedgerEntries(rows: LedgerEntryRow[]): LedgerLine[] {
   return rows.map((r) => ({
     key: r.source_key, date: r.entry_date, kind: r.kind, source: "mjsoft",
     // 천년경영 전표번호는 「날짜-순번」이라 같은 날 매출은 하나로 묶는다
-    group: r.kind === "sale" || r.kind === "memo" ? `mj:${r.entry_date}` : r.source_key,
+    group: r.kind === "sale" || r.kind === "memo" ? `mj:${r.book ?? ""}:${r.entry_date}` : r.source_key,
     code: r.item_code, name: r.item_name, spec: r.spec, qty: r.quantity, unit: r.unit, unitPrice: n(r.unit_price),
     supply: n(r.supply_amount), vat: n(r.vat_amount), total: r.kind === "carry" || r.kind === "sale" ? n(r.total_amount) : 0,
-    paid: n(r.paid_amount), discount: n(r.discount_amount), isFree: !!r.is_free, waived: 0, time: r.recorded_at,
+    paid: n(r.paid_amount), discount: n(r.discount_amount), isFree: !!r.is_free, waived: 0, time: r.recorded_at, book: r.book ?? null,
+    account: `${r.book ?? ""}:${r.legacy_customer_code ?? ""}`,
   }));
 }
 
@@ -114,7 +120,7 @@ export function fromPartSale(s: AppPartSale): LedgerLine[] {
 }
 
 /** 이 줄이 잔액을 얼마나 바꾸는지 */
-export const lineDelta = (l: LedgerLine) => (l.kind === "sale" ? l.total : 0) - l.paid - l.discount;
+export const lineDelta = (l: LedgerLine) => (l.kind === "sale" || l.kind === "adjust" ? l.total : 0) - l.paid - l.discount;
 
 export type LedgerDay = { date: string; lines: (LedgerLine & { balance: number })[] };
 export type LedgerView = {
@@ -124,18 +130,89 @@ export type LedgerView = {
   sum: { supply: number; vat: number; total: number; paid: number; discount: number; free: number; freeAmount: number };
 };
 
-const ORDER: Record<LedgerKind, number> = { carry: 0, sale: 1, memo: 1, discount: 2, payment: 3 };
+const ORDER: Record<LedgerKind, number> = { carry: 0, adjust: 0, sale: 1, memo: 1, discount: 2, payment: 3 };
 const sortLines = (a: LedgerLine, b: LedgerLine) =>
   a.date.localeCompare(b.date) || a.group.localeCompare(b.group) || ORDER[a.kind] - ORDER[b.kind] || a.key.localeCompare(b.key);
 
 /**
  * 기간 [from, to] (YYYY-MM-DD, to 포함)의 원장.
- * 이월 = 가장 이른 전기이월 + 그 뒤 기간 전까지의 증감. (천년경영 파일마다 붙는 전기이월은 첫 것만 쓴다)
+ * 이월 = 가장 이른 전기이월 + 그 뒤 기간 전까지의 증감. (천년경영 파일마다 붙는 전기이월은 첫 것만 쓴다.
+ * 신천년 전기이월은 구천년 2025-10-31 잔액을 옮긴 것이라, 구천년 기록이 있는 고객은 구천년 이월이 더 이르러 자연히 한 번만 센다)
  */
-export function buildLedger(all: LedgerLine[], from: string, to: string): LedgerView {
-  const carry = all.filter((l) => l.kind === "carry").sort((a, b) => a.date.localeCompare(b.date))[0];
-  const live = all.filter((l) => l.kind !== "carry" && (!carry || l.date >= carry.date)).sort(sortLines);
-  let bal = carry ? carry.total : 0;
+/** 장부마다 가장 이른 전기이월. 구천년 기록이 있으면 신천년 이월(구천년 잔액을 옮긴 것)은 빼야 두 번 세지 않는다. */
+const acct = (l: LedgerLine) => l.account ?? l.book ?? "";
+
+export function openingCarries(all: LedgerLine[]): Map<string, LedgerLine> {
+  const first = new Map<string, LedgerLine>();
+  for (const l of all) {
+    if (l.kind !== "carry") continue;
+    const cur = first.get(acct(l));
+    if (!cur || l.date < cur.date) first.set(acct(l), l);
+  }
+  if (all.some((l) => l.book?.startsWith("old"))) for (const [k, l] of first) if (l.book === "new") first.delete(k);
+  return first;
+}
+
+/** 구천년 마지막 날(이 날까지 구천년, 다음 날부터 신천년) */
+export const OLD_BOOKS_UNTIL = "2025-10-31";
+
+const adjustLine = (key: string, date: string, name: string, total: number, book: string | null): LedgerLine => ({
+  key, date, kind: "adjust", source: "mjsoft", group: "adjust", code: null, name, spec: null, qty: null, unit: null,
+  unitPrice: 0, supply: 0, vat: 0, total, paid: 0, discount: 0, isFree: false, waived: 0, time: null, book,
+});
+const won = (v: number) => v.toLocaleString("ko-KR");
+
+/**
+ * 「이월 조정」 줄 (화면에서만 만든다)
+ * 1) 같은 장부의 다음 해 파일 전기이월이 앞 해 마감 잔액과 다르면(연초에 잔액을 고친 경우) 그날 차이를 한 줄로.
+ * 2) 구천년과 신천년이 함께 있으면: 신천년 첫 이월은 구천년 10-31 잔액을 옮긴 것이라 빼고, 옮길 때 달라진 만큼을 2025-11-01에 한 줄로.
+ * 이렇게 하면 지금 잔액이 언제나 지금 쓰는 장부의 잔액과 같다.
+ */
+export function carryAdjustments(all: LedgerLine[]): LedgerLine[] {
+  const out: LedgerLine[] = [];
+  const accounts = [...new Set(all.filter((l) => l.kind === "carry").map(acct))];
+  const endBal = new Map<string, (upTo: string) => number>();
+  const firstCarry = new Map<string, LedgerLine>();
+  for (const b of accounts) {
+    const carries = [...new Map(all.filter((l) => l.kind === "carry" && acct(l) === b).map((l) => [l.date, l])).values()]
+      .sort((x, y) => x.date.localeCompare(y.date));
+    firstCarry.set(b, carries[0]);
+    const book = carries[0].book ?? null;
+    const lines = all.filter((l) => l.kind !== "carry" && acct(l) === b && l.date >= carries[0].date);
+    const adj: LedgerLine[] = [];
+    const balBefore = (date: string, inclusive: boolean) =>
+      carries[0].total
+      + lines.reduce((t, l) => t + ((inclusive ? l.date <= date : l.date < date) ? lineDelta(l) : 0), 0)
+      + adj.reduce((t, l) => t + ((inclusive ? l.date <= date : l.date < date) ? l.total : 0), 0);
+    for (const c of carries.slice(1)) {
+      const diff = c.total - balBefore(c.date, false);
+      if (diff) adj.push({ ...adjustLine(`adjust:${b}:${c.date}`, c.date, `이월 조정 (장부 이월 ${won(c.total)} − 앞 기간 마감 ${won(c.total - diff)})`, diff, book), account: b });
+    }
+    out.push(...adj);
+    endBal.set(b, (upTo) => balBefore(upTo, true));
+  }
+  const oldAcc = accounts.filter((b) => firstCarry.get(b)!.book?.startsWith("old"));
+  const newAcc = accounts.filter((b) => firstCarry.get(b)!.book === "new");
+  if (oldAcc.length && newAcc.length) {
+    const nw = newAcc.reduce((t, b) => t + firstCarry.get(b)!.total, 0);
+    const old = oldAcc.reduce((t, b) => t + endBal.get(b)!(OLD_BOOKS_UNTIL), 0);
+    const diff = nw - old;
+    // 신천년 첫 이월은 빼고 계산하니, 이 줄이 「신천년 이월 − 구천년 잔액」 만큼을 맞춘다
+    if (diff) out.push(adjustLine("adjust:new-carry", "2025-11-01", `신천년 이월 조정 (신천년 이월 ${won(nw)} − 구천년 10/31 잔액 ${won(old)})`, diff, "new"));
+  }
+  return out;
+}
+
+export function buildLedger(input: LedgerLine[], from: string, to: string): LedgerView {
+  const all = [...input, ...carryAdjustments(input)];
+  const carries = openingCarries(all);
+  // 장부의 이월보다 앞선 줄은 그 이월에 이미 들어 있다
+  const live = all.filter((l) => {
+    if (l.kind === "carry") return false;
+    const c = carries.get(acct(l));
+    return !c || l.date >= c.date;
+  }).sort(sortLines);
+  let bal = [...carries.values()].reduce((s, c) => s + c.total, 0);
   for (const l of live) if (l.date < from) bal += lineDelta(l);
   const opening = bal;
   const sum = { supply: 0, vat: 0, total: 0, paid: 0, discount: 0, free: 0, freeAmount: 0 };

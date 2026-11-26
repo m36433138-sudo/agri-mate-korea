@@ -13,6 +13,7 @@ import {
   type AppPartSale, type AppRepair, type LedgerEntryRow, type LedgerLine,
 } from "@/lib/customerLedger";
 import { StatementPrintDialog } from "@/components/print/StatementPrintDialog";
+import { mjBookLabel } from "@/components/customers/MjLedgerImportDialog";
 
 const db = supabase as any;
 const won = (v: number) => v.toLocaleString("ko-KR");
@@ -26,7 +27,7 @@ function useCustomerLedger(customerId: string, machineIds: string[]) {
     queryFn: async () => {
       const [entries, { data: last }] = await Promise.all([
         fetchAllRows<LedgerEntryRow>((from, to) => db.from("ledger_entries")
-          .select("id, source_key, entry_date, kind, item_code, item_name, spec, quantity, unit, unit_price, supply_amount, vat_amount, total_amount, paid_amount, discount_amount, is_free, recorded_at")
+          .select("id, book, legacy_customer_code, source_key, entry_date, kind, item_code, item_name, spec, quantity, unit, unit_price, supply_amount, vat_amount, total_amount, paid_amount, discount_amount, is_free, recorded_at")
           .eq("customer_id", customerId).order("entry_date").order("source_key").range(from, to)),
         db.from("ledger_entries").select("entry_date").order("entry_date", { ascending: false }).limit(1),
       ]);
@@ -195,6 +196,14 @@ function Stat({ label, value, sub, tone }: { label: string; value: number; sub?:
 }
 
 function LedgerRow({ l }: { l: LedgerLine }) {
+  if (l.kind === "adjust") {
+    return (
+      <li className="flex items-baseline gap-2 text-xs text-amber-700 dark:text-amber-400">
+        <span className="min-w-0 flex-1 break-words">⚖ {l.name}</span>
+        <span className="tabular-nums font-semibold shrink-0">{l.total > 0 ? "+" : ""}{won(l.total)}</span>
+      </li>
+    );
+  }
   if (l.kind === "memo") {
     return <li className={cn("text-xs italic", l.isFree ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground")}>※ {l.name}</li>;
   }
@@ -213,6 +222,7 @@ function LedgerRow({ l }: { l: LedgerLine }) {
         {l.spec && <span className="text-xs text-muted-foreground"> {l.spec}</span>}
         {l.isFree && <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-1.5 text-[10px] font-semibold align-middle"><Gift className="h-2.5 w-2.5" />무상</span>}
         {l.source !== "mjsoft" && <span className="ml-1 rounded-full bg-primary/10 text-primary px-1.5 text-[10px] align-middle">{SOURCE_LABEL[l.source]}</span>}
+        {l.book && l.book !== "new" && <span className="ml-1 rounded-full bg-muted text-muted-foreground px-1.5 text-[10px] align-middle">{mjBookLabel(l.book)}</span>}
         {l.qty != null && <span className="block text-[11px] text-muted-foreground tabular-nums">{l.code ? `${l.code} · ` : ""}{l.qty}{l.unit ?? ""} × {won(l.unitPrice)}</span>}
       </span>
       <span className="tabular-nums font-semibold shrink-0">

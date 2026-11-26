@@ -1,0 +1,22 @@
+-- 천년경영 장부 구분: 구천년 장흥·강진(2025-10-31까지)과 신천년(통합)은 거래처코드·전표번호가 따로 매겨져 있다.
+-- 한 고객이 여러 장부에 있을 수 있어 (장부, 거래처코드) → 앱 고객을 따로 잇는다.
+ALTER TABLE public.ledger_entries ADD COLUMN IF NOT EXISTS book text NOT NULL DEFAULT 'new';
+
+CREATE TABLE IF NOT EXISTS public.customer_legacy_codes (
+  book text NOT NULL,
+  code text NOT NULL,
+  customer_id uuid NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
+  legacy_name text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (book, code)
+);
+CREATE INDEX IF NOT EXISTS customer_legacy_codes_customer_idx ON public.customer_legacy_codes (customer_id);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.customer_legacy_codes TO authenticated;
+GRANT ALL ON public.customer_legacy_codes TO service_role;
+ALTER TABLE public.customer_legacy_codes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "staff read legacy codes" ON public.customer_legacy_codes FOR SELECT TO authenticated
+  USING ((SELECT public.is_staff((SELECT auth.uid()))));
+CREATE POLICY "admin write legacy codes" ON public.customer_legacy_codes FOR ALL TO authenticated
+  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')))
+  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin')));
