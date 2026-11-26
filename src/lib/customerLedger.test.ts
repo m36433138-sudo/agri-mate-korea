@@ -79,3 +79,17 @@ describe("구천년·신천년 합치기", () => {
     expect(all.closing).toBe(7); // 신천년: 0(연초 이월) + 7
   });
 });
+
+describe("미수는 신천년 기준", () => {
+  it("신천년에 없는 구천년 고객은 2025-11-01에 잔액을 0으로 정리한다", () => {
+    const lines = fromLedgerEntries([
+      row({ source_key: "old-gj:mjc:3:2024-01-01", book: "old-gj", legacy_customer_code: "3", entry_date: "2024-01-01", kind: "carry", total_amount: 300 }),
+      row({ source_key: "old-gj:mj:1", book: "old-gj", legacy_customer_code: "3", entry_date: "2025-03-01", kind: "sale", total_amount: 50 }),
+      row({ source_key: "old-jh:mj:2", book: "old-jh", legacy_customer_code: "8", entry_date: "2025-05-01", kind: "sale", total_amount: 20 }),
+    ]);
+    expect(buildLedger(lines, ...periodOf(2025, 10)).closing).toBe(370);
+    const nov = buildLedger(lines, ...periodOf(2025, 11));
+    expect(nov.days[0].lines[0]).toMatchObject({ kind: "adjust", total: -370 });
+    expect(nov.closing).toBe(0);
+  });
+});
