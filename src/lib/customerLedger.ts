@@ -193,12 +193,21 @@ export function carryAdjustments(all: LedgerLine[]): LedgerLine[] {
   }
   const oldAcc = accounts.filter((b) => firstCarry.get(b)!.book?.startsWith("old"));
   const newAcc = accounts.filter((b) => firstCarry.get(b)!.book === "new");
-  if (oldAcc.length && newAcc.length) {
-    const nw = newAcc.reduce((t, b) => t + firstCarry.get(b)!.total, 0);
-    const old = oldAcc.reduce((t, b) => t + endBal.get(b)!(OLD_BOOKS_UNTIL), 0);
-    const diff = nw - old;
-    // 신천년 첫 이월은 빼고 계산하니, 이 줄이 「신천년 이월 − 구천년 잔액」 만큼을 맞춘다
-    if (diff) out.push(adjustLine("adjust:new-carry", "2025-11-01", `신천년 이월 조정 (신천년 이월 ${won(nw)} − 구천년 10/31 잔액 ${won(old)})`, diff, "new"));
+  const hasOld = all.some((l) => l.book?.startsWith("old"));
+  const hasNew = all.some((l) => l.book === "new");
+  if (hasOld) {
+    // 구천년 10/31 잔액: 이월이 있는 계정은 이월부터, 없는 계정은 줄 합계로
+    const noCarry = all.filter((l) => l.kind !== "carry" && l.book?.startsWith("old") && !firstCarry.has(acct(l)) && l.date <= OLD_BOOKS_UNTIL);
+    const old = oldAcc.reduce((t, b) => t + endBal.get(b)!(OLD_BOOKS_UNTIL), 0) + noCarry.reduce((t, l) => t + lineDelta(l), 0);
+    if (hasNew) {
+      const nw = newAcc.reduce((t, b) => t + firstCarry.get(b)!.total, 0);
+      const diff = nw - old;
+      // 신천년 첫 이월은 빼고 계산하니, 이 줄이 「신천년 이월 − 구천년 잔액」 만큼을 맞춘다
+      if (diff) out.push(adjustLine("adjust:new-carry", "2025-11-01", `신천년 이월 조정 (신천년 이월 ${won(nw)} − 구천년 10/31 잔액 ${won(old)})`, diff, "new"));
+    } else if (old) {
+      // 미수는 신천년 기준: 신천년으로 넘어오지 않은 구천년 잔액은 정리한다 (거래 기록은 그대로 보인다)
+      out.push(adjustLine("adjust:old-close", "2025-11-01", `구천년 잔액 정리 (신천년으로 넘어오지 않은 10/31 잔액 ${won(old)})`, -old, "old"));
+    }
   }
   return out;
 }

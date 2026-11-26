@@ -1,0 +1,62 @@
+-- 고객 합치기: 한 사람이 두 고객으로 나뉜 경우(천년경영 구천년/신천년 이름 차이 등) src의 모든 기록을 dst로 옮기고 src를 지운다.
+-- 무엇을 옮겼는지 customer_merge_log에 남겨(지운 고객 행 포함) 되돌릴 수 있게 한다. 관리자만.
+CREATE TABLE IF NOT EXISTS public.customer_merge_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  src_id uuid NOT NULL,
+  dst_id uuid NOT NULL,
+  src_row jsonb NOT NULL,
+  moved jsonb NOT NULL,
+  reason text,
+  merged_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.customer_merge_log TO authenticated;
+GRANT ALL ON public.customer_merge_log TO service_role;
+ALTER TABLE public.customer_merge_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "admin read merge log" ON public.customer_merge_log FOR SELECT TO authenticated
+  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin')));
+
+CREATE OR REPLACE FUNCTION public.merge_customers(p_src uuid, p_dst uuid, p_reason text DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  src customers%ROWTYPE; dst customers%ROWTYPE;
+  moved jsonb := '{}'::jsonb; n int;
+  r record;
+BEGIN
+  -- 관리자만 (서버에서 직접 돌릴 때는 auth.uid()가 없다)
+  IF auth.uid() IS NOT NULL AND NOT public.has_role(auth.uid(), 'admin') THEN RAISE EXCEPTION '관리자만 고객을 합칠 수 있어요'; END IF;
+  IF p_src = p_dst THEN RAISE EXCEPTION '같은 고객이에요'; END IF;
+  SELECT * INTO src FROM customers WHERE id = p_src FOR UPDATE;
+  SELECT * INTO dst FROM customers WHERE id = p_dst FOR UPDATE;
+  IF src.id IS NULL OR dst.id IS NULL THEN RAISE EXCEPTION '고객을 찾지 못했어요'; END IF;
+  IF src.user_id IS NOT NULL AND dst.user_id IS NOT NULL THEN RAISE EXCEPTION '두 고객 모두 앱 계정이 연결돼 있어요'; END IF;
+
+  FOR r IN SELECT * FROM (VALUES
+    ('bank_deposits','customer_id'),('blade_sharpenings','customer_id'),('chat_rooms','related_customer_id'),('customer_drive_links','customer_id'),
+    ('customer_legacy_codes','customer_id'),('documents','customer_id'),('finance_records','customer_id'),('insurance_repairs','customer_id'),
+    ('ledger_entries','customer_id'),('machine_sales_history','from_customer_id'),('machine_sales_history','to_customer_id'),('machines','customer_id'),
+    ('onsite_visits','customer_id'),('part_orders','customer_id'),('part_sales','customer_id'),('quotes','customer_id'),('repair_history','customer_id'),
+    ('repair_logs','customer_id'),('tasks','related_customer_id')) AS t(tbl, col)
+  LOOP
+    IF to_regclass('public.' || r.tbl) IS NULL THEN CONTINUE; END IF;
+    EXECUTE format('UPDATE public.%I SET %I = $1 WHERE %I = $2', r.tbl, r.col, r.col) USING p_dst, p_src;
+    GET DIAGNOSTICS n = ROW_COUNT;
+    IF n > 0 THEN moved := moved || jsonb_build_object(r.tbl || '.' || r.col, n); END IF;
+  END LOOP;
+
+  -- 비어 있는 칸은 src 값으로 채운다 (앱 계정 연결은 고유값이라 src에서 먼저 뗀다)
+  IF src.user_id IS NOT NULL THEN UPDATE customers SET user_id = NULL WHERE id = p_src; END IF;
+  UPDATE customers SET
+    phone = CASE WHEN coalesce(nullif(phone, ''), '') = '' THEN src.phone ELSE phone END,
+    address = coalesce(nullif(address, ''), src.address),
+    notes = CASE WHEN src.notes IS NULL OR src.notes = '' THEN notes ELSE concat_ws(E'\n', nullif(notes, ''), src.notes) END,
+    user_id = coalesce(user_id, src.user_id)
+  WHERE id = p_dst;
+
+  INSERT INTO customer_merge_log (src_id, dst_id, src_row, moved, reason, merged_by)
+    VALUES (p_src, p_dst, to_jsonb(src), moved, p_reason, auth.uid());
+  DELETE FROM customers WHERE id = p_src;
+  RETURN moved;
+END $$;
+REVOKE ALL ON FUNCTION public.merge_customers(uuid, uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.merge_customers(uuid, uuid, text) TO authenticated;
