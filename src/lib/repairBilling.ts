@@ -1,4 +1,5 @@
-export type RepairPaymentMode = "paid" | "unpaid" | "partial";
+/** free = 무상(서비스): 청구하지 않고 원래 금액은 waived_amount로 남긴다 */
+export type RepairPaymentMode = "paid" | "unpaid" | "partial" | "free";
 
 export interface RepairReceivablePlan {
   amount: number;
@@ -16,7 +17,7 @@ export function planRepairReceivable(
   dueDays = 30,
 ): RepairReceivablePlan | null {
   const amount = Math.max(0, Math.round(total));
-  if (amount <= 0 || mode === "paid") return null;
+  if (amount <= 0 || mode === "paid" || mode === "free") return null;
   const paid = mode === "partial" ? Math.min(Math.max(0, Math.round(partialPaid)), amount) : 0;
   if (paid >= amount) return null;
   const d = new Date(`${repairDate}T00:00:00Z`);

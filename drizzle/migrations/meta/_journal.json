@@ -218,6 +218,13 @@
       "when": 1796100000000,
       "tag": "0030_staff_directory_assignees",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1796200000000,
+      "tag": "0031_customer_ledger",
+      "breakpoints": true
     }
   ]
 }

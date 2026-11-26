@@ -27,6 +27,7 @@ import { PartSaleDetailDialog } from "@/components/partSales/PartSaleDetailDialo
 import { useCustomerPartSales } from "@/components/partSales/usePartSales";
 import type { PartSaleRow } from "@/components/partSales/types";
 import { PAYMENT_MODE_LABELS } from "@/components/partSales/types";
+import { CustomerLedgerCard } from "@/components/customers/CustomerLedgerCard";
 
 const MANUFACTURERS = ["얀마", "구보다", "LS", "TYM", "대동", "존디어", "펜트", "도이치바", "기타"];
 
@@ -313,6 +314,9 @@ export default function CustomerDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* 천년경영식 거래 원장 (해·달별) */}
+      <CustomerLedgerCard customer={customer} machineIds={machineIds} />
 
       {/* 구글 드라이브 링크 */}
       <Card className="mb-6">

@@ -14,7 +14,8 @@ import { formatPrice } from "@/lib/formatters";
 import { ExternalLink, Printer, Trash2 } from "lucide-react";
 import type { PartSaleRow } from "./types";
 import { buyerOf, PAYMENT_MODE_LABELS } from "./types";
-import { PartSalePrintDialog } from "./PartSalePrintDialog";
+import { StatementPrintDialog } from "@/components/print/StatementPrintDialog";
+import { partSaleToStatement } from "@/lib/printPartSale";
 
 export function PartSaleDetailDialog({ sale, onClose, canManage }: {
   sale: PartSaleRow | null; onClose: () => void; canManage: boolean;
@@ -125,7 +126,7 @@ export function PartSaleDetailDialog({ sale, onClose, canManage }: {
         </DialogContent>
       </Dialog>
 
-      {sale && <PartSalePrintDialog sale={sale} open={printOpen} onOpenChange={setPrintOpen} />}
+      {sale && <StatementPrintDialog doc={partSaleToStatement(sale)} open={printOpen} onOpenChange={setPrintOpen} />}
 
       <AlertDialog open={confirm} onOpenChange={setConfirm}>
         <AlertDialogContent>

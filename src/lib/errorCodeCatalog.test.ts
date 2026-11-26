@@ -38,3 +38,27 @@ describe("catalogue search", () => {
     expect(matchesCatalogQuery(catalogHaystack(entry("03 02000.03")), "07400")).toBe(false);
   });
 });
+
+import { machineFitScore, searchCatalogForMachine } from "./errorCodeCatalog";
+
+describe("수리 등록 에러코드 검색", () => {
+  const e = (code: string, series: string, types: string[], part = "", order = 0) =>
+    ({ id: code + series, code, series, machine_types: types, controller: null, part, symptom: null, cause: null, remedy: null, recovery: null, source: "", source_url: null, sort_order: order });
+  const yh = e("00 00CAA.04", "YH1150 콤바인", ["콤바인"], "DPF입구온도센서", 2);
+  const yt = e("28 00083.09", "YT 시리즈 트랙터", ["트랙터"], "METER 버스오프", 1);
+  const aw = e("84 03500.**", "AW6114·AW7114 / YH6115·YH7115 콤바인", ["콤바인"], "예취포지션센서", 3);
+
+  it("모델명 → 계열 → 기계 종류 순으로 맞춘다", () => {
+    expect(machineFitScore(yh, "YH1150", null)).toBe(3);
+    expect(machineFitScore(aw, "YH7115", null)).toBe(3);
+    expect(machineFitScore(yt, "YT5113A", null)).toBe(2);
+    expect(machineFitScore(aw, "YH1150", null)).toBe(2); // 같은 YH 계열
+    expect(machineFitScore(e("엔진램프", "GS400 콤바인", ["콤바인"]), "YH1150", null)).toBe(1); // 같은 콤바인
+    expect(machineFitScore(yt, "YH1150", null)).toBe(0);
+  });
+  it("코드 조각·증상으로 찾고, 내 기계 코드를 먼저", () => {
+    expect(searchCatalogForMachine([yt, yh, aw], "00caa", "YH1150").map((r) => r.entry.code)).toEqual(["00 00CAA.04"]);
+    expect(searchCatalogForMachine([yt, yh, aw], "센서", "YH7115").map((r) => r.entry.code)).toEqual(["84 03500.**", "00 00CAA.04"]);
+    expect(searchCatalogForMachine([yt, yh, aw], "", "YH1150")).toEqual([]);
+  });
+});

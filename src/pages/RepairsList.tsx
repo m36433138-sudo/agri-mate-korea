@@ -25,7 +25,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatPrice, formatDate } from "@/lib/formatters";
-import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp, AlertTriangle, Map as MapIcon, MoreHorizontal } from "lucide-react";
+import { Search, Plus, Trash2, Check, ChevronDown, RotateCcw, Pencil, FileUp, AlertTriangle, Map as MapIcon, MoreHorizontal, Printer, Gift } from "lucide-react";
+import { RepairStatementDialog } from "@/components/print/RepairStatementDialog";
 import RepairDiagramDialog from "@/components/diagrams/RepairDiagramDialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -62,8 +63,16 @@ function AccountingBadge({ posted, disabled, onToggle }: { posted: boolean; disa
   );
 }
 
-function RowMenu({ onDiagram, onErrorCode, onEdit, onDelete }: {
-  onDiagram: () => void; onErrorCode: () => void; onEdit: () => void; onDelete: () => void;
+function FreeBadge({ waived }: { waived?: number | null }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-xs font-semibold whitespace-nowrap">
+      <Gift className="h-3 w-3" /> 무상{waived ? ` ${formatPrice(waived)}` : ""}
+    </span>
+  );
+}
+
+function RowMenu({ onDiagram, onErrorCode, onEdit, onDelete, onStatement }: {
+  onDiagram: () => void; onErrorCode: () => void; onEdit: () => void; onDelete: () => void; onStatement: () => void;
 }) {
   return (
     <DropdownMenu>
@@ -80,6 +89,7 @@ function RowMenu({ onDiagram, onErrorCode, onEdit, onDelete }: {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuItem onSelect={onEdit}><Pencil className="h-4 w-4 mr-2" /> 수정</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onStatement}><Printer className="h-4 w-4 mr-2" /> 거래명세서</DropdownMenuItem>
         <DropdownMenuItem onSelect={onDiagram}><MapIcon className="h-4 w-4 mr-2" /> 도면에서 부품 보기</DropdownMenuItem>
         <DropdownMenuItem onSelect={onErrorCode}><AlertTriangle className="h-4 w-4 mr-2" /> 에러코드 기록</DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -98,6 +108,7 @@ export default function RepairsList() {
 
   const [editRepair, setEditRepair] = useState<any | null>(null);
   const [errorCodeRepair, setErrorCodeRepair] = useState<any | null>(null);
+  const [statementId, setStatementId] = useState<string | null>(null);
   const [diagramRepair, setDiagramRepair] = useState<any | null>(null);
   const [technicianFilter, setTechnicianFilter] = useState("");
   const [accountingFilter, setAccountingFilter] = useState<"all" | "posted" | "unposted">(() => {
@@ -394,6 +405,7 @@ export default function RepairsList() {
                           />
                         </td>
                         <td className="px-3 py-3.5 text-right tabular-nums whitespace-nowrap">
+                          {r.is_free_service && <FreeBadge waived={r.waived_amount} />}
                           {r.total_cost > 0 && <span className="font-bold">{formatPrice(r.total_cost)}</span>}
                           {r.labor_cost > 0 && (
                             <span className="block text-xs text-muted-foreground">공임 {formatPrice(r.labor_cost)}</span>
@@ -404,6 +416,7 @@ export default function RepairsList() {
                             onEdit={() => setEditRepair(r)}
                             onDiagram={() => setDiagramRepair(r)}
                             onErrorCode={() => setErrorCodeRepair(r)}
+                            onStatement={() => setStatementId(r.id)}
                             onDelete={() => askDelete(r)}
                           />
                         </td>
@@ -439,6 +452,7 @@ export default function RepairsList() {
                           onEdit={() => setEditRepair(r)}
                           onDiagram={() => setDiagramRepair(r)}
                           onErrorCode={() => setErrorCodeRepair(r)}
+                            onStatement={() => setStatementId(r.id)}
                           onDelete={() => askDelete(r)}
                         />
                       </div>
@@ -450,7 +464,7 @@ export default function RepairsList() {
                         disabled={toggleAccountingMutation.isPending}
                         onToggle={() => toggleAccountingMutation.mutate({ id: r.id, value: r.accounting_posted !== true })}
                       />
-                      {r.total_cost > 0 && <span className="text-base font-extrabold tabular-nums">{formatPrice(r.total_cost)}</span>}
+                      {r.is_free_service ? <FreeBadge waived={r.waived_amount} /> : r.total_cost > 0 && <span className="text-base font-extrabold tabular-nums">{formatPrice(r.total_cost)}</span>}
                     </div>
                   </li>
                 ))}
@@ -474,7 +488,7 @@ export default function RepairsList() {
         </TabsContent>
       </Tabs>
 
-      <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} />
+      <RepairInputModal open={repairOpen} onOpenChange={setRepairOpen} onSaved={(id) => setStatementId(id)} />
       <BillingPdfImportDialog open={importOpen} onOpenChange={setImportOpen} />
 
       <RepairEditDialog
@@ -494,6 +508,8 @@ export default function RepairsList() {
         onOpenChange={(v) => !v && setErrorCodeRepair(null)}
         repair={errorCodeRepair}
       />
+
+      <RepairStatementDialog repairId={statementId} onClose={() => setStatementId(null)} />
     </div>
   );
 }

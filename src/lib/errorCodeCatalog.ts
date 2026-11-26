@@ -76,3 +76,30 @@ export function matchesCatalogQuery(haystack: string, query: string): boolean {
   if (joinedCode && compact.includes(joinedCode)) return true;
   return tokens.every((token) => haystack.includes(token) || compact.includes(token));
 }
+
+/**
+ * 고른 기계에 맞는 매뉴얼인지 점수 (높을수록 먼저): 시리즈에 모델명(YH1150)이 들어 있으면 3,
+ * 모델 앞글자 계열(YT·YH·YR·AW·VP·EG·GS)이 같으면 2, 기계 종류(트랙터·콤바인·이앙기)만 같으면 1.
+ */
+export function machineFitScore(entry: Pick<CatalogEntry, "series" | "machine_types">, model?: string | null, machineType?: string | null): number {
+  const series = (entry.series ?? "").toUpperCase();
+  const m = (model ?? "").toUpperCase().replace(/\s+/g, "");
+  const base = m.match(/^[A-Z]{2,4}\d{2,4}/)?.[0];
+  if (base && series.replace(/\s+/g, "").includes(base)) return 3;
+  const family = m.match(/^[A-Z]{2}/)?.[0];
+  if (family && new RegExp(`\\b${family}\\d|\\b${family}\\s*시리즈`).test(series)) return 2;
+  const type = (machineType ?? "").trim() || (/^YT|^EG|^YM/.test(m) ? "트랙터" : /^YH|^AW|^GS/.test(m) ? "콤바인" : /^YR|^VP/.test(m) ? "이앙기" : "");
+  if (type && (entry.machine_types ?? []).includes(type)) return 1;
+  return 0;
+}
+
+/** 검색어에 맞는 매뉴얼 코드를 기계에 맞는 것부터 (검색어가 없으면 빈 목록) */
+export function searchCatalogForMachine(entries: CatalogEntry[], query: string, model?: string | null, machineType?: string | null, limit = 12) {
+  if (!query.trim()) return [];
+  return entries
+    .filter((e) => matchesCatalogQuery(catalogHaystack(e), query))
+    .map((e) => ({ e, s: machineFitScore(e, model, machineType) }))
+    .sort((a, b) => b.s - a.s || a.e.sort_order - b.e.sort_order)
+    .slice(0, limit)
+    .map(({ e, s }) => ({ entry: e, fit: s }));
+}
