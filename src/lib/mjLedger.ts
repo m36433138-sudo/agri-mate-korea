@@ -5,9 +5,23 @@
  */
 
 export type MjCustomer = { code: string; name: string; phone: string; address: string; zip: string };
+
+/**
+ * 천년경영 장부. 2025년 10월까지는 장흥·강진이 따로(구천년), 11월부터는 하나로 합친 새 장부(신천년)에 적었다.
+ * 신천년의 전기이월은 구천년 2025-10-31 잔액을 옮겨 온 것이라, 구천년은 그날까지만 가져온다(이후 줄은 신천년에 다시 적혀 있다).
+ * 장부마다 거래처코드·전표번호가 따로 매겨져 있어 식별값 앞에 장부를 붙인다.
+ */
+export type MjBookId = "new" | "old-jh" | "old-gj";
+export const MJ_BOOKS: { id: MjBookId; label: string; until?: string }[] = [
+  { id: "new", label: "신천년 (장흥·강진 통합)" },
+  { id: "old-jh", label: "구천년 장흥", until: "2025-10-31" },
+  { id: "old-gj", label: "구천년 강진", until: "2025-10-31" },
+];
+export const mjBook = (id: string | null | undefined) => MJ_BOOKS.find((b) => b.id === id);
 export type MjKind = "sale" | "payment" | "discount" | "memo" | "carry";
 export type MjEntry = {
   source_key: string;
+  book: MjBookId;
   legacy_customer_code: string;
   entry_date: string;
   kind: MjKind;
@@ -33,6 +47,8 @@ export type MjParseResult = {
   skipped: number;
   /** 거래처별 천년경영 최종 잔액 (가져온 뒤 맞는지 확인용) */
   closingBalance: Map<string, number>;
+  /** 구천년 마감일 뒤라서 뺀 줄 수 */
+  afterCutoff: number;
 };
 
 const REQUIRED = ["ccode", "거래처명", "거래일자", "상  품  명"];
@@ -63,7 +79,10 @@ function headerIndex(header: unknown[]) {
   };
 }
 
-export function parseMjLedger(rows: unknown[][]): MjParseResult {
+export function parseMjLedger(rows: unknown[][], bookId: MjBookId = "new"): MjParseResult {
+  const book = mjBook(bookId)!;
+  const until = book.until ?? "9999-12-31";
+  let afterCutoff = 0;
   const hi = rows.findIndex((r) => r.some((c) => t(c) === "ccode"));
   if (hi < 0) throw new Error("천년경영 거래처원장 엑셀이 아니에요 (ccode 머리글이 없어요)");
   const c = headerIndex(rows[hi]);
@@ -94,8 +113,9 @@ export function parseMjLedger(rows: unknown[][]): MjParseResult {
     const slip = get(r, c.slip);
     const time = get(r, c.time);
     const recorded_at = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(time) ? `${time.slice(0, 16)}:00+09:00` : null;
+    if (date > until) { afterCutoff++; continue; }
     const base = {
-      legacy_customer_code: code, entry_date: date, item_code: null as string | null, spec: get(r, c.spec) || null,
+      book: bookId, legacy_customer_code: code, entry_date: date, item_code: null as string | null, spec: get(r, c.spec) || null,
       quantity: null as number | null, unit: null as string | null, unit_price: 0, supply_amount: 0, vat_amount: 0,
       total_amount: 0, paid_amount: 0, discount_amount: 0, is_free: false, recorded_at,
     };
@@ -105,7 +125,7 @@ export function parseMjLedger(rows: unknown[][]): MjParseResult {
       const paid = mjNumber(r[c.paid]), disc = mjNumber(r[c.discount]);
       const k = `mjp:${code}:${date}:${time}:${name}:${paid}:${disc}`;
       const n = (seen.get(k) ?? 0) + 1; seen.set(k, n);
-      entries.push({ ...base, source_key: n > 1 ? `${k}#${n}` : k, kind: disc && !paid ? "discount" : "payment", item_name: name, paid_amount: paid, discount_amount: disc });
+      entries.push({ ...base, source_key: `${bookId}:${n > 1 ? `${k}#${n}` : k}`, kind: disc && !paid ? "discount" : "payment", item_name: name, paid_amount: paid, discount_amount: disc });
       continue;
     }
     if (!slip) { skipped++; continue; }
@@ -116,7 +136,7 @@ export function parseMjLedger(rows: unknown[][]): MjParseResult {
     const itemCode = get(r, c.itemCode);
     const qty = get(r, c.qty) ? mjNumber(r[c.qty]) : null;
     const common = {
-      ...base, source_key: `mj:${slip}`, item_code: itemCode && itemCode !== "000000" ? itemCode : null, item_name: name,
+      ...base, source_key: `${bookId}:mj:${slip}`, item_code: itemCode && itemCode !== "000000" ? itemCode : null, item_name: name,
       quantity: qty, unit: get(r, c.unit) || null, unit_price: mjNumber(r[c.price]), supply_amount: supply, vat_amount: vat,
     };
     if (name === "할인" || (total < 0 && /할인/.test(name))) {
@@ -136,13 +156,13 @@ export function parseMjLedger(rows: unknown[][]): MjParseResult {
   if (periodStart) {
     for (const { code, amount } of carries) {
       entries.push({
-        source_key: `mjc:${code}:${periodStart}`, legacy_customer_code: code, entry_date: periodStart, kind: "carry",
+        source_key: `${bookId}:mjc:${code}:${periodStart}`, book: bookId, legacy_customer_code: code, entry_date: periodStart, kind: "carry",
         item_code: null, item_name: "전기이월", spec: null, quantity: null, unit: null, unit_price: 0, supply_amount: 0,
         vat_amount: 0, total_amount: amount, paid_amount: 0, discount_amount: 0, is_free: false, recorded_at: null,
       });
     }
   }
-  return { customers: [...customers.values()], entries, periodStart, periodEnd, skipped, closingBalance };
+  return { customers: [...customers.values()], entries, periodStart, periodEnd, skipped, closingBalance, afterCutoff };
 }
 
 /** 원장 잔액: 가장 이른 전기이월 + 그 뒤 매출 − 입금 − 할인 */
@@ -158,28 +178,86 @@ export function ledgerBalance(entries: Pick<MjEntry, "kind" | "entry_date" | "to
   return bal;
 }
 
-export type AppCustomer = { id: string; name: string; phone: string | null; legacy_code: string | null };
-export type CustomerMatch = { customer: MjCustomer; match: AppCustomer | null; by: "code" | "phone" | "name" | null };
+export type AppCustomer = { id: string; name: string; phone: string | null };
+/** 이미 이어 둔 천년경영 거래처 → 앱 고객 (customer_legacy_codes) */
+export type LegacyLink = { book: string; code: string; customer_id: string };
+export type BookCustomer = MjCustomer & { book: MjBookId };
+export type CustomerMatch = { customer: BookCustomer; match: AppCustomer | null; by: "code" | "phone" | "name" | null };
 
-const digits = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "");
+export const phoneDigits = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "");
+/** 010-0000-0000 같은 자리채움 번호는 사람을 가리지 못한다 */
+export const usablePhone = (p: string | null | undefined) => {
+  const d = phoneDigits(p);
+  return d.length >= 10 && !/^01[016789](0{7,8}|12345678)$/.test(d) ? d : "";
+};
 
-/** 천년경영 거래처 → 앱 고객: 거래처코드 → 휴대폰(한 명일 때) → 이름(한 명일 때) */
-export function matchCustomers(list: MjCustomer[], app: AppCustomer[]): CustomerMatch[] {
-  const byCode = new Map(app.filter((a) => a.legacy_code).map((a) => [a.legacy_code!, a]));
+/** 천년경영 거래처 → 앱 고객: (장부, 거래처코드)로 이미 이은 것 → 휴대폰(한 명일 때) → 이름(한 명일 때) */
+export function matchCustomers(list: BookCustomer[], app: AppCustomer[], links: LegacyLink[] = []): CustomerMatch[] {
+  const byId = new Map(app.map((a) => [a.id, a]));
+  const byLink = new Map(links.map((l) => [`${l.book}:${l.code}`, byId.get(l.customer_id)]));
   const byPhone = new Map<string, AppCustomer[]>();
   const byName = new Map<string, AppCustomer[]>();
   for (const a of app) {
-    const p = digits(a.phone);
-    if (p.length >= 10 && !/^010(0{8}|12345678)$/.test(p)) byPhone.set(p, [...(byPhone.get(p) ?? []), a]);
+    const p = usablePhone(a.phone);
+    if (p) byPhone.set(p, [...(byPhone.get(p) ?? []), a]);
     byName.set(a.name.trim(), [...(byName.get(a.name.trim()) ?? []), a]);
   }
   return list.map((customer) => {
-    const coded = byCode.get(customer.code);
-    if (coded) return { customer, match: coded, by: "code" as const };
-    const ph = byPhone.get(digits(customer.phone));
+    const linked = byLink.get(`${customer.book}:${customer.code}`);
+    if (linked) return { customer, match: linked, by: "code" as const };
+    const ph = byPhone.get(usablePhone(customer.phone));
     if (ph?.length === 1) return { customer, match: ph[0], by: "phone" as const };
     const nm = byName.get(customer.name.trim());
     if (nm?.length === 1) return { customer, match: nm[0], by: "name" as const };
     return { customer, match: null, by: null };
   });
+}
+
+/**
+ * 앱에 없는 거래처를 새 고객으로 만들 때, 여러 장부에 있는 같은 사람(같은 휴대폰, 휴대폰이 없으면 같은 이름)은 한 명으로 묶는다.
+ * 신천년 정보(최근 이름·주소)를 대표로 쓴다.
+ */
+export function groupNewCustomers(unmatched: BookCustomer[]): BookCustomer[][] {
+  const order: Record<MjBookId, number> = { new: 0, "old-gj": 1, "old-jh": 1 };
+  const groups = new Map<string, BookCustomer[]>();
+  for (const c of [...unmatched].sort((a, b) => order[a.book] - order[b.book])) {
+    const key = usablePhone(c.phone) ? `p:${usablePhone(c.phone)}` : `n:${c.name.trim() || `${c.book}:${c.code}`}`;
+    groups.set(key, [...(groups.get(key) ?? []), c]);
+  }
+  return [...groups.values()];
+}
+
+/**
+ * 파일이 어느 장부인지 짐작: 2025-11 이후 줄이 대부분이면 신천년, 아니면 거래처 주소에 장흥·강진 중 많은 쪽.
+ * (화면에서 사람이 바꿀 수 있다)
+ */
+export function guessMjBook(r: Pick<MjParseResult, "entries" | "customers">): MjBookId {
+  const lines = r.entries.filter((e) => e.kind !== "carry");
+  const late = lines.filter((e) => e.entry_date >= "2025-11-01").length;
+  if (lines.length && late / lines.length >= 0.5) return "new";
+  const jh = r.customers.filter((c) => c.address.includes("장흥")).length;
+  const gj = r.customers.filter((c) => c.address.includes("강진")).length;
+  return gj > jh ? "old-gj" : "old-jh";
+}
+
+export type MjExport = { book: MjBookId; periodStart: string | null; periodEnd: string | null; entries: MjEntry[]; customers: MjCustomer[] };
+/** DB에서 이 범위의 기존 줄을 지우고 새로 넣는다 (천년경영에서 고치거나 지운 전표가 남지 않게) */
+export type MjReplaceRange = { book: MjBookId; start: string; end: string; codes: string[] };
+
+/**
+ * 같은 장부의 파일 기간이 겹치면 더 최근까지 뽑은 파일(마지막 날짜가 늦은 것)이 이긴다.
+ * 그 파일에 있는 거래처는, 그 기간 안의 옛 파일 줄을 버린다.
+ */
+export function mergeMjExports(files: MjExport[]): { entries: MjEntry[]; ranges: MjReplaceRange[] } {
+  const sorted = [...files].filter((f) => f.periodStart && f.periodEnd).sort((a, b) => b.periodEnd!.localeCompare(a.periodEnd!));
+  const taken: { book: MjBookId; start: string; end: string; codes: Set<string> }[] = [];
+  const entries = new Map<string, MjEntry>();
+  for (const f of sorted) {
+    for (const e of f.entries) {
+      const covered = taken.some((t) => t.book === e.book && e.entry_date >= t.start && e.entry_date <= t.end && t.codes.has(e.legacy_customer_code));
+      if (!covered && !entries.has(e.source_key)) entries.set(e.source_key, e);
+    }
+    taken.push({ book: f.book, start: f.periodStart!, end: f.periodEnd!, codes: new Set(f.customers.map((c) => c.code)) });
+  }
+  return { entries: [...entries.values()], ranges: taken.map((t) => ({ book: t.book, start: t.start, end: t.end, codes: [...t.codes] })) };
 }

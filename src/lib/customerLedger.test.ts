@@ -8,7 +8,7 @@ const row = (o: Partial<LedgerEntryRow> & Pick<LedgerEntryRow, "source_key" | "e
 
 const mj = fromLedgerEntries([
   row({ source_key: "mjc:1:2025-01-02", entry_date: "2025-01-02", kind: "carry", item_name: "전기이월", total_amount: 100000 }),
-  row({ source_key: "mjc:1:2026-01-05", entry_date: "2026-01-05", kind: "carry", item_name: "전기이월", total_amount: 999999 }), // 나중 파일 이월은 무시
+  row({ source_key: "mjc:1:2026-01-05", entry_date: "2026-01-05", kind: "carry", item_name: "전기이월", total_amount: 999999 }), // 다음 해 파일 이월이 앞 마감과 다르면 「이월 조정」 줄로 맞춘다
   row({ source_key: "mj:250310-1", entry_date: "2025-03-10", kind: "sale", item_code: "A1", item_name: "엔진오일", quantity: 2, unit_price: 22000, supply_amount: 40000, vat_amount: 4000, total_amount: 44000 }),
   row({ source_key: "mj:250310-2", entry_date: "2025-03-10", kind: "sale", item_code: "B2", item_name: "필터", quantity: 1, total_amount: 0, is_free: true }),
   row({ source_key: "mjp:1:2025-03-12", entry_date: "2025-03-12", kind: "payment", item_name: "입금(통장)", paid_amount: 120000 }),
@@ -27,7 +27,8 @@ describe("고객 거래 원장", () => {
     expect(y25.days.map((d) => d.date)).toEqual(["2025-03-10", "2025-03-12"]);
     const jan26 = buildLedger(mj, ...periodOf(2026, 1));
     expect(jan26.opening).toBe(24000);
-    expect(jan26.closing).toBe(24000 + 33000 - 3000);
+    expect(jan26.closing).toBe(999999 + 33000 - 3000);
+    expect(jan26.days[0].lines.find((l) => l.kind === "adjust")?.total).toBe(999999 - 24000);
     expect(periodOf(2026, 2)).toEqual(["2026-02-01", "2026-02-28"]);
   });
 
@@ -52,5 +53,29 @@ describe("고객 거래 원장", () => {
     expect(d.lines.map((l) => [l.name, l.amount, !!l.free])).toEqual([["엔진오일", 44000, false], ["필터", 0, true]]);
     expect(d).toMatchObject({ total: 44000, paid: 0, payLabel: "외상", date: "2025-03-10" });
     expect(d.notes).toContain("144,000");
+  });
+});
+
+describe("구천년·신천년 합치기", () => {
+  const L = (o: Partial<LedgerEntryRow> & Pick<LedgerEntryRow, "source_key" | "entry_date" | "kind">): LedgerEntryRow => row(o);
+  const lines = fromLedgerEntries([
+    L({ source_key: "old-jh:mjc:1:2024-01-01", book: "old-jh", legacy_customer_code: "1", entry_date: "2024-01-01", kind: "carry", total_amount: 100 }),
+    L({ source_key: "old-jh:mj:1", book: "old-jh", legacy_customer_code: "1", entry_date: "2025-05-01", kind: "sale", total_amount: 50 }),
+    L({ source_key: "old-gj:mjc:7:2024-01-01", book: "old-gj", legacy_customer_code: "7", entry_date: "2024-01-01", kind: "carry", total_amount: 5 }),
+    // 신천년 첫 이월 = 구천년 10/31 잔액(155)을 옮기며 120으로 고침
+    L({ source_key: "new:mjc:9:2025-04-01", book: "new", legacy_customer_code: "9", entry_date: "2025-04-01", kind: "carry", total_amount: 120 }),
+    L({ source_key: "new:mj:2", book: "new", legacy_customer_code: "9", entry_date: "2025-12-01", kind: "sale", total_amount: 10 }),
+    // 2026 연초 이월을 0으로 정리
+    L({ source_key: "new:mjc:9:2026-01-01", book: "new", legacy_customer_code: "9", entry_date: "2026-01-01", kind: "carry", total_amount: 0 }),
+    L({ source_key: "new:mj:3", book: "new", legacy_customer_code: "9", entry_date: "2026-02-01", kind: "sale", total_amount: 7 }),
+  ]);
+  it("구천년 이월을 장흥·강진 모두 세고, 신천년 이월과의 차이·연초 정리를 조정 줄로 넣어 신천년 잔액과 맞춘다", () => {
+    const y25 = buildLedger(lines, ...periodOf(2025, null));
+    expect(y25.opening).toBe(105);
+    const adj = y25.days.flatMap((d) => d.lines).find((l) => l.kind === "adjust");
+    expect(adj).toMatchObject({ date: "2025-11-01", total: 120 - 155 });
+    expect(y25.closing).toBe(130);
+    const all = buildLedger(lines, "2000-01-01", "2099-12-31");
+    expect(all.closing).toBe(7); // 신천년: 0(연초 이월) + 7
   });
 });

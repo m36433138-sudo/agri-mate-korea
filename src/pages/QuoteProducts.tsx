@@ -15,7 +15,7 @@ import ProductBulkUpload from "@/components/quotes/ProductBulkUpload";
 import { ProductGrid } from "@/components/quotes/ProductGrid";
 import { ProductDetail, useQuoteProducts } from "@/components/quotes/ProductDetail";
 import type { QuoteProduct } from "@/lib/quoteTypes";
-import { MACHINE_GROUPS, PRODUCT_BUCKET, groupOf, productImageUrl, uploadProductImage } from "@/lib/productCatalog";
+import { MACHINE_GROUPS, PRODUCT_BUCKET, groupOf, isBucketImage, productImageUrl, uploadProductImage } from "@/lib/productCatalog";
 import { cn } from "@/lib/utils";
 
 const db = supabase as any;
@@ -56,10 +56,10 @@ function ProductEditDialog({ draft, onClose, categories, onSaved }: { draft: Dra
       if (d._file) {
         const path = await uploadProductImage(d._file, id!);
         await db.from("quote_products").update({ image_path: path }).eq("id", id);
-        if (old) await supabase.storage.from(PRODUCT_BUCKET).remove([old]);
+        if (isBucketImage(old)) await supabase.storage.from(PRODUCT_BUCKET).remove([old]);
       } else if (d._removeImage && old) {
         await db.from("quote_products").update({ image_path: null }).eq("id", id);
-        await supabase.storage.from(PRODUCT_BUCKET).remove([old]);
+        if (isBucketImage(old)) await supabase.storage.from(PRODUCT_BUCKET).remove([old]);
       }
       toast.success("저장했어요");
       onSaved();
@@ -149,7 +149,7 @@ export default function QuoteProducts() {
     if (!confirm(`「${p.name}」을(를) 지울까요? 이미 만든 견적서에는 그대로 남아요.`)) return;
     const { error } = await db.from("quote_products").delete().eq("id", p.id);
     if (error) return toast.error(error.message);
-    if (p.image_path) await supabase.storage.from(PRODUCT_BUCKET).remove([p.image_path]);
+    if (isBucketImage(p.image_path)) await supabase.storage.from(PRODUCT_BUCKET).remove([p.image_path]);
     setDetail(null);
     reload();
   };
