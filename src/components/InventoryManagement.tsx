@@ -19,6 +19,7 @@ import { yanmarSalesPrice, normalizePartCode, missingPriceFields, type PartOrigi
 import * as XLSX from "xlsx";
 import PartTipsDialog from "@/components/parts/PartTipsDialog";
 import { useSearchParams } from "react-router-dom";
+import { heldQtyByCode, usePartHolds } from "@/lib/partHolds";
 
 type InventoryItem = {
   id: string;
@@ -91,6 +92,10 @@ export default function InventoryManagement() {
     },
     staleTime: 1000 * 60 * 3,
   });
+
+  // 빼놓은 부품(아직 안 쓴 것) 수량 — 재고 숫자 옆 「빼놓음 N」
+  const { data: holds = [] } = usePartHolds("held");
+  const heldQty = heldQtyByCode(holds, branch);
 
   // ② 검색 시에만 서버에서 데이터 가져옴 (최대 50개)
   const { data: searchResults, isLoading: searchLoading } = useQuery({
@@ -277,6 +282,7 @@ export default function InventoryManagement() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className={`text-xl font-bold tabular-nums leading-none ${isLow ? "text-destructive" : ""}`}>{item.quantity ?? 0}<span className="text-xs font-normal text-muted-foreground ml-0.5">개</span></p>
+                      {heldQty.get(item.part_code) ? <span className="mt-1 inline-block rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap">빼놓음 {heldQty.get(item.part_code)}</span> : null}
                       {item.sales_price != null && <p className="text-xs text-muted-foreground tabular-nums mt-1">{item.sales_price.toLocaleString()}원</p>}
                     </div>
                   </div>
@@ -334,6 +340,7 @@ export default function InventoryManagement() {
                       </td>
                       <td className={`p-3 text-right font-bold tabular-nums ${isLow ? "text-destructive" : ""}`}>
                         {item.quantity ?? 0}
+                        {heldQty.get(item.part_code) ? <span className="block">{heldQty.get(item.part_code) ? <span className="inline-block rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap">빼놓음 {heldQty.get(item.part_code)}</span> : null}</span> : null}
                       </td>
                       <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">
                         {item.min_stock ?? 1}
