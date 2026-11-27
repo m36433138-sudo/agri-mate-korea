@@ -244,9 +244,48 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_breaks: {
+        Row: {
+          created_at: string
+          date: string
+          employee_id: string
+          ended_at: string | null
+          id: string
+          reason: string | null
+          started_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          employee_id: string
+          ended_at?: string | null
+          id?: string
+          reason?: string | null
+          started_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          employee_id?: string
+          ended_at?: string | null
+          id?: string
+          reason?: string | null
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_breaks_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           afternoon_ot_minutes: number
+          break_minutes: number
           clock_in: string | null
           clock_out: string | null
           created_at: string
@@ -267,6 +306,7 @@ export type Database = {
         }
         Insert: {
           afternoon_ot_minutes?: number
+          break_minutes?: number
           clock_in?: string | null
           clock_out?: string | null
           created_at?: string
@@ -287,6 +327,7 @@ export type Database = {
         }
         Update: {
           afternoon_ot_minutes?: number
+          break_minutes?: number
           clock_in?: string | null
           clock_out?: string | null
           created_at?: string
@@ -648,6 +689,71 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      customer_legacy_codes: {
+        Row: {
+          book: string
+          code: string
+          created_at: string
+          customer_id: string
+          legacy_name: string | null
+        }
+        Insert: {
+          book: string
+          code: string
+          created_at?: string
+          customer_id: string
+          legacy_name?: string | null
+        }
+        Update: {
+          book?: string
+          code?: string
+          created_at?: string
+          customer_id?: string
+          legacy_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_legacy_codes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_merge_log: {
+        Row: {
+          created_at: string
+          dst_id: string
+          id: string
+          merged_by: string | null
+          moved: Json
+          reason: string | null
+          src_id: string
+          src_row: Json
+        }
+        Insert: {
+          created_at?: string
+          dst_id: string
+          id?: string
+          merged_by?: string | null
+          moved: Json
+          reason?: string | null
+          src_id: string
+          src_row: Json
+        }
+        Update: {
+          created_at?: string
+          dst_id?: string
+          id?: string
+          merged_by?: string | null
+          moved?: Json
+          reason?: string | null
+          src_id?: string
+          src_row?: Json
+        }
+        Relationships: []
       }
       customers: {
         Row: {
@@ -1169,6 +1275,7 @@ export type Database = {
       finance_records: {
         Row: {
           amount: number
+          assignee: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -1187,6 +1294,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          assignee?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -1205,6 +1313,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          assignee?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -1718,6 +1827,95 @@ export type Database = {
         }
         Relationships: []
       }
+      ledger_entries: {
+        Row: {
+          book: string
+          created_at: string
+          customer_id: string
+          discount_amount: number
+          entry_date: string
+          id: string
+          imported_by: string | null
+          is_free: boolean
+          item_code: string | null
+          item_name: string
+          kind: string
+          legacy_customer_code: string | null
+          paid_amount: number
+          quantity: number | null
+          recorded_at: string | null
+          source: string
+          source_key: string
+          spec: string | null
+          staff: string | null
+          supply_amount: number
+          total_amount: number
+          unit: string | null
+          unit_price: number
+          vat_amount: number
+        }
+        Insert: {
+          book?: string
+          created_at?: string
+          customer_id: string
+          discount_amount?: number
+          entry_date: string
+          id?: string
+          imported_by?: string | null
+          is_free?: boolean
+          item_code?: string | null
+          item_name?: string
+          kind: string
+          legacy_customer_code?: string | null
+          paid_amount?: number
+          quantity?: number | null
+          recorded_at?: string | null
+          source?: string
+          source_key: string
+          spec?: string | null
+          staff?: string | null
+          supply_amount?: number
+          total_amount?: number
+          unit?: string | null
+          unit_price?: number
+          vat_amount?: number
+        }
+        Update: {
+          book?: string
+          created_at?: string
+          customer_id?: string
+          discount_amount?: number
+          entry_date?: string
+          id?: string
+          imported_by?: string | null
+          is_free?: boolean
+          item_code?: string | null
+          item_name?: string
+          kind?: string
+          legacy_customer_code?: string | null
+          paid_amount?: number
+          quantity?: number | null
+          recorded_at?: string | null
+          source?: string
+          source_key?: string
+          spec?: string | null
+          staff?: string | null
+          supply_amount?: number
+          total_amount?: number
+          unit?: string | null
+          unit_price?: number
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machine_attachments: {
         Row: {
           brand: string | null
@@ -1965,6 +2163,98 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "machines_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onsite_visits: {
+        Row: {
+          address: string | null
+          branch: string | null
+          category: string | null
+          completed_on: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string
+          detail: string | null
+          geocoded_address: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          machine: string | null
+          model: string | null
+          phone: string | null
+          priority: string | null
+          requested: string | null
+          scheduled_on: string | null
+          sheet_raw: Json | null
+          sheet_row: number | null
+          status: string
+          technician: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          branch?: string | null
+          category?: string | null
+          completed_on?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name: string
+          detail?: string | null
+          geocoded_address?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          machine?: string | null
+          model?: string | null
+          phone?: string | null
+          priority?: string | null
+          requested?: string | null
+          scheduled_on?: string | null
+          sheet_raw?: Json | null
+          sheet_row?: number | null
+          status?: string
+          technician?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          branch?: string | null
+          category?: string | null
+          completed_on?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          detail?: string | null
+          geocoded_address?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          machine?: string | null
+          model?: string | null
+          phone?: string | null
+          priority?: string | null
+          requested?: string | null
+          scheduled_on?: string | null
+          sheet_raw?: Json | null
+          sheet_row?: number | null
+          status?: string
+          technician?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onsite_visits_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
@@ -2274,6 +2564,94 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_hold_items: {
+        Row: {
+          hold_id: string
+          id: string
+          part_code: string
+          part_name: string
+          quantity: number
+        }
+        Insert: {
+          hold_id: string
+          id?: string
+          part_code: string
+          part_name?: string
+          quantity: number
+        }
+        Update: {
+          hold_id?: string
+          id?: string
+          part_code?: string
+          part_name?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_hold_items_hold_id_fkey"
+            columns: ["hold_id"]
+            isOneToOne: false
+            referencedRelation: "part_holds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_holds: {
+        Row: {
+          assignee: string | null
+          branch: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string | null
+          id: string
+          photo_paths: string[]
+          purpose: string
+          spot: string | null
+          status: string
+        }
+        Insert: {
+          assignee?: string | null
+          branch: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          photo_paths?: string[]
+          purpose?: string
+          spot?: string | null
+          status?: string
+        }
+        Update: {
+          assignee?: string | null
+          branch?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          photo_paths?: string[]
+          purpose?: string
+          spot?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_holds_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -2688,6 +3066,77 @@ export type Database = {
         }
         Relationships: []
       }
+      part_transfer_items: {
+        Row: {
+          from_qty_after: number | null
+          id: string
+          part_code: string
+          part_name: string
+          quantity: number
+          to_location: string | null
+          to_qty_after: number | null
+          transfer_id: string
+        }
+        Insert: {
+          from_qty_after?: number | null
+          id?: string
+          part_code: string
+          part_name?: string
+          quantity: number
+          to_location?: string | null
+          to_qty_after?: number | null
+          transfer_id: string
+        }
+        Update: {
+          from_qty_after?: number | null
+          id?: string
+          part_code?: string
+          part_name?: string
+          quantity?: number
+          to_location?: string | null
+          to_qty_after?: number | null
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_transfer_items_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "part_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      part_transfers: {
+        Row: {
+          created_at: string
+          from_branch: string
+          id: string
+          memo: string | null
+          moved_by: string | null
+          moved_by_name: string | null
+          to_branch: string
+        }
+        Insert: {
+          created_at?: string
+          from_branch: string
+          id?: string
+          memo?: string | null
+          moved_by?: string | null
+          moved_by_name?: string | null
+          to_branch: string
+        }
+        Update: {
+          created_at?: string
+          from_branch?: string
+          id?: string
+          memo?: string | null
+          moved_by?: string | null
+          moved_by_name?: string | null
+          to_branch?: string
+        }
+        Relationships: []
+      }
       parts: {
         Row: {
           created_at: string
@@ -2754,6 +3203,45 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          fail_count: number
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          topics: string[]
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          fail_count?: number
+          id?: string
+          last_success_at?: string | null
+          p256dh: string
+          topics?: string[]
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          fail_count?: number
+          id?: string
+          last_success_at?: string | null
+          p256dh?: string
+          topics?: string[]
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       quote_items: {
         Row: {
           created_at: string
@@ -2813,10 +3301,15 @@ export type Database = {
       }
       quote_products: {
         Row: {
+          brand: string | null
           category: string | null
           created_at: string
+          description: string | null
+          highlights: string | null
           id: string
+          image_path: string | null
           is_active: boolean
+          machine_group: string | null
           name: string
           notes: string | null
           sort_order: number
@@ -2825,10 +3318,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand?: string | null
           category?: string | null
           created_at?: string
+          description?: string | null
+          highlights?: string | null
           id?: string
+          image_path?: string | null
           is_active?: boolean
+          machine_group?: string | null
           name: string
           notes?: string | null
           sort_order?: number
@@ -2837,10 +3335,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand?: string | null
           category?: string | null
           created_at?: string
+          description?: string | null
+          highlights?: string | null
           id?: string
+          image_path?: string | null
           is_active?: boolean
+          machine_group?: string | null
           name?: string
           notes?: string | null
           sort_order?: number
@@ -2852,6 +3355,7 @@ export type Database = {
       }
       quotes: {
         Row: {
+          assignee: string | null
           branch: string | null
           company_id: string | null
           created_at: string
@@ -2874,6 +3378,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          assignee?: string | null
           branch?: string | null
           company_id?: string | null
           created_at?: string
@@ -2896,6 +3401,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          assignee?: string | null
           branch?: string | null
           company_id?: string | null
           created_at?: string
@@ -3274,7 +3780,9 @@ export type Database = {
         Row: {
           accounting_posted: boolean
           created_at: string
+          free_reason: string | null
           id: string
+          is_free_service: boolean
           labor_cost: number | null
           machine_id: string
           notes: string | null
@@ -3284,16 +3792,16 @@ export type Database = {
           search_vec: unknown
           technician: string | null
           total_cost: number | null
-          is_free_service: boolean
-          free_reason: string | null
-          waived_amount: number
           updated_at: string
           updated_by: string | null
+          waived_amount: number
         }
         Insert: {
           accounting_posted?: boolean
           created_at?: string
+          free_reason?: string | null
           id?: string
+          is_free_service?: boolean
           labor_cost?: number | null
           machine_id: string
           notes?: string | null
@@ -3303,16 +3811,16 @@ export type Database = {
           search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
-          is_free_service?: boolean
-          free_reason?: string | null
-          waived_amount?: number
           updated_at?: string
           updated_by?: string | null
+          waived_amount?: number
         }
         Update: {
           accounting_posted?: boolean
           created_at?: string
+          free_reason?: string | null
           id?: string
+          is_free_service?: boolean
           labor_cost?: number | null
           machine_id?: string
           notes?: string | null
@@ -3322,11 +3830,9 @@ export type Database = {
           search_vec?: unknown
           technician?: string | null
           total_cost?: number | null
-          is_free_service?: boolean
-          free_reason?: string | null
-          waived_amount?: number
           updated_at?: string
           updated_by?: string | null
+          waived_amount?: number
         }
         Relationships: [
           {
@@ -3383,6 +3889,47 @@ export type Database = {
             foreignKeyName: "sheet_assignments_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_live_locations: {
+        Row: {
+          accuracy: number | null
+          employee_id: string
+          lat: number | null
+          lng: number | null
+          name: string
+          sharing: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          employee_id: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+          sharing?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          employee_id?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          sharing?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_live_locations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
@@ -3799,10 +4346,26 @@ export type Database = {
           similarity: number
         }[]
       }
+      merge_customers: {
+        Args: { p_dst: string; p_reason?: string; p_src: string }
+        Returns: Json
+      }
+      my_employee_name: { Args: never; Returns: string }
       next_quote_number: { Args: never; Returns: string }
+      push_vapid_private: { Args: never; Returns: string }
       receive_part_receipt: {
         Args: { _items: Json; _receipt_id: string }
         Returns: Json
+      }
+      register_push_subscription: {
+        Args: {
+          _auth: string
+          _endpoint: string
+          _p256dh: string
+          _topics?: string[]
+          _user_agent?: string
+        }
+        Returns: string
       }
       replace_insurance_estimate_items: {
         Args: { _items: Json; _repair_id: string }
@@ -3818,6 +4381,26 @@ export type Database = {
         }[]
       }
       search_normalize: { Args: { value: string }; Returns: string }
+      staff_directory: {
+        Args: never
+        Returns: {
+          id: string
+          is_admin: boolean
+          name: string
+          team: string
+          user_id: string
+        }[]
+      }
+      transfer_parts: {
+        Args: {
+          _by_name?: string
+          _from: string
+          _items: Json
+          _memo?: string
+          _to: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "employee" | "customer"
