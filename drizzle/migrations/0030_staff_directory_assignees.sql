@@ -1,37 +1,39 @@
--- 담당자 지정을 자유롭게: 직원은 자기 직원 정보만 볼 수 있어서(employees RLS) 기사 고르기 목록이 비었다.
--- 이름·팀만 돌려주는 직원 명부 함수를 둔다 (전화·주민번호·급여는 안 나감). 직원·관리자만 부를 수 있다.
-CREATE OR REPLACE FUNCTION public.staff_directory()
-RETURNS TABLE (id uuid, name text, team text, user_id uuid, is_admin boolean)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT e.id, e.name, e.team, e.user_id,
-         EXISTS (SELECT 1 FROM public.user_roles r WHERE r.user_id = e.user_id AND r.role = 'admin') AS is_admin
-  FROM public.employees e
-  WHERE public.is_staff(auth.uid()) AND e.is_active AND e.resigned_at IS NULL
-  ORDER BY e.team NULLS LAST, e.name
-$$;
-REVOKE EXECUTE ON FUNCTION public.staff_directory() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.staff_directory() TO authenticated;
-
--- 견적서·미수금 담당자 (직원 이름). 정해지면 그 사람 「내 업무」에 뜬다.
-ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS assignee text;
-ALTER TABLE public.finance_records ADD COLUMN IF NOT EXISTS assignee text;
-CREATE INDEX IF NOT EXISTS quotes_assignee_idx ON public.quotes (assignee) WHERE assignee IS NOT NULL;
-CREATE INDEX IF NOT EXISTS finance_records_assignee_idx ON public.finance_records (assignee) WHERE assignee IS NOT NULL;
-
--- 견적서는 만든 사람만 보던 것을, 담당자로 지정된 사람도 보고 고칠 수 있게
-CREATE OR REPLACE FUNCTION public.my_employee_name()
-RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT name FROM public.employees WHERE user_id = auth.uid() LIMIT 1
-$$;
-REVOKE EXECUTE ON FUNCTION public.my_employee_name() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.my_employee_name() TO authenticated;
-
-DROP POLICY IF EXISTS "quotes_select" ON public.quotes;
-CREATE POLICY "quotes_select" ON public.quotes FOR SELECT TO authenticated
-  USING (has_role(auth.uid(), 'admin'::app_role) OR created_by = auth.uid()
-         OR (has_role(auth.uid(), 'employee'::app_role) AND assignee IS NOT NULL AND assignee = (SELECT public.my_employee_name())));
-DROP POLICY IF EXISTS "quotes_update" ON public.quotes;
-CREATE POLICY "quotes_update" ON public.quotes FOR UPDATE TO authenticated
-  USING (has_role(auth.uid(), 'admin'::app_role) OR created_by = auth.uid()
-         OR (has_role(auth.uid(), 'employee'::app_role) AND assignee IS NOT NULL AND assignee = (SELECT public.my_employee_name())))
-  WITH CHECK (has_role(auth.uid(), 'admin'::app_role) OR created_by = auth.uid() OR has_role(auth.uid(), 'employee'::app_role));
+-- The content of this migration cannot be applied: its changes already exist in the live database (applied earlier outside migration history).
+-- -- 담당자 지정을 자유롭게: 직원은 자기 직원 정보만 볼 수 있어서(employees RLS) 기사 고르기 목록이 비었다.
+-- -- 이름·팀만 돌려주는 직원 명부 함수를 둔다 (전화·주민번호·급여는 안 나감). 직원·관리자만 부를 수 있다.
+-- CREATE OR REPLACE FUNCTION public.staff_directory()
+-- RETURNS TABLE (id uuid, name text, team text, user_id uuid, is_admin boolean)
+-- LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+--   SELECT e.id, e.name, e.team, e.user_id,
+--          EXISTS (SELECT 1 FROM public.user_roles r WHERE r.user_id = e.user_id AND r.role = 'admin') AS is_admin
+--   FROM public.employees e
+--   WHERE public.is_staff(auth.uid()) AND e.is_active AND e.resigned_at IS NULL
+--   ORDER BY e.team NULLS LAST, e.name
+-- $$;
+-- REVOKE EXECUTE ON FUNCTION public.staff_directory() FROM PUBLIC, anon;
+-- GRANT EXECUTE ON FUNCTION public.staff_directory() TO authenticated;
+-- 
+-- -- 견적서·미수금 담당자 (직원 이름). 정해지면 그 사람 「내 업무」에 뜬다.
+-- ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS assignee text;
+-- ALTER TABLE public.finance_records ADD COLUMN IF NOT EXISTS assignee text;
+-- CREATE INDEX IF NOT EXISTS quotes_assignee_idx ON public.quotes (assignee) WHERE assignee IS NOT NULL;
+-- CREATE INDEX IF NOT EXISTS finance_records_assignee_idx ON public.finance_records (assignee) WHERE assignee IS NOT NULL;
+-- 
+-- -- 견적서는 만든 사람만 보던 것을, 담당자로 지정된 사람도 보고 고칠 수 있게
+-- CREATE OR REPLACE FUNCTION public.my_employee_name()
+-- RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+--   SELECT name FROM public.employees WHERE user_id = auth.uid() LIMIT 1
+-- $$;
+-- REVOKE EXECUTE ON FUNCTION public.my_employee_name() FROM PUBLIC, anon;
+-- GRANT EXECUTE ON FUNCTION public.my_employee_name() TO authenticated;
+-- 
+-- DROP POLICY IF EXISTS "quotes_select" ON public.quotes;
+-- CREATE POLICY "quotes_select" ON public.quotes FOR SELECT TO authenticated
+--   USING (has_role(auth.uid(), 'admin'::app_role) OR created_by = auth.uid()
+--          OR (has_role(auth.uid(), 'employee'::app_role) AND assignee IS NOT NULL AND assignee = (SELECT public.my_employee_name())));
+-- DROP POLICY IF EXISTS "quotes_update" ON public.quotes;
+-- CREATE POLICY "quotes_update" ON public.quotes FOR UPDATE TO authenticated
+--   USING (has_role(auth.uid(), 'admin'::app_role) OR created_by = auth.uid()
+--          OR (has_role(auth.uid(), 'employee'::app_role) AND assignee IS NOT NULL AND assignee = (SELECT public.my_employee_name())))
+--   WITH CHECK (has_role(auth.uid(), 'admin'::app_role) OR created_by = auth.uid() OR has_role(auth.uid(), 'employee'::app_role));
+-- 

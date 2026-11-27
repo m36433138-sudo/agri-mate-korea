@@ -1,176 +1,178 @@
--- 부품 입고: 지출 관리에 올린 거래명세서(얀마·일반)로 「입고 대기」를 만들고,
--- 부품창고에서 수량·위치를 확인해 「입고 완료」하면 그때 재고가 늘어난다.
-
-CREATE TABLE public.part_receipts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  source text NOT NULL DEFAULT 'general' CHECK (source IN ('yanmar','general')),
-  vendor_id uuid REFERENCES public.vendors(id) ON DELETE SET NULL,
-  vendor_name text,
-  business_number text,
-  doc_number text,
-  doc_date date NOT NULL DEFAULT CURRENT_DATE,
-  branch text NOT NULL DEFAULT '장흥' CHECK (branch IN ('장흥','강진')),
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','partial','done','cancelled')),
-  supply_amount bigint,
-  vat_amount bigint,
-  total_amount bigint,
-  expense_group text,
-  file_path text,
-  notes text,
-  created_by uuid,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  completed_by uuid,
-  completed_at timestamptz,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
--- 같은 얀마 명세서를 두 번 올려도 입고가 두 번 생기지 않게
-CREATE UNIQUE INDEX part_receipts_doc_uniq ON public.part_receipts (source, doc_number) WHERE doc_number IS NOT NULL AND status <> 'cancelled';
-CREATE INDEX part_receipts_status_idx ON public.part_receipts (status, doc_date DESC, created_at DESC);
-
-CREATE TABLE public.part_receipt_items (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  receipt_id uuid NOT NULL REFERENCES public.part_receipts(id) ON DELETE CASCADE,
-  line_no integer NOT NULL DEFAULT 0,
-  part_code text NOT NULL CHECK (btrim(part_code) <> ''),
-  alt_part_code text,
-  part_name text NOT NULL DEFAULT '',
-  quantity integer NOT NULL CHECK (quantity > 0),
-  unit_price bigint NOT NULL DEFAULT 0 CHECK (unit_price >= 0),
-  amount bigint NOT NULL DEFAULT 0,
-  location text,
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','received','missing')),
-  received_qty integer CHECK (received_qty IS NULL OR received_qty >= 0),
-  received_location text,
-  received_by uuid,
-  received_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX part_receipt_items_receipt_idx ON public.part_receipt_items (receipt_id, line_no);
-CREATE INDEX part_receipt_items_code_idx ON public.part_receipt_items (part_code);
-
--- 적재 위치 사진 (지점·부품별로 직원끼리 공유). 파일은 part-photos 버킷의 locations/ 아래.
-CREATE TABLE public.inventory_location_photos (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  branch text NOT NULL CHECK (branch IN ('장흥','강진')),
-  part_code text NOT NULL CHECK (btrim(part_code) <> ''),
-  location text,
-  photo_path text NOT NULL,
-  note text,
-  created_by uuid,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX inventory_location_photos_part_idx ON public.inventory_location_photos (part_code, branch, created_at DESC);
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.part_receipts TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.part_receipt_items TO authenticated;
-GRANT SELECT, INSERT, DELETE ON public.inventory_location_photos TO authenticated;
-GRANT ALL ON public.part_receipts, public.part_receipt_items, public.inventory_location_photos TO service_role;
-
-ALTER TABLE public.part_receipts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.part_receipt_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.inventory_location_photos ENABLE ROW LEVEL SECURITY;
-
--- 재고(inventory)와 같은 범위: 관리자·직원
-CREATE POLICY "Staff access part receipts" ON public.part_receipts FOR ALL TO authenticated
-  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)))
-  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)));
-CREATE POLICY "Staff access part receipt items" ON public.part_receipt_items FOR ALL TO authenticated
-  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)))
-  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)));
-CREATE POLICY "Staff read location photos" ON public.inventory_location_photos FOR SELECT TO authenticated
-  USING ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)));
-CREATE POLICY "Staff add location photos" ON public.inventory_location_photos FOR INSERT TO authenticated
-  WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)));
-CREATE POLICY "Uploader or admin delete location photos" ON public.inventory_location_photos FOR DELETE TO authenticated
-  USING (created_by = (SELECT auth.uid()) OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)));
-
-CREATE TRIGGER part_receipts_updated_at BEFORE UPDATE ON public.part_receipts
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
--- 입고 확인: 고른 줄만 재고에 더하고(없으면 새로 등록), 위치를 저장하고, 조정 기록을 남긴다.
--- _items: [{ id, received_qty, location, part_name, sales_price }]  received_qty 0 = 「안 옴」
--- RLS가 그대로 적용된다 (SECURITY INVOKER).
-CREATE OR REPLACE FUNCTION public.receive_part_receipt(_receipt_id uuid, _items jsonb)
-RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
-DECLARE
-  _r public.part_receipts;
-  _it public.part_receipt_items;
-  _in jsonb;
-  _qty integer;
-  _loc text;
-  _name text;
-  _sales integer;
-  _prev integer;
-  _new integer;
-  _added integer := 0;
-  _received integer := 0;
-  _missing integer := 0;
-  _left integer;
-BEGIN
-  SELECT * INTO _r FROM public.part_receipts WHERE id = _receipt_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION '입고 문서를 찾을 수 없어요'; END IF;
-  IF _r.status IN ('done','cancelled') THEN RAISE EXCEPTION '이미 끝난 입고예요'; END IF;
-  IF jsonb_typeof(_items) <> 'array' OR jsonb_array_length(_items) = 0 THEN
-    RAISE EXCEPTION '입고할 줄을 한 개 이상 골라주세요';
-  END IF;
-
-  FOR _in IN SELECT * FROM jsonb_array_elements(_items) LOOP
-    SELECT * INTO _it FROM public.part_receipt_items
-     WHERE id = (_in->>'id')::uuid AND receipt_id = _receipt_id FOR UPDATE;
-    IF NOT FOUND OR _it.status <> 'pending' THEN CONTINUE; END IF;
-
-    _qty := GREATEST(0, COALESCE((_in->>'received_qty')::int, _it.quantity));
-    _loc := NULLIF(trim(COALESCE(_in->>'location', _it.location, '')), '');
-    _name := COALESCE(NULLIF(trim(_in->>'part_name'), ''), NULLIF(_it.part_name, ''), _it.part_code);
-    _sales := NULLIF(_in->>'sales_price', '')::int;
-
-    IF _qty = 0 THEN
-      UPDATE public.part_receipt_items SET status = 'missing', received_qty = 0, received_by = auth.uid(), received_at = now()
-       WHERE id = _it.id;
-      _missing := _missing + 1;
-      CONTINUE;
-    END IF;
-
-    SELECT quantity INTO _prev FROM public.inventory
-     WHERE branch = _r.branch AND part_code = _it.part_code FOR UPDATE;
-
-    IF FOUND THEN
-      UPDATE public.inventory
-         SET quantity = COALESCE(quantity, 0) + _qty,
-             location_main = COALESCE(_loc, location_main),
-             purchase_price = CASE WHEN _it.unit_price > 0 THEN _it.unit_price::int ELSE purchase_price END,
-             part_name = CASE WHEN COALESCE(part_name, '') = '' OR part_name = part_code THEN _name ELSE part_name END
-       WHERE branch = _r.branch AND part_code = _it.part_code
-       RETURNING quantity INTO _new;
-      _prev := COALESCE(_prev, 0);
-    ELSE
-      INSERT INTO public.inventory (branch, part_code, alt_part_code, part_name, quantity, purchase_price, sales_price, location_main, min_stock)
-      VALUES (_r.branch, _it.part_code, _it.alt_part_code, _name, _qty, NULLIF(_it.unit_price, 0)::int, _sales, _loc, 1)
-      RETURNING quantity INTO _new;
-      _prev := 0;
-      _added := _added + 1;
-    END IF;
-
-    INSERT INTO public.inventory_adjustments (branch, part_code, part_name, previous_qty, new_qty, adjustment_qty, reason)
-    VALUES (_r.branch, _it.part_code, _name, _prev, _new, _qty,
-            '입고 ' || COALESCE(_r.doc_number, COALESCE(_r.vendor_name, '거래처')) );
-
-    UPDATE public.part_receipt_items
-       SET status = 'received', received_qty = _qty, received_location = _loc, part_name = _name,
-           received_by = auth.uid(), received_at = now()
-     WHERE id = _it.id;
-    _received := _received + 1;
-  END LOOP;
-
-  SELECT count(*) INTO _left FROM public.part_receipt_items WHERE receipt_id = _receipt_id AND status = 'pending';
-  UPDATE public.part_receipts
-     SET status = CASE WHEN _left = 0 THEN 'done' ELSE 'partial' END,
-         completed_by = CASE WHEN _left = 0 THEN auth.uid() ELSE completed_by END,
-         completed_at = CASE WHEN _left = 0 THEN now() ELSE completed_at END
-   WHERE id = _receipt_id;
-
-  RETURN jsonb_build_object('received', _received, 'missing', _missing, 'new_parts', _added, 'left', _left);
-END;
-$$;
-REVOKE EXECUTE ON FUNCTION public.receive_part_receipt(uuid, jsonb) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.receive_part_receipt(uuid, jsonb) TO authenticated;
+-- The content of this migration cannot be applied: its changes already exist in the live database (applied earlier outside migration history).
+-- -- 부품 입고: 지출 관리에 올린 거래명세서(얀마·일반)로 「입고 대기」를 만들고,
+-- -- 부품창고에서 수량·위치를 확인해 「입고 완료」하면 그때 재고가 늘어난다.
+-- 
+-- CREATE TABLE public.part_receipts (
+--   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   source text NOT NULL DEFAULT 'general' CHECK (source IN ('yanmar','general')),
+--   vendor_id uuid REFERENCES public.vendors(id) ON DELETE SET NULL,
+--   vendor_name text,
+--   business_number text,
+--   doc_number text,
+--   doc_date date NOT NULL DEFAULT CURRENT_DATE,
+--   branch text NOT NULL DEFAULT '장흥' CHECK (branch IN ('장흥','강진')),
+--   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','partial','done','cancelled')),
+--   supply_amount bigint,
+--   vat_amount bigint,
+--   total_amount bigint,
+--   expense_group text,
+--   file_path text,
+--   notes text,
+--   created_by uuid,
+--   created_at timestamptz NOT NULL DEFAULT now(),
+--   completed_by uuid,
+--   completed_at timestamptz,
+--   updated_at timestamptz NOT NULL DEFAULT now()
+-- );
+-- -- 같은 얀마 명세서를 두 번 올려도 입고가 두 번 생기지 않게
+-- CREATE UNIQUE INDEX part_receipts_doc_uniq ON public.part_receipts (source, doc_number) WHERE doc_number IS NOT NULL AND status <> 'cancelled';
+-- CREATE INDEX part_receipts_status_idx ON public.part_receipts (status, doc_date DESC, created_at DESC);
+-- 
+-- CREATE TABLE public.part_receipt_items (
+--   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   receipt_id uuid NOT NULL REFERENCES public.part_receipts(id) ON DELETE CASCADE,
+--   line_no integer NOT NULL DEFAULT 0,
+--   part_code text NOT NULL CHECK (btrim(part_code) <> ''),
+--   alt_part_code text,
+--   part_name text NOT NULL DEFAULT '',
+--   quantity integer NOT NULL CHECK (quantity > 0),
+--   unit_price bigint NOT NULL DEFAULT 0 CHECK (unit_price >= 0),
+--   amount bigint NOT NULL DEFAULT 0,
+--   location text,
+--   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','received','missing')),
+--   received_qty integer CHECK (received_qty IS NULL OR received_qty >= 0),
+--   received_location text,
+--   received_by uuid,
+--   received_at timestamptz,
+--   created_at timestamptz NOT NULL DEFAULT now()
+-- );
+-- CREATE INDEX part_receipt_items_receipt_idx ON public.part_receipt_items (receipt_id, line_no);
+-- CREATE INDEX part_receipt_items_code_idx ON public.part_receipt_items (part_code);
+-- 
+-- -- 적재 위치 사진 (지점·부품별로 직원끼리 공유). 파일은 part-photos 버킷의 locations/ 아래.
+-- CREATE TABLE public.inventory_location_photos (
+--   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   branch text NOT NULL CHECK (branch IN ('장흥','강진')),
+--   part_code text NOT NULL CHECK (btrim(part_code) <> ''),
+--   location text,
+--   photo_path text NOT NULL,
+--   note text,
+--   created_by uuid,
+--   created_at timestamptz NOT NULL DEFAULT now()
+-- );
+-- CREATE INDEX inventory_location_photos_part_idx ON public.inventory_location_photos (part_code, branch, created_at DESC);
+-- 
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON public.part_receipts TO authenticated;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON public.part_receipt_items TO authenticated;
+-- GRANT SELECT, INSERT, DELETE ON public.inventory_location_photos TO authenticated;
+-- GRANT ALL ON public.part_receipts, public.part_receipt_items, public.inventory_location_photos TO service_role;
+-- 
+-- ALTER TABLE public.part_receipts ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.part_receipt_items ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.inventory_location_photos ENABLE ROW LEVEL SECURITY;
+-- 
+-- -- 재고(inventory)와 같은 범위: 관리자·직원
+-- CREATE POLICY "Staff access part receipts" ON public.part_receipts FOR ALL TO authenticated
+--   USING ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)))
+--   WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)));
+-- CREATE POLICY "Staff access part receipt items" ON public.part_receipt_items FOR ALL TO authenticated
+--   USING ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)))
+--   WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)));
+-- CREATE POLICY "Staff read location photos" ON public.inventory_location_photos FOR SELECT TO authenticated
+--   USING ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)));
+-- CREATE POLICY "Staff add location photos" ON public.inventory_location_photos FOR INSERT TO authenticated
+--   WITH CHECK ((SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)) OR (SELECT public.has_role((SELECT auth.uid()), 'employee'::public.app_role)));
+-- CREATE POLICY "Uploader or admin delete location photos" ON public.inventory_location_photos FOR DELETE TO authenticated
+--   USING (created_by = (SELECT auth.uid()) OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role)));
+-- 
+-- CREATE TRIGGER part_receipts_updated_at BEFORE UPDATE ON public.part_receipts
+--   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+-- 
+-- -- 입고 확인: 고른 줄만 재고에 더하고(없으면 새로 등록), 위치를 저장하고, 조정 기록을 남긴다.
+-- -- _items: [{ id, received_qty, location, part_name, sales_price }]  received_qty 0 = 「안 옴」
+-- -- RLS가 그대로 적용된다 (SECURITY INVOKER).
+-- CREATE OR REPLACE FUNCTION public.receive_part_receipt(_receipt_id uuid, _items jsonb)
+-- RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+-- DECLARE
+--   _r public.part_receipts;
+--   _it public.part_receipt_items;
+--   _in jsonb;
+--   _qty integer;
+--   _loc text;
+--   _name text;
+--   _sales integer;
+--   _prev integer;
+--   _new integer;
+--   _added integer := 0;
+--   _received integer := 0;
+--   _missing integer := 0;
+--   _left integer;
+-- BEGIN
+--   SELECT * INTO _r FROM public.part_receipts WHERE id = _receipt_id FOR UPDATE;
+--   IF NOT FOUND THEN RAISE EXCEPTION '입고 문서를 찾을 수 없어요'; END IF;
+--   IF _r.status IN ('done','cancelled') THEN RAISE EXCEPTION '이미 끝난 입고예요'; END IF;
+--   IF jsonb_typeof(_items) <> 'array' OR jsonb_array_length(_items) = 0 THEN
+--     RAISE EXCEPTION '입고할 줄을 한 개 이상 골라주세요';
+--   END IF;
+-- 
+--   FOR _in IN SELECT * FROM jsonb_array_elements(_items) LOOP
+--     SELECT * INTO _it FROM public.part_receipt_items
+--      WHERE id = (_in->>'id')::uuid AND receipt_id = _receipt_id FOR UPDATE;
+--     IF NOT FOUND OR _it.status <> 'pending' THEN CONTINUE; END IF;
+-- 
+--     _qty := GREATEST(0, COALESCE((_in->>'received_qty')::int, _it.quantity));
+--     _loc := NULLIF(trim(COALESCE(_in->>'location', _it.location, '')), '');
+--     _name := COALESCE(NULLIF(trim(_in->>'part_name'), ''), NULLIF(_it.part_name, ''), _it.part_code);
+--     _sales := NULLIF(_in->>'sales_price', '')::int;
+-- 
+--     IF _qty = 0 THEN
+--       UPDATE public.part_receipt_items SET status = 'missing', received_qty = 0, received_by = auth.uid(), received_at = now()
+--        WHERE id = _it.id;
+--       _missing := _missing + 1;
+--       CONTINUE;
+--     END IF;
+-- 
+--     SELECT quantity INTO _prev FROM public.inventory
+--      WHERE branch = _r.branch AND part_code = _it.part_code FOR UPDATE;
+-- 
+--     IF FOUND THEN
+--       UPDATE public.inventory
+--          SET quantity = COALESCE(quantity, 0) + _qty,
+--              location_main = COALESCE(_loc, location_main),
+--              purchase_price = CASE WHEN _it.unit_price > 0 THEN _it.unit_price::int ELSE purchase_price END,
+--              part_name = CASE WHEN COALESCE(part_name, '') = '' OR part_name = part_code THEN _name ELSE part_name END
+--        WHERE branch = _r.branch AND part_code = _it.part_code
+--        RETURNING quantity INTO _new;
+--       _prev := COALESCE(_prev, 0);
+--     ELSE
+--       INSERT INTO public.inventory (branch, part_code, alt_part_code, part_name, quantity, purchase_price, sales_price, location_main, min_stock)
+--       VALUES (_r.branch, _it.part_code, _it.alt_part_code, _name, _qty, NULLIF(_it.unit_price, 0)::int, _sales, _loc, 1)
+--       RETURNING quantity INTO _new;
+--       _prev := 0;
+--       _added := _added + 1;
+--     END IF;
+-- 
+--     INSERT INTO public.inventory_adjustments (branch, part_code, part_name, previous_qty, new_qty, adjustment_qty, reason)
+--     VALUES (_r.branch, _it.part_code, _name, _prev, _new, _qty,
+--             '입고 ' || COALESCE(_r.doc_number, COALESCE(_r.vendor_name, '거래처')) );
+-- 
+--     UPDATE public.part_receipt_items
+--        SET status = 'received', received_qty = _qty, received_location = _loc, part_name = _name,
+--            received_by = auth.uid(), received_at = now()
+--      WHERE id = _it.id;
+--     _received := _received + 1;
+--   END LOOP;
+-- 
+--   SELECT count(*) INTO _left FROM public.part_receipt_items WHERE receipt_id = _receipt_id AND status = 'pending';
+--   UPDATE public.part_receipts
+--      SET status = CASE WHEN _left = 0 THEN 'done' ELSE 'partial' END,
+--          completed_by = CASE WHEN _left = 0 THEN auth.uid() ELSE completed_by END,
+--          completed_at = CASE WHEN _left = 0 THEN now() ELSE completed_at END
+--    WHERE id = _receipt_id;
+-- 
+--   RETURN jsonb_build_object('received', _received, 'missing', _missing, 'new_parts', _added, 'left', _left);
+-- END;
+-- $$;
+-- REVOKE EXECUTE ON FUNCTION public.receive_part_receipt(uuid, jsonb) FROM PUBLIC, anon;
+-- GRANT EXECUTE ON FUNCTION public.receive_part_receipt(uuid, jsonb) TO authenticated;
+-- 

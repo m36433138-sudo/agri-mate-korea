@@ -4326,6 +4326,7 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      kr_is_holiday: { Args: { _d: string }; Returns: boolean }
       list_chat_staff: {
         Args: never
         Returns: {
