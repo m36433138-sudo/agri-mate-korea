@@ -253,6 +253,13 @@
       "when": 1795752986216,
       "tag": "0035_part_holds",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795753459912,
+      "tag": "0036_part_transfers",
+      "breakpoints": true
     }
   ]
 }

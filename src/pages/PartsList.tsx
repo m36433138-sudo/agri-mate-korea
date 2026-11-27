@@ -10,9 +10,10 @@ import BranchInventoryCompare from "@/components/BranchInventoryCompare";
 import BulkPriceUpdate from "@/components/BulkPriceUpdate";
 import PartProcurement from "@/components/PartProcurement";
 import PartHolds from "@/components/partHolds/PartHolds";
+import PartTransfers from "@/components/partTransfers/PartTransfers";
 import { usePartHolds } from "@/lib/partHolds";
 import { PageHeader } from "@/components/page/PageParts";
-import { PackageCheck, Package, ArrowUpDown, AlertTriangle, GitCompare, Tag, Truck, PackageOpen } from "lucide-react";
+import { PackageCheck, Package, ArrowUpDown, AlertTriangle, GitCompare, Tag, Truck, PackageOpen, ArrowLeftRight } from "lucide-react";
 
 export default function PartsList() {
   const [params, setParams] = useSearchParams();
@@ -30,7 +31,7 @@ export default function PartsList() {
   const { data: held = [] } = usePartHolds("held");
   return (
     <div>
-      <PageHeader title="부품관리" sub="재고 찾기 · 조달 · 지점 비교 · 재고조정" className="mb-5" />
+      <PageHeader title="부품관리" sub="재고 찾기 · 빼놓은 부품 · 창고 이동 · 조달 · 재고조정" className="mb-5" />
       <Tabs value={tab} onValueChange={(v) => setParams(v === "inventory" ? {} : { tab: v }, { replace: true })} className="w-full">
         <TabsList className="mb-5">
           <TabsTrigger value="inventory" className="gap-1.5">
@@ -43,6 +44,9 @@ export default function PartsList() {
           <TabsTrigger value="holds" className="gap-1.5">
             <PackageOpen className="h-4 w-4" /> 빼놓은 부품
             {held.length > 0 && <span className="ml-0.5 min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-bold flex items-center justify-center">{held.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="transfer" className="gap-1.5">
+            <ArrowLeftRight className="h-4 w-4" /> 창고 이동
           </TabsTrigger>
           <TabsTrigger value="procurement" className="gap-1.5">
             <Truck className="h-4 w-4" /> 부품조달
@@ -68,6 +72,9 @@ export default function PartsList() {
         </TabsContent>
         <TabsContent value="holds">
           <PartHolds />
+        </TabsContent>
+        <TabsContent value="transfer">
+          <PartTransfers />
         </TabsContent>
         <TabsContent value="procurement">
           <PartProcurement />
