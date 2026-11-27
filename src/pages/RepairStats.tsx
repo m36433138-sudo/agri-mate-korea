@@ -197,6 +197,12 @@ export default function RepairStats() {
   const techNames = useMemo(() => techCards.map(tc => tc.name), [techCards]);
 
   // CSV 내보내기
+  // Quote every cell and neutralize spreadsheet formulas (=, +, -, @, tab, CR).
+  const csvCell = (v: unknown) => {
+    let t = v == null ? "" : String(v);
+    if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+    return `"${t.replace(/"/g, '""')}"`;
+  };
   const exportCSV = () => {
     const headers = ["손님성명", "기계", "품목", "수리기사", "요구사항", "입고일", "수리완료일", "출고일", "수리기간", "위치"];
     const csvRows = [headers.join(",")];
@@ -204,11 +210,11 @@ export default function RepairStats() {
       const days = daysBetween(r.입고일, r.수리완료일);
       csvRows.push([
         r.손님성명, r.기계, r.품목, r.수리기사,
-        `"${r.손님요구사항.replace(/"/g, '""')}"`,
+        r.손님요구사항,
         r.입고일, r.수리완료일, r.출고일,
         days !== null ? `${days}` : "",
         r._branch,
-      ].join(","));
+      ].map(csvCell).join(","));
     });
     const blob = new Blob(["\uFEFF" + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

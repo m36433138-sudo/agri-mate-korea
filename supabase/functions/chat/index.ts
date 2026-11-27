@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/auth.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
 
@@ -9,15 +10,24 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const caller = await requireCaller(req, corsHeaders, {});
+  if (caller instanceof Response) return caller;
+
 
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    // Only plain user/assistant turns from the caller; the system prompt is ours alone.
+    const messages = (Array.isArray(body?.messages) ? body.messages : [])
+      .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m?.content === "string")
+      .slice(-30)
+      .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 8000) }));
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Read business data as the caller so row rules decide what they may see.
+    const supabase = caller.userClient;
 
     // Fetch current data context
     const [machinesRes, customersRes, repairsRes] = await Promise.all([
