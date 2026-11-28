@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "347290322028",
+    "project_id": "csgm-b0e5c",
+    "storage_bucket": "csgm-b0e5c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:347290322028:android:458e3dd2abaa59c5b98449",
+        "android_client_info": {
+          "package_name": "com.gwangmun.cs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyArHyUxjUzYsrqQq0BbWXppwDGHpi_E7M0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
