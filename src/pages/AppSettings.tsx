@@ -9,6 +9,9 @@ import {
   TOPIC_LABELS, currentSubscription, disablePush, enablePush, getPushTopics, isIos, isStandalone, pushSupported, sendPush, setPushTopics, type PushTopic,
 } from "@/lib/appPush";
 import { useLiveSharing, useMe } from "@/hooks/useMyAttendance";
+import { ANDROID_APK_URL, isNativeApp } from "@/lib/nativeLocation";
+
+const native = isNativeApp();
 import { useUserRole } from "@/hooks/useUserRole";
 
 const ALL: PushTopic[] = ["onsite", "chat", "deposit", "general"];
@@ -135,7 +138,20 @@ export default function AppSettings() {
             </span>
             <Switch checked={!off} onCheckedChange={(v) => setOff(!v)} aria-label="위치 공유" />
           </label>
-          <p className="text-xs text-muted-foreground">휴대폰 화면이 꺼지거나 앱을 완전히 닫으면 위치가 갱신되지 않아요. 지도에는 마지막으로 보낸 위치와 「몇 분 전」이 함께 보여요.</p>
+          {native ? (
+            <p className="text-xs text-muted-foreground">안드로이드 앱이라 화면이 꺼지거나 다른 앱을 써도 퇴근할 때까지 계속 보내요. 알림줄의 「광문농기 위치 공유 중」이 그 표시예요. 삼성 폰은 설정 → 애플리케이션 → 광문농기 → 배터리를 「제한 없음」으로 해 두면 끊기지 않아요.</p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">휴대폰 화면이 꺼지거나 앱을 완전히 닫으면 위치가 갱신되지 않아요. 지도에는 마지막으로 보낸 위치와 「몇 분 전」이 함께 보여요.</p>
+              <a href={ANDROID_APK_URL} className="flex items-center gap-3 rounded-2xl border border-primary/40 bg-primary/5 p-4 hover:bg-primary/10">
+                <Download className="h-5 w-5 text-primary shrink-0" />
+                <span className="min-w-0">
+                  <span className="block font-semibold">안드로이드 앱 받기 (화면 꺼져도 위치 공유)</span>
+                  <span className="block text-xs text-muted-foreground">받은 파일을 열어 설치하세요. 「출처를 알 수 없는 앱」 허용을 물으면 허용하면 돼요.</span>
+                </span>
+              </a>
+            </>
+          )}
         </Section>
       )}
     </div>

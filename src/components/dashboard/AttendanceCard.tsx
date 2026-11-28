@@ -7,6 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Coffee, CornerDownLeft, LogIn, LogOut, MapPin, MapPinOff, Radio, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLinkMyself, useLiveSharing, useMyAttendance } from "@/hooks/useMyAttendance";
+import { isNativeApp, openLocationSettings } from "@/lib/nativeLocation";
+
+const native = isNativeApp();
 import { useUserRole } from "@/hooks/useUserRole";
 import { breakMinutes } from "@/hooks/useAttendance";
 
@@ -135,8 +138,13 @@ export function AttendanceCard() {
           <div className="flex-1 min-w-0 text-xs">
             <p className="font-semibold text-sm">{off ? "위치 공유 꺼짐" : status === "sharing" ? "내 위치 공유 중" : status === "denied" ? "위치 권한이 막혀 있어요" : "위치 확인 중…"}</p>
             <p className="text-muted-foreground">
-              {status === "denied" ? "휴대폰 설정 → 앱/브라우저 → 위치를 「허용」으로 바꿔 주세요." : "앱이 열려 있는 동안 동료 지도(방문수리·근무 현황)에 보여요."}
+              {status === "denied"
+                ? (native ? "위치 권한을 「항상 허용」 또는 「앱 사용 중에만 허용」으로 바꿔 주세요." : "휴대폰 설정 → 앱/브라우저 → 위치를 「허용」으로 바꿔 주세요.")
+                : native ? "화면이 꺼져도 퇴근할 때까지 동료 지도(방문수리·근무 현황)에 보여요." : "앱이 열려 있는 동안 동료 지도(방문수리·근무 현황)에 보여요."}
             </p>
+            {native && status === "denied" && (
+              <button type="button" className="mt-1 text-primary underline" onClick={() => void openLocationSettings()}>위치 설정 열기</button>
+            )}
           </div>
           <Switch checked={!off} onCheckedChange={(v) => setOff(!v)} aria-label="위치 공유" />
         </div>
