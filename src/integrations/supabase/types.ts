@@ -3210,6 +3210,7 @@ export type Database = {
           endpoint: string
           fail_count: number
           id: string
+          kind: string
           last_success_at: string | null
           p256dh: string
           topics: string[]
@@ -3222,6 +3223,7 @@ export type Database = {
           endpoint: string
           fail_count?: number
           id?: string
+          kind?: string
           last_success_at?: string | null
           p256dh: string
           topics?: string[]
@@ -3234,6 +3236,7 @@ export type Database = {
           endpoint?: string
           fail_count?: number
           id?: string
+          kind?: string
           last_success_at?: string | null
           p256dh?: string
           topics?: string[]
@@ -4357,6 +4360,10 @@ export type Database = {
       receive_part_receipt: {
         Args: { _items: Json; _receipt_id: string }
         Returns: Json
+      }
+      register_fcm_token: {
+        Args: { _token: string; _topics?: string[]; _user_agent?: string }
+        Returns: string
       }
       register_push_subscription: {
         Args: {
