@@ -31,8 +31,9 @@ export function useMe() {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) return null;
-      const { data } = await db.from("employees").select("id, name, team, user_id").eq("user_id", uid).maybeSingle();
-      return (data as Me) ?? null;
+      // 한 계정에 직원 정보가 여러 개 연결돼 있어도(예전 중복) 오류 없이 가장 먼저 만든 것을 쓴다
+      const { data } = await db.from("employees").select("id, name, team, user_id").eq("user_id", uid).order("created_at").limit(1);
+      return ((data ?? [])[0] as Me) ?? null;
     },
   });
 }
@@ -51,6 +52,9 @@ export function useLinkMyself() {
       const { data: prof } = await db.from("profiles").select("display_name").eq("id", uid).maybeSingle();
       const name = (prof?.display_name || fallbackName || "").trim();
       if (!name || name.includes("@")) throw new Error("내 이름(표시 이름)이 없어요. 사용자 관리에서 이름을 먼저 넣어 주세요.");
+      // 이미 이 계정에 연결된 직원이 있으면 새로 만들지 않는다 (예전에 여러 번 눌러 중복이 생겼다)
+      const { data: mine } = await db.from("employees").select("id").eq("user_id", uid).limit(1);
+      if (mine?.length) return { name, created: false };
       const { data: same } = await db.from("employees").select("id, user_id").eq("name", name).is("user_id", null).limit(1);
       if (same?.length) {
         const { error } = await db.from("employees").update({ user_id: uid }).eq("id", same[0].id);

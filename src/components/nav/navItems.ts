@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard, Tractor, Users, Wrench, Sparkles, Package, ListChecks, UserCog, User, Home,
   MessageSquare, ClipboardList, BarChart3, Clock, Truck, Briefcase, Building2, MapPin, Landmark,
-  FileText, BookOpen, ShieldCheck, Wallet, Map, AlertTriangle, Receipt, ShoppingCart, Cog, Smartphone,
+  FileText, BookOpen, ShieldCheck, Wallet, Map, AlertTriangle, Receipt, ShoppingCart, Cog, Smartphone, IdCard, Plane,
 } from "lucide-react";
 
 export type NavItem = { title: string; url: string; icon: LucideIcon; badge?: number };
@@ -20,6 +20,7 @@ export function staffNavGroups({ isAdmin, hasPermission: can, unreadMessages }: 
       items: [
         { title: "대시보드", url: "/", icon: LayoutDashboard },
         { title: "내 업무", url: "/workspace", icon: Briefcase },
+        { title: "내 휴가", url: "/leave", icon: Plane },
         { title: "사내 메신저", url: "/messenger", icon: MessageSquare, badge: unreadMessages },
       ],
     },
@@ -61,6 +62,7 @@ export function staffNavGroups({ isAdmin, hasPermission: can, unreadMessages }: 
         ...pick(can("view_quotes"), { title: "견적서 관리", url: "/quotes", icon: FileText }),
         ...pick(can("view_expenses"), { title: "지출 관리", url: "/expenses", icon: Receipt }),
         ...pick(can("view_stats"), { title: "실적 현황", url: "/dashboard/stats", icon: BarChart3 }),
+        ...pick(isAdmin, { title: "인사관리", url: "/hr", icon: IdCard }),
         ...pick(can("view_overtime"), { title: "초과근무 현황", url: "/dashboard/overtime", icon: Clock }),
         ...pick(can("view_vendors"), { title: "업체관리", url: "/vendors", icon: Building2 }),
         ...pick(can("view_assets"), { title: "자산관리", url: "/assets", icon: Landmark }),

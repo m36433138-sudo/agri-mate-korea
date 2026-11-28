@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCallback } from "react";
 
-// ── Korean public holidays 2025–2026 ──
+// ── Korean public holidays 2025–2027 (DB kr_is_holiday 와 같은 목록) ──
 const HOLIDAYS = new Set([
   // 2025
   "2025-01-01","2025-01-28","2025-01-29","2025-01-30",
@@ -16,6 +16,11 @@ const HOLIDAYS = new Set([
   "2026-05-24","2026-06-06","2026-08-15","2026-09-24",
   "2026-09-25","2026-09-26","2026-10-03","2026-10-09",
   "2026-12-25",
+  // 2027
+  "2027-01-01","2027-02-06","2027-02-07","2027-02-08","2027-02-09",
+  "2027-03-01","2027-05-01","2027-05-05","2027-05-13","2027-06-06",
+  "2027-08-15","2027-08-16","2027-09-14","2027-09-15","2027-09-16",
+  "2027-10-03","2027-10-04","2027-10-09","2027-10-11","2027-12-25","2027-12-27",
 ]);
 
 export function isHolidayOrWeekend(dateStr: string): boolean {

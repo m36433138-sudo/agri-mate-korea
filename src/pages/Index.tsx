@@ -6,6 +6,7 @@ import MessengerFeedCard from "@/components/dashboard/MessengerFeedCard";
 import { AttendanceCard } from "@/components/dashboard/AttendanceCard";
 import { InstallAppBanner } from "@/components/dashboard/InstallAppBanner";
 import { LiveStaffPanel } from "@/components/dashboard/LiveStaffPanel";
+import { MyLeaveCard } from "@/pages/MyLeave";
 import { Panel } from "@/components/dashboard/Panel";
 import { SalesTrendChart } from "@/components/dashboard/SalesTrendChart";
 import { AiAssistantCard, DeltaChip, KpiCard, TechnicianLoad } from "@/components/dashboard/DashboardBits";
@@ -150,7 +151,7 @@ export default function Dashboard() {
 
       {/* 출퇴근 + 지금 근무 중(위치 공유) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
-        <div className="lg:col-span-5"><AttendanceCard /></div>
+        <div className="lg:col-span-5 flex flex-col gap-4 sm:gap-5"><AttendanceCard /><MyLeaveCard /></div>
         <div className="lg:col-span-7"><LiveStaffPanel /></div>
       </div>
 

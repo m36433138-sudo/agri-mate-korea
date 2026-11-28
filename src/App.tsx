@@ -49,6 +49,8 @@ const ReceivablesPage = lazy(() => import("@/pages/ReceivablesPage"));
 const DiagramsPage = lazy(() => import("@/pages/DiagramsPage"));
 const ExpensesPage = lazy(() => import("@/pages/ExpensesPage"));
 const PartSalesPage = lazy(() => import("@/pages/PartSalesPage"));
+const HRPage = lazy(() => import("@/pages/HRPage"));
+const MyLeave = lazy(() => import("@/pages/MyLeave"));
 
 // QueryClient - 캐시 설정으로 페이지 이동 시 재요청 최소화
 const queryClient = new QueryClient({
@@ -97,6 +99,8 @@ const App = () => (
                         <Route path="/" element={<HomePage />} />
                         <Route path="/dashboard/operations" element={<ProtectedRoute requiredPermission="view_operations"><OperationsDashboard /></ProtectedRoute>} />
                         <Route path="/dashboard/stats" element={<ProtectedRoute requiredPermission="view_stats"><RepairStats /></ProtectedRoute>} />
+                        <Route path="/hr" element={<ProtectedRoute allowedRoles={["admin"]}><HRPage /></ProtectedRoute>} />
+                        <Route path="/leave" element={<ProtectedRoute allowedRoles={["admin", "employee"]}><MyLeave /></ProtectedRoute>} />
                         <Route path="/dashboard/overtime" element={<ProtectedRoute requiredPermission="view_overtime"><OvertimeDashboard /></ProtectedRoute>} />
                         <Route path="/onsite-repairs" element={<ProtectedRoute requiredPermission="view_onsite"><OnsiteRepairs /></ProtectedRoute>} />
                         <Route path="/machines" element={<ProtectedRoute requiredPermission="view_machines"><MachinesList /></ProtectedRoute>} />
