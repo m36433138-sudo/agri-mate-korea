@@ -1,6 +1,5 @@
-import { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useEffect } from "react";
+import { useBaseMap } from "@/hooks/useBaseMap";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, AlertTriangle } from "lucide-react";
@@ -21,13 +20,7 @@ function createMarkerIcon(color: string, action: string) {
     <circle cx="14" cy="14" r="6" fill="white"/>
     ${action === "출근" ? '<circle cx="14" cy="14" r="3" fill="#22c55e"/>' : '<circle cx="14" cy="14" r="3" fill="#ef4444"/>'}
   </svg>`;
-  return L.divIcon({
-    html: svg,
-    className: "",
-    iconSize: [28, 40],
-    iconAnchor: [14, 40],
-    popupAnchor: [0, -40],
-  });
+  return svg;
 }
 
 function formatTime(dateStr: string) {
@@ -40,56 +33,26 @@ function formatTime(dateStr: string) {
 }
 
 export default function TechnicianMap() {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
+  const [mapRef, map] = useBaseMap({ lat: 34.98, lng: 126.91 }, 10);
   const { data: locations, isLoading, isError } = useTechnicianLocations();
 
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
-
-    mapInstance.current = L.map(mapRef.current).setView([34.98, 126.91], 10);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-      maxZoom: 18,
-    }).addTo(mapInstance.current);
-
-    return () => {
-      mapInstance.current?.remove();
-      mapInstance.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const map = mapInstance.current;
     if (!map || !locations?.length) return;
-
-    // Clear existing markers
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Marker) map.removeLayer(layer);
-    });
-
-    const bounds: L.LatLngExpression[] = [];
-
+    map.clear();
     locations.forEach((loc: TechnicianLocation) => {
       const color = TECH_MARKER_COLORS[loc.technician_name] || "#6b7280";
-      const icon = createMarkerIcon(color, loc.action);
-      const marker = L.marker([loc.latitude, loc.longitude], { icon }).addTo(map);
-      marker.bindPopup(
-        `<div style="font-size:13px;line-height:1.6">
+      map.marker({ lat: loc.latitude, lng: loc.longitude }, {
+        html: createMarkerIcon(color, loc.action), size: [28, 40], anchor: [14, 40],
+        popup: `<div style="font-size:13px;line-height:1.6">
           <strong>${loc.technician_name}</strong><br/>
           ${loc.action === "출근" ? "🟢 출근" : "🔴 퇴근"}<br/>
           <span style="color:#666">${formatTime(loc.created_at)}</span>
           ${loc.accuracy ? `<br/><span style="color:#999;font-size:11px">정확도: ±${Math.round(loc.accuracy)}m</span>` : ""}
-        </div>`
-      );
-      bounds.push([loc.latitude, loc.longitude]);
+        </div>`,
+      });
     });
-
-    if (bounds.length > 0) {
-      map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40], maxZoom: 13 });
-    }
-  }, [locations]);
+    map.fit(locations.map((l) => ({ lat: l.latitude, lng: l.longitude })), 13);
+  }, [map, locations]);
 
   if (isLoading) {
     return (

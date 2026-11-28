@@ -6,7 +6,7 @@ import { BellRing, CheckCircle2, Download, Loader2, MapPin, Send, Share, Smartph
 import { PageHeader } from "@/components/page/PageParts";
 import { useInstallPrompt } from "@/lib/installPrompt";
 import {
-  TOPIC_LABELS, currentSubscription, disablePush, enablePush, getPushTopics, isIos, isStandalone, pushSupported, sendPush, setPushTopics, type PushTopic,
+  TOPIC_LABELS, disablePush, isPushOn, enablePush, getPushTopics, isIos, isStandalone, pushSupported, sendPush, setPushTopics, type PushTopic,
 } from "@/lib/appPush";
 import { useLiveSharing, useMe } from "@/hooks/useMyAttendance";
 import { ANDROID_APK_URL, isNativeApp } from "@/lib/nativeLocation";
@@ -14,7 +14,7 @@ import { ANDROID_APK_URL, isNativeApp } from "@/lib/nativeLocation";
 const native = isNativeApp();
 import { useUserRole } from "@/hooks/useUserRole";
 
-const ALL: PushTopic[] = ["onsite", "chat", "deposit", "general"];
+const ALL: PushTopic[] = ["onsite", "repair", "chat", "deposit", "general"];
 
 function Section({ icon: Icon, title, children }: { icon: typeof BellRing; title: string; children: React.ReactNode }) {
   return (
@@ -35,12 +35,11 @@ export default function AppSettings() {
   const [topics, setTopics] = useState<PushTopic[]>(ALL);
   const [busy, setBusy] = useState(false);
   const { off, setOff } = useLiveSharing();
-  const perm = typeof Notification !== "undefined" ? Notification.permission : "default";
+  const perm = !native && typeof Notification !== "undefined" ? Notification.permission : "default";
 
   useEffect(() => {
     void (async () => {
-      const sub = await currentSubscription();
-      setSubscribed(!!sub);
+      setSubscribed(await isPushOn());
       const t = await getPushTopics();
       if (t) setTopics(t);
     })();
@@ -76,7 +75,9 @@ export default function AppSettings() {
       <PageHeader title="앱·알림 설정" sub="휴대폰 홈 화면에 앱으로 설치하고, 방문수리·메신저·입금 알림을 받아요" />
 
       <Section icon={Smartphone} title="휴대폰에 앱 설치">
-        {standalone ? (
+        {native ? (
+          <p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 font-medium"><CheckCircle2 className="h-5 w-5" />안드로이드 앱으로 열려 있어요</p>
+        ) : standalone ? (
           <p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 font-medium"><CheckCircle2 className="h-5 w-5" />설치한 앱으로 열려 있어요</p>
         ) : canPrompt ? (
           <div className="space-y-2">

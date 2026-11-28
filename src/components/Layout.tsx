@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { ChevronRight } from "lucide-react";
 import { useMessengerNotifications } from "@/hooks/useMessengerNotifications";
 import { useReceivablesAlert } from "@/hooks/useReceivablesAlert";
+import { listenNativeTaps } from "@/lib/nativePush";
 
 // 경로 → 페이지 이름 매핑
 const PAGE_LABELS: Record<string, string> = {
@@ -114,6 +115,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useMessengerNotifications();
   useReceivablesAlert();
   useLiveLocationRunner();
+  // 안드로이드 앱: 알림을 누르면 그 화면으로
+  useEffect(() => { listenNativeTaps(); }, []);
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
   const tabs = useBottomTabs();

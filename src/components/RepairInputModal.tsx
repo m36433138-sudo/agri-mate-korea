@@ -14,7 +14,7 @@ import { SelectedCustomerCard } from "@/components/SelectedCustomerCard";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as MapIcon, Camera, Gift } from "lucide-react";
+import { Plus, Trash2, Search, ListChecks, X, GripVertical, CheckCircle2, Map as MapIcon, Camera, Gift, BellRing } from "lucide-react";
 import RepairPhotoPartsDialog from "@/components/repair/RepairPhotoPartsDialog";
 import type { EstimateItem } from "@/lib/insuranceEstimate";
 import EstimateDiagramPicker from "@/components/insurance/EstimateDiagramPicker";
@@ -22,6 +22,8 @@ import { fetchPartPrices } from "@/lib/diagramInventory";
 import { mergeDiagramParts, modelFromMachineLabel, rowsToPanelItems } from "@/lib/repairDiagramParts";
 import { formatPrice } from "@/lib/formatters";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { notifyRepairSaved, rememberNotifyTo, rememberedNotifyTo, repairNotice } from "@/lib/repairNotify";
+import { StaffPicker } from "@/components/StaffPicker";
 
 type PartRow = {
   part_id: string;
@@ -165,6 +167,7 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
   const [paymentMode, setPaymentMode] = useState<RepairPaymentMode>("paid");
   const [partialPaid, setPartialPaid] = useState("");
   const [freeReason, setFreeReason] = useState("");
+  const [notifyTo, setNotifyTo] = useState(rememberedNotifyTo);
   const [printAfter, setPrintAfter] = useState(() => { try { return localStorage.getItem(PRINT_AFTER_KEY) === "1"; } catch { return false; } });
 
   const { data: employees } = useQuery({
@@ -758,6 +761,18 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
           : isFree && totalCost > 0 ? `무상(서비스) ${formatPrice(totalCost)} 처리로 기록했어요.` : undefined,
       });
       try { localStorage.setItem(PRINT_AFTER_KEY, printAfter ? "1" : "0"); } catch { /* 기억 못 해도 저장은 끝났다 */ }
+      rememberNotifyTo(notifyTo);
+      if (res?.id && notifyTo.trim()) {
+        void notifyRepairSaved(notifyTo, repairNotice({
+          id: res.id, customer: selectedCustomerName, machine: selectedMachineName, content: repairContent,
+          technician, total: totalCost, free: isFree, receivable: res.receivable,
+        })).then((r) => {
+          if (!r) return;
+          if (!r.ok) toast({ title: "수리는 저장됐지만 알림을 못 보냈어요", description: r.error, variant: "destructive" });
+          else if (r.sent > 0) toast({ title: `${notifyTo}에게 알림을 보냈어요` });
+          else toast({ title: "알림 받을 휴대폰이 없어요", description: `${notifyTo} 님이 앱·알림 설정에서 「수리 완료」 알림을 켜야 받아요.` });
+        });
+      }
       onOpenChange(false);
       if (printAfter && res?.id) onSaved?.(res.id);
     },
@@ -1302,6 +1317,11 @@ export default function RepairInputModal({ open, onOpenChange, machineId, machin
               <Label htmlFor="accounting-posted" className="cursor-pointer text-sm">
                 전산 기표 완료
               </Label>
+            </div>
+            <div className="space-y-1.5 px-1">
+              <Label className="text-sm flex items-center gap-1.5"><BellRing className="h-4 w-4 text-primary" /> 저장하면 알림 보낼 사람</Label>
+              <StaffPicker value={notifyTo} onChange={setNotifyTo} multiple placeholder="안 보냄 (사무팀 등 골라 주세요)" />
+              <p className="text-[11px] text-muted-foreground">「수리 완료」 알림이 가요. 고른 사람은 다음에도 그대로 기억해요.</p>
             </div>
             {onSaved && (
               <div className="flex items-center gap-2 px-1">

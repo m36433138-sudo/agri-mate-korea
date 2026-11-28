@@ -1,3 +1,4 @@
+import { KAKAO_MAP_KEY, kakaoGeocode } from "@/lib/baseMap";
 /**
  * 방문수리 길찾기·지도: 주소 → 좌표(무료 OpenStreetMap 검색, 기록에 저장해 한 번만), 가까운 순 동선, 지도 앱 링크.
  * 시골 주소는 정확히 안 잡힐 때가 많아 「전체 주소 → 번지 뺀 주소 → 읍·면」 순으로 넓혀 찾고,
@@ -33,9 +34,17 @@ export function geocodeQueries(address: string, branch?: string | null): string[
 
 export type GeocodeResult = LatLng & { approx: boolean };
 
-/** OpenStreetMap(Nominatim)으로 주소 찾기. 초당 1번 규칙을 지키려고 질의 사이를 띄운다. */
+/** 주소 → 좌표. 카카오(키가 있을 때) 다음 OpenStreetMap(Nominatim). Nominatim 은 초당 1번 규칙을 지키려고 질의 사이를 띄운다. */
 export async function geocodeAddress(address: string, branch?: string | null, signal?: AbortSignal): Promise<GeocodeResult | null> {
   const qs = geocodeQueries(address, branch);
+  // 카카오맵 키가 있으면 카카오 주소 검색을 먼저 (지번·도로명을 훨씬 잘 찾는다)
+  if (KAKAO_MAP_KEY) {
+    for (let i = 0; i < qs.length; i++) {
+      if (signal?.aborted) return null;
+      const hit = await kakaoGeocode(qs[i]).catch(() => null);
+      if (hit) return { ...hit, approx: i > 0 };
+    }
+  }
   for (let i = 0; i < qs.length; i++) {
     if (signal?.aborted) return null;
     if (i > 0) await new Promise((r) => setTimeout(r, 1100));
