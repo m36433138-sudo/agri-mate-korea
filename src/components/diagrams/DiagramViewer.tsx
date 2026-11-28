@@ -240,6 +240,7 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
   const calloutOf = new Map<string, string>();
   for (const h of hotspots) { const no = (h as any).callout_no as string | null; if (no && !h.target_diagram_id && !calloutOf.has(h.part_code)) calloutOf.set(h.part_code, no); }
   const links = hotspots.filter((h) => h.target_diagram_id);
+  const pageParts = uniqueCodes.filter((h) => h.part_code.trim());
 
   return (
     <div className="space-y-3">
@@ -255,11 +256,25 @@ export default function DiagramViewer({ diagram, onBack, allDiagrams = [], onOpe
             <p className="text-xs text-muted-foreground">{diagram.model_name}</p>
           )}
         </div>
+        {!isPhoto && onPickParts && pageParts.length > 0 && (
+          <Button
+            size="sm"
+            className="ml-auto gap-1.5 shrink-0"
+            disabled={editing}
+            onClick={() => {
+              if (!confirm(`이 도면 페이지의 부품 ${pageParts.length}개를 모두 ${pickTarget}에 담을까요?`)) return;
+              onPickParts(pageParts.map((h) => ({ code: h.part_code, name: h.part_name, qtyNote: qtyOf(h.notes) })));
+              setChecked(new Set());
+            }}
+          >
+            <FilePlus2 className="h-4 w-4" /> 페이지 통째로 담기 {pageParts.length}
+          </Button>
+        )}
         {!isPhoto && (
           <Button
             variant={checkMode ? "default" : "outline"}
             size="sm"
-            className="ml-auto gap-1.5 shrink-0"
+            className={`${onPickParts && pageParts.length > 0 ? "" : "ml-auto "}gap-1.5 shrink-0`}
             onClick={() => { setCheckMode((v) => !v); setEditing(false); }}
             aria-pressed={checkMode}
           >

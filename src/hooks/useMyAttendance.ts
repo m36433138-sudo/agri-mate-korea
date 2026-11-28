@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { breakMinutes, calcOvertimeWithBreaks, isHolidayOrWeekend, type AttendanceRecord, type BreakSpan } from "@/hooks/useAttendance";
 import { distanceKm } from "@/lib/onsiteRoute";
+import { isNativeApp, nativeUpsertLive, watchNativeLocation } from "@/lib/nativeLocation";
 
 const db = supabase as any;
 export const kstDate = (d = new Date()) => new Date(d.getTime() + 9 * 3600_000).toISOString().slice(0, 10);
@@ -177,9 +178,11 @@ export function useMyAttendance() {
 }
 
 async function publishLive(me: Me, pos: Pos, sharing: boolean) {
-  await db.from("staff_live_locations").upsert({
-    employee_id: me.id, user_id: me.user_id, name: me.name, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, sharing, updated_at: new Date().toISOString(),
-  }, { onConflict: "employee_id" });
+  const row = { employee_id: me.id, user_id: me.user_id, name: me.name, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, sharing, updated_at: new Date().toISOString() };
+  if (isNativeApp()) {
+    try { await nativeUpsertLive(row); return; } catch { /* 네이티브 요청이 안 되면 아래 일반 경로로 */ }
+  }
+  await db.from("staff_live_locations").upsert(row, { onConflict: "employee_id" });
 }
 
 async function stopLive(me: Me) {
@@ -205,7 +208,8 @@ const setShareStatus = (v: ShareStatus) => { if (shareStatus !== v) { shareStatu
 const subscribeStatus = (f: () => void) => { statusListeners.add(f); return () => { statusListeners.delete(f); }; };
 
 /**
- * 앱 전체에서 한 번만(Layout) 돈다: 출근해 있고 공유를 끄지 않았으면, 앱이 열려 있는 동안 내 위치를 보낸다.
+ * 앱 전체에서 한 번만(Layout) 돈다: 출근해 있고 공유를 끄지 않았으면 내 위치를 보낸다.
+ * 브라우저에서는 앱이 열려 있는 동안만, 안드로이드 설치 앱에서는 화면이 꺼져도 보낸다.
  * 1분 넘게 지났거나 100m 넘게 움직였을 때만 저장한다.
  */
 export function useLiveLocationRunner() {
@@ -216,17 +220,27 @@ export function useLiveLocationRunner() {
   useEffect(() => {
     // 외출 중에는 위치를 보내지 않는다 (업무 시간이 아님)
     if (!me || !working || off || away) { setShareStatus(away ? "away" : "idle"); return; }
+    const onFix = (here: { lat: number; lng: number }, accuracy: number | null) => {
+      setShareStatus("sharing");
+      const now = Date.now();
+      const prev = last.current;
+      if (prev && now - prev.at < 60_000 && distanceKm(prev, here) < 0.1) return;
+      last.current = { at: now, ...here };
+      void publishLive(me, { ...here, accuracy }, true);
+    };
+    // 안드로이드 설치 앱: 화면이 꺼지거나 다른 앱을 써도 계속 보낸다
+    if (isNativeApp()) {
+      let stop: (() => void) | null = null;
+      let cancelled = false;
+      watchNativeLocation(
+        (f) => onFix({ lat: f.lat, lng: f.lng }, f.accuracy),
+        (code) => setShareStatus(code === "denied" ? "denied" : "idle"),
+      ).then((s) => { if (cancelled) s(); else stop = s; }).catch(() => setShareStatus("unsupported"));
+      return () => { cancelled = true; stop?.(); };
+    }
     if (!navigator.geolocation) { setShareStatus("unsupported"); return; }
     const id = navigator.geolocation.watchPosition(
-      (p) => {
-        setShareStatus("sharing");
-        const now = Date.now();
-        const here = { lat: p.coords.latitude, lng: p.coords.longitude };
-        const prev = last.current;
-        if (prev && now - prev.at < 60_000 && distanceKm(prev, here) < 0.1) return;
-        last.current = { at: now, ...here };
-        void publishLive(me, { ...here, accuracy: p.coords.accuracy ?? null }, true);
-      },
+      (p) => onFix({ lat: p.coords.latitude, lng: p.coords.longitude }, p.coords.accuracy ?? null),
       (e) => setShareStatus(e.code === 1 ? "denied" : "idle"),
       { enableHighAccuracy: true, maximumAge: 30_000, timeout: 60_000 },
     );
