@@ -1,13 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import { VAPID_PUBLIC_KEY } from "../../supabase/functions/_shared/push";
+import { isNativeApp } from "@/lib/nativeLocation";
+import { registerNativePush, savedFcmToken, unregisterNativePush } from "@/lib/nativePush";
 
 /** 홈 화면 앱·휴대폰 알림. 서비스 워커는 /sw.js 하나 (미리보기 창(iframe) 안에서는 등록하지 않는다). */
 
-export type PushTopic = "onsite" | "chat" | "deposit" | "general";
+export type PushTopic = "onsite" | "chat" | "deposit" | "general" | "repair";
 export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = {
   onsite: { label: "방문수리 배정", desc: "내 이름으로 방문수리가 잡히거나 바뀌면" },
   chat: { label: "사내 메신저", desc: "내가 있는 대화방에 새 메시지가 오면" },
   deposit: { label: "입금 문자", desc: "입금 문자가 들어오면 (관리자)" },
+  repair: { label: "수리 완료", desc: "누가 수리 이력을 저장하면서 나를 알림 받을 사람으로 골랐을 때" },
   general: { label: "공지·기타", desc: "회사 공지와 시험 알림" },
 };
 
@@ -17,6 +20,7 @@ export function swSupported() {
   return typeof window !== "undefined" && "serviceWorker" in navigator && !inIframe();
 }
 export function pushSupported() {
+  if (isNativeApp()) return true;
   return swSupported() && "PushManager" in window && "Notification" in window;
 }
 /** 홈 화면에 설치한 앱으로 열렸는지 */
@@ -41,14 +45,26 @@ function keyBytes(b64url: string) {
   return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 }
 
+/** 이 기기의 구독 주소: 웹은 브라우저 구독 endpoint, 안드로이드 앱은 'fcm:' + 토큰 */
+async function myEndpoint(): Promise<string | null> {
+  if (isNativeApp()) { const t = savedFcmToken(); return t ? `fcm:${t}` : null; }
+  return (await currentSubscription())?.endpoint ?? null;
+}
+
 export async function currentSubscription(): Promise<PushSubscription | null> {
-  if (!pushSupported()) return null;
+  if (isNativeApp() || !pushSupported()) return null;
   const reg = await navigator.serviceWorker.getRegistration("/");
   return (await reg?.pushManager.getSubscription()) ?? null;
 }
 
 /** 이 기기에서 알림 켜기: 권한 묻기 → 구독 → 서버에 이 기기 등록 */
 export async function enablePush(topics?: PushTopic[]): Promise<void> {
+  if (isNativeApp()) {
+    const token = await registerNativePush();
+    const { error } = await supabase.rpc("register_fcm_token" as never, { _token: token, _user_agent: navigator.userAgent, _topics: topics ?? null } as never);
+    if (error) throw new Error(error.message);
+    return;
+  }
   if (!pushSupported()) {
     throw new Error(isIos() && !isStandalone()
       ? "아이폰은 먼저 Safari 공유 버튼 → 「홈 화면에 추가」로 앱을 설치한 뒤, 설치한 앱에서 알림을 켜 주세요."
@@ -69,23 +85,24 @@ export async function enablePush(topics?: PushTopic[]): Promise<void> {
 }
 
 export async function disablePush(): Promise<void> {
-  const sub = await currentSubscription();
-  if (!sub) return;
-  await (supabase as any).from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-  await sub.unsubscribe();
+  const endpoint = await myEndpoint();
+  if (!endpoint) return;
+  await (supabase as any).from("push_subscriptions").delete().eq("endpoint", endpoint);
+  if (isNativeApp()) { await unregisterNativePush(); return; }
+  await (await currentSubscription())?.unsubscribe();
 }
 
 export async function setPushTopics(topics: PushTopic[]): Promise<void> {
-  const sub = await currentSubscription();
-  if (!sub) return;
-  const { error } = await (supabase as any).from("push_subscriptions").update({ topics }).eq("endpoint", sub.endpoint);
+  const endpoint = await myEndpoint();
+  if (!endpoint) return;
+  const { error } = await (supabase as any).from("push_subscriptions").update({ topics }).eq("endpoint", endpoint);
   if (error) throw new Error(error.message);
 }
 
 export async function getPushTopics(): Promise<PushTopic[] | null> {
-  const sub = await currentSubscription();
-  if (!sub) return null;
-  const { data } = await (supabase as any).from("push_subscriptions").select("topics").eq("endpoint", sub.endpoint).maybeSingle();
+  const endpoint = await myEndpoint();
+  if (!endpoint) return null;
+  const { data } = await (supabase as any).from("push_subscriptions").select("topics").eq("endpoint", endpoint).maybeSingle();
   return (data?.topics as PushTopic[] | undefined) ?? null;
 }
 
@@ -100,4 +117,10 @@ export async function sendPush(topic: PushTopic, to: PushTarget, msg: { title: s
   } catch (e) {
     return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/** 이 기기에서 알림이 켜져 있는지 (웹: 브라우저 구독, 안드로이드 앱: 등록한 토큰) */
+export async function isPushOn(): Promise<boolean> {
+  if (isNativeApp()) return !!savedFcmToken();
+  return !!(await currentSubscription());
 }

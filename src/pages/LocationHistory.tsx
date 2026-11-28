@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useBaseMap } from "@/hooks/useBaseMap";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,64 +79,29 @@ function createMarkerIcon(color: string, action: string) {
     <circle cx="12" cy="12" r="5" fill="white"/>
     ${action === "출근" ? '<circle cx="12" cy="12" r="2.5" fill="#22c55e"/>' : '<circle cx="12" cy="12" r="2.5" fill="#ef4444"/>'}
   </svg>`;
-  return L.divIcon({
-    html: svg,
-    className: "",
-    iconSize: [24, 34],
-    iconAnchor: [12, 34],
-    popupAnchor: [0, -34],
-  });
+  return svg;
 }
 
 function HistoryMap({ records }: { records: LocationRecord[] }) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
+  const [mapRef, map] = useBaseMap({ lat: 34.98, lng: 126.91 }, 10);
 
   useEffect(() => {
-    if (!mapRef.current) return;
-    if (!mapInstance.current) {
-      mapInstance.current = L.map(mapRef.current).setView([34.98, 126.91], 10);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-        maxZoom: 18,
-      }).addTo(mapInstance.current);
-    }
-
-    const map = mapInstance.current;
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Marker) map.removeLayer(layer);
-    });
-
-    const bounds: L.LatLngExpression[] = [];
-
+    if (!map) return;
+    map.clear();
     records.forEach((rec) => {
       const color = TECH_COLORS[rec.technician_name] || "#6b7280";
-      const icon = createMarkerIcon(color, rec.action);
-      const marker = L.marker([rec.latitude, rec.longitude], { icon }).addTo(map);
-      marker.bindPopup(
-        `<div style="font-size:12px;line-height:1.5">
+      map.marker({ lat: rec.latitude, lng: rec.longitude }, {
+        html: createMarkerIcon(color, rec.action), size: [24, 34], anchor: [12, 34],
+        popup: `<div style="font-size:12px;line-height:1.5">
           <strong>${rec.technician_name}</strong><br/>
           ${rec.action === "출근" ? "🟢 출근" : "🔴 퇴근"}<br/>
           ${formatDateTime(rec.created_at)}
           ${rec.accuracy ? `<br/>정확도: ±${Math.round(rec.accuracy)}m` : ""}
-        </div>`
-      );
-      bounds.push([rec.latitude, rec.longitude]);
+        </div>`,
+      });
     });
-
-    if (bounds.length > 0) {
-      map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: 14 });
-    }
-
-    return () => {};
-  }, [records]);
-
-  useEffect(() => {
-    return () => {
-      mapInstance.current?.remove();
-      mapInstance.current = null;
-    };
-  }, []);
+    map.fit(records.map((r) => ({ lat: r.latitude, lng: r.longitude })), 14);
+  }, [map, records]);
 
   return <div ref={mapRef} className="h-[400px] w-full rounded-lg" />;
 }
