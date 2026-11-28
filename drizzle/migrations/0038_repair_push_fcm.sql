@@ -43,7 +43,8 @@ BEGIN
   IF _uid IS NULL OR NOT (public.has_role(_uid, 'admin') OR public.has_role(_uid, 'employee')) THEN
     RAISE EXCEPTION '직원만 알림을 켤 수 있어요';
   END IF;
-  IF coalesce(_token, '') !~ '^[A-Za-z0-9_:\-]{20,4000}$' THEN
+  -- 정규식 반복 횟수는 255까지라 길이는 따로 검사한다
+  IF length(coalesce(_token, '')) NOT BETWEEN 20 AND 4000 OR _token !~ '^[A-Za-z0-9_:-]+$' THEN
     RAISE EXCEPTION '알림 토큰이 올바르지 않아요';
   END IF;
   INSERT INTO public.push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, topics, kind)
