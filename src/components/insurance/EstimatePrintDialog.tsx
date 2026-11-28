@@ -3,14 +3,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Map as MapIcon, Printer } from "lucide-react";
+import { Loader2, Map as MapIcon, MapPin, Printer } from "lucide-react";
 import { CompanyPicker, rememberCompany, type PrintCompany } from "@/components/print/CompanyPicker";
 import { cn } from "@/lib/utils";
 import type { EstimateItem } from "@/lib/insuranceEstimate";
 import { printInsuranceEstimate, type EstimatePrintInfo } from "@/lib/printInsuranceEstimate";
-import { loadEstimateSheets } from "@/lib/estimateDiagrams";
+import { loadEstimateSheets, loadPartLocations } from "@/lib/estimateDiagrams";
 
 const LAST_KEY = "insuranceEstimate.companyId";
+const LOC_KEY = "insuranceEstimate.withLocations";
+const readLoc = () => { try { return localStorage.getItem(LOC_KEY) !== "false"; } catch { return true; } };
 
 /** 견적서 인쇄 전: 어느 사업장 이름으로 낼지, 부품 위치 도면을 붙일지 고른다 */
 export default function EstimatePrintDialog({
@@ -25,6 +27,7 @@ export default function EstimatePrintDialog({
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [company, setCompany] = useState<PrintCompany | null>(null);
   const [withDiagrams, setWithDiagrams] = useState(true);
+  const [withLocations, setWithLocations] = useState(readLoc);
   const [busy, setBusy] = useState(false);
   const diagramCount = useMemo(() => new Set(items.map((i) => i.diagram_id).filter(Boolean)).size, [items]);
 
@@ -32,15 +35,23 @@ export default function EstimatePrintDialog({
     setBusy(true);
     try {
       rememberCompany(LAST_KEY, companyId);
+      try { localStorage.setItem(LOC_KEY, String(withLocations)); } catch { /* 저장 못 해도 인쇄는 한다 */ }
       let diagrams: EstimatePrintInfo["diagrams"] = [];
+      let partLocations: EstimatePrintInfo["partLocations"] = null;
       if (withDiagrams && diagramCount) {
         try {
-          diagrams = await loadEstimateSheets(items);
+          [diagrams, partLocations] = await Promise.all([
+            loadEstimateSheets(items),
+            withLocations ? loadPartLocations(items).catch(() => {
+              toast({ title: "창고 위치를 불러오지 못해 위치 없이 인쇄해요", variant: "destructive" });
+              return null;
+            }) : Promise.resolve(null),
+          ]);
         } catch (e: any) {
           toast({ title: "도면을 불러오지 못해 견적서만 인쇄해요", description: e.message, variant: "destructive" });
         }
       }
-      printInsuranceEstimate(items, { ...info, company, diagrams });
+      printInsuranceEstimate(items, { ...info, company, diagrams, partLocations });
       onOpenChange(false);
     } finally {
       setBusy(false);
@@ -68,6 +79,14 @@ export default function EstimatePrintDialog({
                   ? `도면 ${diagramCount}장에 견적 부품을 형광펜과 견적 번호로 표시해 견적서 뒤에 붙여요`
                   : "도면에서 담은 부품이 없어요. 「도면 보면서 담기」로 담은 부품만 표시돼요"}
               </span>
+            </span>
+          </label>
+
+          <label className={cn("flex items-start gap-3 rounded-2xl border p-3 ml-6", withDiagrams && diagramCount ? "cursor-pointer" : "opacity-60")}>
+            <Checkbox className="mt-0.5" checked={withLocations && withDiagrams && diagramCount > 0} disabled={!withDiagrams || !diagramCount} onCheckedChange={(v) => setWithLocations(!!v)} />
+            <span className="text-sm min-w-0">
+              <span className="font-semibold flex items-center gap-1.5"><MapPin className="h-4 w-4 text-primary" /> 도면 옆에 장흥·강진 창고 위치</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">부품표에 두 창고의 보관 위치와 재고 수량을 같이 적어요. 보험사에 낼 때는 끄세요.</span>
             </span>
           </label>
         </div>

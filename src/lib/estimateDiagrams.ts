@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/components/partReceipts/receiptData";
 import type { EstimateItem } from "./insuranceEstimate";
-import type { EstimateDiagramSheet } from "./printInsuranceEstimate";
+import type { EstimateDiagramSheet, PartLocations } from "./printInsuranceEstimate";
 
 const DIAGRAM_BUCKET = "diagram-images";
 const norm = (s: string | null | undefined) => (s ?? "").trim().toUpperCase();
@@ -47,7 +48,6 @@ export function buildEstimateSheets(
 export async function loadEstimateSheets(items: EstimateItem[]): Promise<EstimateDiagramSheet[]> {
   const ids = [...new Set(items.map((i) => i.diagram_id).filter(Boolean) as string[])];
   if (!ids.length) return [];
-  const db = supabase as any;
   const [{ data: diagrams, error: dErr }, { data: hotspots, error: hErr }] = await Promise.all([
     db.from("diagrams").select("id, title, model_name, image_path").in("id", ids),
     db.from("diagram_hotspots").select("*").in("diagram_id", ids),
@@ -59,4 +59,45 @@ export async function loadEstimateSheets(items: EstimateItem[]): Promise<Estimat
   const urls = new Map<string, string>();
   (signed ?? []).forEach((s: any, i: number) => { if (s?.signedUrl) urls.set(paths[i], s.signedUrl); });
   return buildEstimateSheets(items, diagrams ?? [], hotspots ?? [], (p) => urls.get(p) ?? null);
+}
+
+type InvRow = { branch: string; part_code: string; alt_part_code: string | null; quantity: number | null; location_main: string | null; location_sub: string | null };
+
+/**
+ * 견적 부품번호별로 장흥·강진 창고의 위치와 수량을 모은다.
+ * 부품번호가 그대로 맞는 줄을 먼저 쓰고, 없으면 대체 부품번호로 맞는 줄을 쓴다.
+ */
+export function partLocationsFrom(codes: string[], rows: InvRow[]): PartLocations {
+  const out: PartLocations = {};
+  for (const raw of codes) {
+    const code = norm(raw);
+    if (!code) continue;
+    const entry: PartLocations[string] = {};
+    for (const b of ["장흥", "강진"] as const) {
+      const mine = rows.filter((r) => r.branch === b);
+      const r = mine.find((x) => norm(x.part_code) === code) ?? mine.find((x) => norm(x.alt_part_code) === code);
+      if (r) entry[b] = { location: [r.location_main, r.location_sub].map((v) => (v ?? "").trim()).filter(Boolean).join(" "), qty: r.quantity ?? 0 };
+    }
+    out[code] = entry;
+  }
+  return out;
+}
+
+/** 견적 부품들의 두 창고 위치를 불러온다 (도면 인쇄용) */
+export async function loadPartLocations(items: EstimateItem[]): Promise<PartLocations> {
+  const codes = [...new Set(items.filter((i) => i.item_type === "부품" && i.part_code.trim()).map((i) => i.part_code.trim()))];
+  if (!codes.length) return {};
+  const cols = "branch, part_code, alt_part_code, quantity, location_main, location_sub";
+  const rows: InvRow[] = [];
+  for (let i = 0; i < codes.length; i += 200) {
+    const chunk = codes.slice(i, i + 200);
+    const [a, b] = await Promise.all([
+      db.from("inventory").select(cols).in("part_code", chunk),
+      db.from("inventory").select(cols).in("alt_part_code", chunk),
+    ]);
+    if (a.error) throw a.error;
+    if (b.error) throw b.error;
+    rows.push(...(a.data ?? []), ...(b.data ?? []));
+  }
+  return partLocationsFrom(codes, rows);
 }

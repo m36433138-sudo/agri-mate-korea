@@ -25,6 +25,16 @@ export type EstimateDiagramSheet = {
   marks: { no: number; x: number; y: number; w: number; h: number; round?: boolean }[];
 };
 
+export type BranchStock = { location: string; qty: number };
+export type PartLocations = Record<string, Partial<Record<"장흥" | "강진", BranchStock>>>;
+export const LOCATION_BRANCHES = ["장흥", "강진"] as const;
+
+/** 창고 칸 글자: 위치 · 수량. 재고 줄이 없으면 「-」 */
+export function stockCell(s: BranchStock | undefined): string {
+  if (!s) return "-";
+  return `${s.location || "위치 없음"} · ${s.qty}개`;
+}
+
 export type EstimatePrintInfo = {
   customerName: string;
   customerPhone?: string | null;
@@ -39,6 +49,8 @@ export type EstimatePrintInfo = {
   /** 견적 번호 (없으면 날짜로 만든다) */
   docNumber?: string | null;
   diagrams?: EstimateDiagramSheet[];
+  /** 도면 옆 부품표에 장흥·강진 창고 위치를 붙인다 (부품번호 대문자 → 지점별 위치) */
+  partLocations?: PartLocations | null;
   printedAt?: Date;
 };
 
@@ -103,16 +115,20 @@ export function insuranceEstimateHtml(items: EstimateItem[], info: EstimatePrint
   const companyName = c.company_name || "광문농기";
   const footer = [companyName, c.address, c.phone && `TEL ${c.phone}`, c.fax && `FAX ${c.fax}`].filter(Boolean).map((x) => esc(x as string)).join("  ·  ");
 
+  const locs = info.partLocations ?? null;
   const diagramPages = sheets.map((s, si) => {
     const marks = s.marks.map((m) => `<div class="hl${m.round ? " round" : ""}" style="left:${m.x}%;top:${m.y}%;width:${m.w}%;height:${m.h}%"><i>${m.no}</i></div>`).join("");
     const legend = [...new Set(s.marks.map((m) => m.no))].sort((a, b) => a - b).map((no) => {
       const it = items[no - 1];
-      return it ? `<tr><td class="c"><span class="badge">${no}</span></td><td class="m">${esc(it.part_code)}</td><td>${esc(it.part_name)}</td><td class="r">${it.quantity}</td></tr>` : "";
+      if (!it) return "";
+      const loc = locs ? locs[it.part_code.trim().toUpperCase()] ?? {} : null;
+      const locCells = loc ? LOCATION_BRANCHES.map((b) => `<td class="loc${loc[b] ? "" : " none"}">${esc(stockCell(loc[b]))}</td>`).join("") : "";
+      return `<tr><td class="c"><span class="badge">${no}</span></td><td class="m">${esc(it.part_code)}</td><td>${esc(it.part_name)}</td><td class="r">${it.quantity}</td>${locCells}</tr>`;
     }).join("");
     return `<section class="sheet">
 <div class="sheet-head"><div class="brand sm">YANMAR</div><div class="st">부품 위치 도면 ${si + 1}/${sheets.length}<b>${esc(s.title)}</b>${s.model ? `<span>${esc(s.model)}</span>` : ""}</div><div class="ref">견적 ${esc(docNo)} · ${esc(info.customerName)}</div></div>
-<div class="sheet-body"><div class="pic"><img src="${esc(s.imageUrl)}" alt="">${marks}</div>
-<table class="legend"><thead><tr><th>No</th><th>부품번호</th><th>품명</th><th>수량</th></tr></thead><tbody>${legend}</tbody></table></div>
+<div class="sheet-body${locs ? " wide" : ""}"><div class="pic"><img src="${esc(s.imageUrl)}" alt="">${marks}</div>
+<table class="legend"><thead><tr><th>No</th><th>부품번호</th><th>품명</th><th>수량</th>${locs ? LOCATION_BRANCHES.map((b) => `<th>${b} 창고</th>`).join("") : ""}</tr></thead><tbody>${legend}</tbody></table></div>
 </section>`;
   }).join("");
 
@@ -168,6 +184,8 @@ tr{page-break-inside:avoid}
 .sheet-head .st{flex:1;font-size:11px;color:#374151}.sheet-head .st b{margin-left:8px;font-size:14px;color:#111827}.sheet-head .st span{margin-left:8px;color:#6b7280}
 .sheet-head .ref{font-size:10px;color:#6b7280}
 .sheet-body{display:grid;grid-template-columns:1fr 250px;gap:10px;align-items:start}
+.sheet-body.wide{grid-template-columns:1fr 360px}
+.legend td.loc{font-size:9.5px;color:#111827;white-space:nowrap}.legend td.loc.none{color:#9ca3af;text-align:center}
 .pic{position:relative;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
 .pic img{display:block;width:100%;height:auto;max-height:168mm;object-fit:contain}
 .hl{position:absolute;background:rgba(255,230,0,.5);border:2px solid #f59e0b;border-radius:4px;mix-blend-mode:multiply}

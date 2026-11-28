@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-import { buildEstimateSheets } from "./estimateDiagrams";
+import { buildEstimateSheets, partLocationsFrom } from "./estimateDiagrams";
+import { stockCell } from "./printInsuranceEstimate";
 import type { EstimateItem } from "./insuranceEstimate";
 
 const it_ = (code: string, diagram: string | null, type: EstimateItem["item_type"] = "부품"): EstimateItem =>
@@ -34,5 +35,24 @@ describe("견적 도면 묶기", () => {
   it("그림 주소가 없거나 표시할 자리가 없는 도면은 뺀다", () => {
     expect(buildEstimateSheets([it_("1E6680-14200", "d1")], diagrams, hotspots, () => null)).toEqual([]);
     expect(buildEstimateSheets([it_("ZZZ", "d2")], diagrams, hotspots, url)).toEqual([]);
+  });
+});
+
+describe("도면 옆 창고 위치", () => {
+  const rows = [
+    { branch: "장흥", part_code: "1A1000-40000", alt_part_code: null, quantity: 3, location_main: "JA1-2", location_sub: null },
+    { branch: "강진", part_code: "1A1000-40001", alt_part_code: "1a1000-40000", quantity: 1, location_main: "K1", location_sub: "2칸" },
+    { branch: "강진", part_code: "B2", alt_part_code: null, quantity: 0, location_main: null, location_sub: null },
+  ];
+  it("부품번호가 맞는 줄, 없으면 대체번호로 두 창고 위치를 찾는다", () => {
+    const m = partLocationsFrom(["1a1000-40000 ", "B2", "ZZ"], rows);
+    expect(m["1A1000-40000"]).toEqual({ 장흥: { location: "JA1-2", qty: 3 }, 강진: { location: "K1 2칸", qty: 1 } });
+    expect(m["B2"]).toEqual({ 강진: { location: "", qty: 0 } });
+    expect(m["ZZ"]).toEqual({});
+  });
+  it("칸 글자: 위치 · 수량, 없으면 -", () => {
+    expect(stockCell({ location: "JA1-2", qty: 3 })).toBe("JA1-2 · 3개");
+    expect(stockCell({ location: "", qty: 0 })).toBe("위치 없음 · 0개");
+    expect(stockCell(undefined)).toBe("-");
   });
 });
