@@ -239,12 +239,23 @@ export function useLiveLocationRunner() {
       return () => { cancelled = true; stop?.(); };
     }
     if (!navigator.geolocation) { setShareStatus("unsupported"); return; }
+    // 브라우저는 움직일 때만 위치를 준다: 가만히 있어도 2분마다 마지막 위치로 「지금도 여기」를 알린다
+    let lastFix: { lat: number; lng: number; accuracy: number | null } | null = null;
+    const beat = window.setInterval(() => {
+      if (lastFix && last.current && Date.now() - last.current.at >= 110_000) {
+        last.current = { at: Date.now(), lat: lastFix.lat, lng: lastFix.lng };
+        void publishLive(me, lastFix, true);
+      }
+    }, 30_000);
     const id = navigator.geolocation.watchPosition(
-      (p) => onFix({ lat: p.coords.latitude, lng: p.coords.longitude }, p.coords.accuracy ?? null),
+      (p) => {
+        lastFix = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy ?? null };
+        onFix({ lat: p.coords.latitude, lng: p.coords.longitude }, p.coords.accuracy ?? null);
+      },
       (e) => setShareStatus(e.code === 1 ? "denied" : "idle"),
       { enableHighAccuracy: true, maximumAge: 30_000, timeout: 60_000 },
     );
-    return () => navigator.geolocation.clearWatch(id);
+    return () => { navigator.geolocation.clearWatch(id); window.clearInterval(beat); };
   }, [me, working, off, away]);
 }
 

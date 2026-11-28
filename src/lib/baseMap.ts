@@ -32,6 +32,8 @@ export interface BaseMap {
   onClick(cb: (at: LatLng) => void): void;
   closePopup(): void;
   destroy(): void;
+  /** 지도 구석에 작은 안내 글 */
+  note?(text: string): void;
 }
 
 export const KAKAO_MAP_KEY: string = (import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined) ?? "";
@@ -64,7 +66,11 @@ export function loadKakao(): Promise<Kakao | null> {
 
 export async function createBaseMap(el: HTMLElement, center: LatLng, zoom: number): Promise<BaseMap> {
   const kakao = await loadKakao();
-  return kakao ? kakaoMap(kakao, el, center, zoom) : leafletMap(el, center, zoom);
+  if (kakao) return kakaoMap(kakao, el, center, zoom);
+  const m = leafletMap(el, center, zoom);
+  // 키는 있는데 카카오가 거절한 경우(등록 안 된 도메인, 카카오맵 사용 꺼짐 등) 지도 아래에 작게 알린다
+  if (KAKAO_MAP_KEY) m.note?.("카카오맵 연결 안 됨 — 카카오 개발자 사이트에서 도메인·카카오맵 사용 설정을 확인하세요");
+  return m;
 }
 
 // ---------- OpenStreetMap (Leaflet) ----------
@@ -96,6 +102,7 @@ function leafletMap(el: HTMLElement, center: LatLng, zoom: number): BaseMap {
     onClick: (cb) => { m.on("click", (e: L.LeafletMouseEvent) => cb({ lat: e.latlng.lat, lng: e.latlng.lng })); },
     closePopup: () => { m.closePopup(); },
     destroy: () => { m.remove(); },
+    note: (text) => { m.attributionControl.setPrefix(`<span style="color:#b45309">${text}</span>`); },
   };
 }
 

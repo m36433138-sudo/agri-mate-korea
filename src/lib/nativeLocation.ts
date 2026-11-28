@@ -26,7 +26,9 @@ export async function watchNativeLocation(
       backgroundMessage: "출근 중에만 위치를 보내요. 퇴근하면 자동으로 꺼져요.",
       requestPermissions: true,
       stale: false,
-      distanceFilter: 30,
+      // 0: 가만히 있어도 위치가 계속 온다 (30m 로 두면 사무실·현장에 서 있는 동안 「몇십 분 전」으로 멈춰 보였다).
+      // 저장은 화면 쪽에서 1분에 한 번으로 줄인다.
+      distanceFilter: 0,
     },
     (loc?: Location, err?: { code?: string; message?: string }) => {
       if (err) {
